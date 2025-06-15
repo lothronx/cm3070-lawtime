@@ -18,7 +18,11 @@ WHERE NOT EXISTS (
 -- This function is the core logic that will be executed by the trigger.
 
 CREATE OR REPLACE FUNCTION public.handle_new_task_file()
-RETURNS TRIGGER AS $$
+RETURNS TRIGGER
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = ''
+AS $$
 DECLARE
   temp_path TEXT;
   permanent_path TEXT;
@@ -46,7 +50,7 @@ BEGIN
 
   RETURN new;
 END;
-$$ LANGUAGE plpgsql SECURITY DEFINER;
+$$;
 
 -- 3. Create the trigger
 -- This trigger fires after a new row is inserted into the public.task_files table.
