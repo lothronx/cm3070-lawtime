@@ -7,7 +7,7 @@ function RootLayoutContent() {
 
   return (
     <PaperProvider theme={theme}>
-      <Stack />
+      <Stack screenOptions={{ headerShown: false }} />
     </PaperProvider>
   );
 }

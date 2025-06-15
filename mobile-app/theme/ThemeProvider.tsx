@@ -1,7 +1,7 @@
 import React, { createContext, useContext, useState, ReactNode } from "react";
 import { useColorScheme } from "react-native";
 import type { MD3Theme } from "react-native-paper";
-import { lightTheme, darkTheme } from "./Theme";
+import { lightTheme, darkTheme } from "./theme";
 
 type ThemeMode = "light" | "dark" | "system";
 
