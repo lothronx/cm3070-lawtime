@@ -1,9 +1,22 @@
 import React from "react";
 import { View, Text, StyleSheet } from "react-native";
 import { useAppTheme } from "../theme/ThemeProvider";
+import ActionMenu from "@/components/ActionMenu3";
 
 export default function HomePage() {
   const { theme } = useAppTheme();
+
+  const handleFilePress = () => {
+    console.log("File action pressed");
+  };
+
+  const handleMicrophonePress = () => {
+    console.log("Microphone action pressed");
+  };
+
+  const handleAddPress = () => {
+    console.log("Add action pressed");
+  };
 
   return (
     <View style={[styles.container, { backgroundColor: theme.colors.background }]}>
@@ -13,6 +26,11 @@ export default function HomePage() {
       <Text style={[styles.subtitle, { color: theme.colors.onSurfaceVariant }]}>
         Theme colors are loading correctly.
       </Text>
+      <ActionMenu
+        onFilePress={handleFilePress}
+        onMicrophonePress={handleMicrophonePress}
+        onAddPress={handleAddPress}
+      />
     </View>
   );
 }
