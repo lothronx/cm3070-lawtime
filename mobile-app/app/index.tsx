@@ -27,9 +27,9 @@ export default function HomePage() {
         Theme colors are loading correctly.
       </Text>
       <ActionMenu
-        onFilePress={handleFilePress}
-        onMicrophonePress={handleMicrophonePress}
-        onAddPress={handleAddPress}
+        onCameraPress={handleFilePress}
+        onAudioPress={handleMicrophonePress}
+        onManualPress={handleAddPress}
       />
     </View>
   );

@@ -13,21 +13,21 @@ import Animated, {
   withTiming,
 } from "react-native-reanimated";
 
-const DURATION = 400;
+const DURATION = 200;
 const TRANSLATE_Y = -80;
 const AnimatedPressable = Animated.createAnimatedComponent(Pressable);
 
 interface ActionMenuProps {
-  onFilePress?: () => void;
-  onMicrophonePress?: () => void;
-  onAddPress?: () => void;
+  onCameraPress?: () => void;
+  onAudioPress?: () => void;
+  onManualPress?: () => void;
   visible?: boolean;
 }
 
 export default function ActionMenu({
-  onFilePress,
-  onMicrophonePress,
-  onAddPress,
+  onCameraPress,
+  onAudioPress,
+  onManualPress,
   visible = true,
 }: ActionMenuProps) {
   const { theme } = useAppTheme();
@@ -41,7 +41,10 @@ export default function ActionMenu({
   const rCameraAnimateStyles = useAnimatedStyle(() => {
     return {
       transform: [
-        { translateY: transYCamera.value },
+        { translateY: interpolate(transYCamera.value, [TRANSLATE_Y, 0], [TRANSLATE_Y * 0.5, 0]) },
+        {
+          translateX: interpolate(transYCamera.value, [TRANSLATE_Y, 0], [TRANSLATE_Y * 0.866, 0]),
+        },
         { scale: interpolate(transYCamera.value, [TRANSLATE_Y, 0], [1, 0]) },
       ],
       backgroundColor: theme.colors.secondary,
@@ -51,8 +54,7 @@ export default function ActionMenu({
   const rManualAnimateStyles = useAnimatedStyle(() => {
     return {
       transform: [
-        { translateY: interpolate(transYManual.value, [TRANSLATE_Y, 0], [TRANSLATE_Y / 2, 0]) },
-        { translateX: interpolate(transYManual.value, [TRANSLATE_Y, 0], [-50, 0]) },
+        { translateY: transYManual.value },
         { scale: interpolate(transYManual.value, [TRANSLATE_Y, 0], [1, 0]) },
       ],
       backgroundColor: theme.colors.secondary,
@@ -62,18 +64,17 @@ export default function ActionMenu({
   const rAudioAnimateStyles = useAnimatedStyle(() => {
     return {
       transform: [
-        { translateY: interpolate(transYAudio.value, [TRANSLATE_Y, 0], [30, 0]) },
-        { translateX: transYAudio.value },
+        { translateY: interpolate(transYAudio.value, [TRANSLATE_Y, 0], [TRANSLATE_Y * 0.5, 0]) },
+        { translateX: interpolate(transYAudio.value, [TRANSLATE_Y, 0], [-TRANSLATE_Y * 0.866, 0]) },
         { scale: interpolate(transYAudio.value, [TRANSLATE_Y, 0], [1, 0]) },
       ],
       backgroundColor: theme.colors.secondary,
     };
   }, []);
 
-  const rAddAnimateStyles = useAnimatedStyle(() => {
+  const rMenuAnimateStyles = useAnimatedStyle(() => {
     return {
       transform: [{ rotateZ: interpolate(opacity.value, [0, 1], [45, 0]).toString() + "deg" }],
-      backgroundColor: theme.colors.secondary,
     };
   }, []);
 
@@ -116,27 +117,29 @@ export default function ActionMenu({
       {/* Main Action Button */}
       <Pressable
         style={({ pressed }) => [
-          styles.plusButton,
+          styles.menuButton,
           {
-            backgroundColor: theme.colors.secondary,
+            backgroundColor: isOpened.current ? theme.colors.primary : theme.colors.secondary,
             transform: [{ scale: pressed ? 0.9 : 1 }],
           },
         ]}
-        accessibilityLabel="Open action menu"
-        accessibilityRole="button"
         onPress={handlePress}>
-        <Animated.View style={rAddAnimateStyles}>
-          <Ionicons name="add" size={36} color={theme.colors.onSecondary} />
+        <Animated.View style={rMenuAnimateStyles}>
+          <Ionicons name="add" size={46} color={theme.colors.onSecondary} />
         </Animated.View>
       </Pressable>
-      <AnimatedPressable style={[styles.cameraButton, rCameraAnimateStyles]}>
-        <FontAwesome name="camera" size={28} color={theme.colors.onSecondary} />
+      <AnimatedPressable
+        style={[styles.actionButton, rCameraAnimateStyles]}
+        onPress={onCameraPress}>
+        <FontAwesome name="camera" size={26} color={theme.colors.onSecondary} />
       </AnimatedPressable>
-      <AnimatedPressable style={[styles.cameraButton, rManualAnimateStyles]}>
+      <AnimatedPressable
+        style={[styles.actionButton, rManualAnimateStyles]}
+        onPress={onManualPress}>
         <Feather name="type" size={26} color={theme.colors.onSecondary} />
       </AnimatedPressable>
-      <AnimatedPressable style={[styles.cameraButton, rAudioAnimateStyles]}>
-        <FontAwesome name="microphone" size={28} color={theme.colors.onSecondary} />
+      <AnimatedPressable style={[styles.actionButton, rAudioAnimateStyles]} onPress={onAudioPress}>
+        <FontAwesome name="microphone" size={26} color={theme.colors.onSecondary} />
       </AnimatedPressable>
     </View>
   );
@@ -146,29 +149,28 @@ const styles = StyleSheet.create({
   container: {
     position: "absolute",
     bottom: 50,
-    right: 30,
+    width: "100%",
+    alignItems: "center",
   },
-  plusButton: {
-    width: 60,
-    height: 60,
-    borderRadius: 30,
+  menuButton: {
+    width: 70,
+    height: 70,
+    borderRadius: 999,
     justifyContent: "center",
     alignItems: "center",
     elevation: 6,
-    shadowColor: "#000",
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.2,
     shadowRadius: 4,
     zIndex: 1,
   },
-  cameraButton: {
+  actionButton: {
     width: 50,
     height: 50,
-    borderRadius: 30,
+    borderRadius: 999,
     justifyContent: "center",
     alignItems: "center",
     elevation: 6,
-    shadowColor: "#000",
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.2,
     shadowRadius: 4,
