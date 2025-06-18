@@ -10,8 +10,12 @@ export default function HomePage() {
     console.log("File action pressed");
   };
 
-  const handleMicrophonePress = () => {
+  const handleMicrophonePressStart = () => {
     console.log("Microphone action pressed");
+  };
+
+  const handleMicrophonePressEnd = () => {
+    console.log("Microphone action released");
   };
 
   const handleAddPress = () => {
@@ -28,7 +32,8 @@ export default function HomePage() {
       </Text>
       <ActionMenu
         onCameraPress={handleFilePress}
-        onAudioPress={handleMicrophonePress}
+        onAudioHoldStart={handleMicrophonePressStart}
+        onAudioHoldEnd={handleMicrophonePressEnd}
         onManualPress={handleAddPress}
       />
     </View>
