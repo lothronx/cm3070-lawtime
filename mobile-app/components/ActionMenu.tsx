@@ -1,6 +1,6 @@
 import React, { useRef } from "react";
 import { Pressable, StyleSheet, View } from "react-native";
-import { useAppTheme } from "../theme/ThemeProvider";
+import { useAppTheme } from "@/theme/ThemeProvider";
 import { FontAwesome, Ionicons, Feather } from "@expo/vector-icons";
 import Animated, {
   Easing,
@@ -13,9 +13,9 @@ import Animated, {
   WithSpringConfig,
   withTiming,
 } from "react-native-reanimated";
-import FullScreenBackgroundOverlay from "./FullScreenBackgroundOverlay";
-import TapToCloseOverlay from "./TapToCloseOverlay";
-import ListeningIndicator from "./ListeningIndicator";
+import FullScreenBackgroundOverlay from "@/components/FullScreenBackgroundOverlay";
+import TapToCloseOverlay from "@/components/TapToCloseOverlay";
+import ListeningIndicator from "@/components/ListeningIndicator";
 
 const DURATION = 300;
 const TRANSLATE_Y = -80;
@@ -48,6 +48,7 @@ export default function ActionMenu({
   const cameraPressed = useSharedValue(0);
   const manualPressed = useSharedValue(0);
   const audioPressed = useSharedValue(0);
+  const menuPressed = useSharedValue(0);
 
   // Hold state for audio button
   const audioHolding = useSharedValue(0);
@@ -109,6 +110,14 @@ export default function ActionMenu({
   const rMenuAnimateStyles = useAnimatedStyle(() => {
     return {
       transform: [{ rotateZ: interpolate(opacity.value, [0, 1], [45, 0]).toString() + "deg" }],
+    };
+  }, []);
+
+  const rMenuButtonStyles = useAnimatedStyle(() => {
+    const pressScale = interpolate(menuPressed.value, [0, 1], [1, 0.9]);
+    return {
+      backgroundColor: isOpenedShared.value > 0 ? theme.colors.primary : theme.colors.secondary,
+      transform: [{ scale: pressScale }],
     };
   }, []);
 
@@ -178,19 +187,13 @@ export default function ActionMenu({
 
       <View style={styles.container}>
         {/* Main Action Button */}
-        <Pressable
-          style={({ pressed }) => [
-            styles.menuButton,
-            {
-              backgroundColor: isOpened.current ? theme.colors.primary : theme.colors.secondary,
-              transform: [{ scale: pressed ? 0.9 : 1 }],
-            },
-          ]}
+        <AnimatedPressable
+          style={[styles.menuButton, rMenuButtonStyles, { transform: [{ scale: 1 }] }]}
           onPress={handlePress}>
           <Animated.View style={rMenuAnimateStyles}>
             <Ionicons name="add" size={46} color={theme.colors.onSecondary} />
           </Animated.View>
-        </Pressable>
+        </AnimatedPressable>
         <AnimatedPressable
           style={[styles.actionButton, rCameraAnimateStyles]}
           onPress={onCameraPress}

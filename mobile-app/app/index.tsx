@@ -1,7 +1,7 @@
 import React from "react";
 import { View, Text, StyleSheet } from "react-native";
 import { useAppTheme } from "../theme/ThemeProvider";
-import ActionMenu from "@/components/ActionMenu3";
+import ActionMenu from "@/components/ActionMenu";
 
 export default function HomePage() {
   const { theme } = useAppTheme();
