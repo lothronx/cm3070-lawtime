@@ -1,5 +1,5 @@
 import React, { useRef } from "react";
-import { Pressable, StyleSheet, Text, View } from "react-native";
+import { Pressable, StyleSheet, View } from "react-native";
 import { useAppTheme } from "../theme/ThemeProvider";
 import { FontAwesome, Ionicons, Feather } from "@expo/vector-icons";
 import Animated, {
@@ -13,8 +13,11 @@ import Animated, {
   WithSpringConfig,
   withTiming,
 } from "react-native-reanimated";
+import FullScreenBackgroundOverlay from "./FullScreenBackgroundOverlay";
+import TapToCloseOverlay from "./TapToCloseOverlay";
+import ListeningIndicator from "./ListeningIndicator";
 
-const DURATION = 200;
+const DURATION = 300;
 const TRANSLATE_Y = -80;
 const AnimatedPressable = Animated.createAnimatedComponent(Pressable);
 
@@ -57,15 +60,19 @@ export default function ActionMenu({
 
   // Background overlay state
   const backgroundOverlay = useSharedValue(0);
+  const isOpenedShared = useSharedValue(0);
 
   const rCameraAnimateStyles = useAnimatedStyle(() => {
+    const menuScale = interpolate(transYCamera.value, [TRANSLATE_Y, 0], [1, 0]);
+    const pressScale = interpolate(cameraPressed.value, [0, 1], [1, 0.9]);
+
     return {
       transform: [
         { translateY: interpolate(transYCamera.value, [TRANSLATE_Y, 0], [TRANSLATE_Y * 0.5, 0]) },
         {
           translateX: interpolate(transYCamera.value, [TRANSLATE_Y, 0], [TRANSLATE_Y * 0.866, 0]),
         },
-        { scale: interpolate(transYCamera.value, [TRANSLATE_Y, 0], [1, 0]) },
+        { scale: menuScale * pressScale },
       ],
       backgroundColor: theme.colors.secondary,
       opacity: interpolate(cameraPressed.value, [0, 1], [1, 0.6]),
@@ -73,11 +80,11 @@ export default function ActionMenu({
   }, []);
 
   const rManualAnimateStyles = useAnimatedStyle(() => {
+    const menuScale = interpolate(transYManual.value, [TRANSLATE_Y, 0], [1, 0]);
+    const pressScale = interpolate(manualPressed.value, [0, 1], [1, 0.9]);
+
     return {
-      transform: [
-        { translateY: transYManual.value },
-        { scale: interpolate(transYManual.value, [TRANSLATE_Y, 0], [1, 0]) },
-      ],
+      transform: [{ translateY: transYManual.value }, { scale: menuScale * pressScale }],
       backgroundColor: theme.colors.secondary,
       opacity: interpolate(manualPressed.value, [0, 1], [1, 0.6]),
     };
@@ -105,43 +112,14 @@ export default function ActionMenu({
     };
   }, []);
 
-  // Listening indicator styles
-  const rListeningIndicatorStyles = useAnimatedStyle(() => {
-    return {
-      opacity: isListening.value,
-      transform: [{ scale: interpolate(isListening.value, [0, 1], [0.8, 1]) }],
-    };
-  }, []);
-
-  const rSoundWave1Styles = useAnimatedStyle(() => {
-    return {
-      transform: [{ scaleY: interpolate(soundWave1.value, [0, 1], [0.3, 1]) }],
-      opacity: interpolate(soundWave1.value, [0, 1], [0.4, 1]),
-    };
-  }, []);
-
-  const rSoundWave2Styles = useAnimatedStyle(() => {
-    return {
-      transform: [{ scaleY: interpolate(soundWave2.value, [0, 1], [0.3, 1]) }],
-      opacity: interpolate(soundWave2.value, [0, 1], [0.4, 1]),
-    };
-  }, []);
-
-  // Background overlay styles
-  const rBackgroundOverlayStyles = useAnimatedStyle(() => {
-    return {
-      opacity: backgroundOverlay.value,
-    };
-  }, []);
-
   const handlePress = () => {
     if (isOpened.current) {
       transYCamera.value = withDelay(
-        DURATION,
+        DURATION / 4,
         withTiming(0, { duration: DURATION, easing: Easing.bezierFn(0.36, 0, 0.66, -0.56) })
       );
       transYManual.value = withDelay(
-        DURATION / 2,
+        DURATION / 8,
         withTiming(0, { duration: DURATION, easing: Easing.bezierFn(0.36, 0, 0.66, -0.56) })
       );
       transYAudio.value = withDelay(
@@ -154,17 +132,19 @@ export default function ActionMenu({
 
       // Hide background overlay
       backgroundOverlay.value = withTiming(0, { duration: DURATION });
+      isOpenedShared.value = withTiming(0, { duration: DURATION });
     } else {
       const config: WithSpringConfig = { damping: 12 };
       transYCamera.value = withDelay(0, withSpring(TRANSLATE_Y, config));
-      transYManual.value = withDelay(DURATION / 2, withSpring(TRANSLATE_Y, config));
-      transYAudio.value = withDelay(DURATION, withSpring(TRANSLATE_Y, config));
+      transYManual.value = withDelay(DURATION / 8, withSpring(TRANSLATE_Y, config));
+      transYAudio.value = withDelay(DURATION / 4, withSpring(TRANSLATE_Y, config));
       opacity.value = withTiming(0, {
         duration: DURATION,
       });
 
       // Show background overlay
       backgroundOverlay.value = withTiming(0.9, { duration: DURATION });
+      isOpenedShared.value = withTiming(1, { duration: DURATION });
     }
 
     isOpened.current = !isOpened.current;
@@ -177,55 +157,24 @@ export default function ActionMenu({
   return (
     <>
       {/* Full Screen Background Overlay */}
-      <Animated.View
-        style={[
-          styles.fullScreenOverlay,
-          rBackgroundOverlayStyles,
-          { backgroundColor: theme.colors.primaryContainer },
-        ]}
+      <FullScreenBackgroundOverlay backgroundOverlay={backgroundOverlay} />
+
+      {/* Tap to Close Overlay - Only visible when menu is opened */}
+      <TapToCloseOverlay
+        isOpenedShared={isOpenedShared}
+        onPress={() => {
+          if (isOpened.current) {
+            handlePress();
+          }
+        }}
       />
 
       {/* Listening Indicator - Centered on Screen */}
-      <Animated.View style={[styles.listeningIndicator, rListeningIndicatorStyles]}>
-        <View style={styles.soundWaveContainer}>
-          <Animated.View
-            style={[
-              styles.soundWave,
-              rSoundWave1Styles,
-              { backgroundColor: theme.colors.secondary },
-            ]}
-          />
-          <Animated.View
-            style={[
-              styles.soundWave,
-              rSoundWave2Styles,
-              { backgroundColor: theme.colors.secondary },
-            ]}
-          />
-          <Animated.View
-            style={[
-              styles.soundWave,
-              rSoundWave1Styles,
-              { backgroundColor: theme.colors.secondary },
-            ]}
-          />
-          <Animated.View
-            style={[
-              styles.soundWave,
-              rSoundWave2Styles,
-              { backgroundColor: theme.colors.secondary },
-            ]}
-          />
-          <Animated.View
-            style={[
-              styles.soundWave,
-              rSoundWave1Styles,
-              { backgroundColor: theme.colors.secondary },
-            ]}
-          />
-        </View>
-        <Text style={[styles.listeningText, { color: theme.colors.secondary }]}>Listening...</Text>
-      </Animated.View>
+      <ListeningIndicator
+        isListening={isListening}
+        soundWave1={soundWave1}
+        soundWave2={soundWave2}
+      />
 
       <View style={styles.container}>
         {/* Main Action Button */}
@@ -305,45 +254,12 @@ export default function ActionMenu({
 }
 
 const styles = StyleSheet.create({
-  fullScreenOverlay: {
-    position: "absolute",
-    top: 0,
-    left: 0,
-    right: 0,
-    bottom: 0,
-    zIndex: 1,
-  },
   container: {
     position: "absolute",
     width: "100%",
     bottom: 40,
     alignItems: "center",
     justifyContent: "flex-end",
-  },
-  listeningIndicator: {
-    position: "absolute",
-    left: 0,
-    right: 0,
-    bottom: 200,
-    alignItems: "center",
-    justifyContent: "center",
-    zIndex: 10,
-  },
-  listeningText: {
-    fontSize: 20,
-    fontWeight: "600",
-    margin: 20,
-  },
-  soundWaveContainer: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "center",
-    gap: 5,
-  },
-  soundWave: {
-    width: 6,
-    height: 16,
-    borderRadius: 999,
   },
   menuButton: {
     width: 70,
@@ -355,7 +271,7 @@ const styles = StyleSheet.create({
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.2,
     shadowRadius: 4,
-    zIndex: 1,
+    zIndex: 4,
   },
   actionButton: {
     bottom: 10,
@@ -369,6 +285,6 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.2,
     shadowRadius: 4,
     position: "absolute",
-    zIndex: 1,
+    zIndex: 3,
   },
 });
