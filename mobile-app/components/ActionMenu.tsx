@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useState } from "react";
 import { Pressable, StyleSheet, View } from "react-native";
 import { useAppTheme } from "@/theme/ThemeProvider";
 import { FontAwesome, Ionicons, Feather } from "@expo/vector-icons";
@@ -13,24 +13,29 @@ import Animated, {
   WithSpringConfig,
   withTiming,
 } from "react-native-reanimated";
-import FullScreenBackgroundOverlay from "@/components/FullScreenBackgroundOverlay";
-import TapToCloseOverlay from "@/components/TapToCloseOverlay";
+import FullScreenOverlay from "@/components/FullScreenOverlay";
 import ListeningIndicator from "@/components/ListeningIndicator";
+import ErrorDialog from "@/components/ErrorDialog";
+import CameraOptionsModal from "@/components/CameraOptionsModal";
 
 const DURATION = 300;
 const TRANSLATE_Y = -80;
 const AnimatedPressable = Animated.createAnimatedComponent(Pressable);
 
 interface ActionMenuProps {
-  onCameraPress?: () => void;
-  onAudioHoldStart?: () => void;
-  onAudioHoldEnd?: () => void;
-  onManualPress?: () => void;
+  onPhotoLibrary: () => void;
+  onTakePhoto: () => void;
+  onChooseFile: () => void;
+  onAudioHoldStart: () => void;
+  onAudioHoldEnd: () => void;
+  onManualPress: () => void;
   visible?: boolean;
 }
 
 export default function ActionMenu({
-  onCameraPress,
+  onPhotoLibrary,
+  onTakePhoto,
+  onChooseFile,
   onAudioHoldStart,
   onAudioHoldEnd,
   onManualPress,
@@ -58,9 +63,147 @@ export default function ActionMenu({
   const soundWave1 = useSharedValue(0);
   const soundWave2 = useSharedValue(0);
 
-  // Background overlay state and menu open state
-  const backgroundOverlay = useSharedValue(0);
+  // Menu open state
   const isOpenedShared = useSharedValue(0);
+
+  // Camera options modal state
+  const [cameraMenuVisible, setCameraMenuVisible] = useState(false);
+  // Audio recording timer state
+  const [recordingStartTime, setRecordingStartTime] = useState(0);
+  const [showTooShortIndicator, setShowTooShortIndicator] = useState(false);
+
+  const handleFullScreenOverlay = () => {
+    if (isOpenedShared.value > 0) {
+      if (cameraMenuVisible) {
+        setCameraMenuVisible(false);
+      }
+      toggleMenu();
+    }
+  };
+
+  // Camera options handlers
+  const handlePhotoLibrary = () => {
+    setCameraMenuVisible(false);
+    toggleMenu();
+    onPhotoLibrary();
+  };
+
+  const handleTakePhoto = () => {
+    setCameraMenuVisible(false);
+    toggleMenu();
+    onTakePhoto();
+  };
+
+  const handleChooseFile = () => {
+    setCameraMenuVisible(false);
+    toggleMenu();
+    onChooseFile();
+  };
+
+  const handleCameraPress = () => {
+    if (!cameraMenuVisible) {
+      setCameraMenuVisible(true);
+    } else {
+      setCameraMenuVisible(false);
+    }
+  };
+
+  const handleManualPress = () => {
+    if (cameraMenuVisible) {
+      setCameraMenuVisible(false);
+    }
+    toggleMenu();
+    onManualPress();
+  };
+
+  const handleAudioPressIn = () => {
+    // Close camera menu if open
+    if (cameraMenuVisible) {
+      setCameraMenuVisible(false);
+    }
+
+    // Reset "too short" indicator
+    setShowTooShortIndicator(false);
+
+    // Record start time
+    setRecordingStartTime(Date.now());
+
+    audioPressed.value = withTiming(1, { duration: 100 });
+    audioHolding.value = withTiming(1, { duration: 200 });
+    audioPulse.value = withRepeat(withTiming(1, { duration: 800 }), -1, true);
+
+    // Start listening indicator
+    isListening.value = withTiming(1, { duration: 300 });
+
+    // Start sound wave animations
+    soundWave1.value = withRepeat(withTiming(1, { duration: 600 }), -1, true);
+    soundWave2.value = withDelay(300, withRepeat(withTiming(1, { duration: 600 }), -1, true));
+
+    onAudioHoldStart();
+  };
+
+  const handleAudioPressOut = () => {
+    audioPressed.value = withTiming(0, { duration: 100 });
+    audioHolding.value = withTiming(0, { duration: 200 });
+    audioPulse.value = withTiming(0, { duration: 100 });
+
+    // Stop listening indicator
+    isListening.value = withTiming(0, { duration: 300 });
+
+    // Stop sound wave animations
+    soundWave1.value = withTiming(0, { duration: 200 });
+    soundWave2.value = withTiming(0, { duration: 200 });
+
+    // Check if audio recording is too short (less than 1 second)
+    const recordingDuration = Date.now() - recordingStartTime;
+    if (recordingDuration < 1000) {
+      // Show "too short" indicator
+      setShowTooShortIndicator(true);
+    } else {
+      // Close the menu and process the audio
+      toggleMenu();
+      onAudioHoldEnd();
+    }
+  };
+
+  const toggleMenu = () => {
+    // Close camera menu if it's open
+    if (cameraMenuVisible) {
+      setCameraMenuVisible(false);
+    }
+
+    if (isOpenedShared.value > 0) {
+      transYManual.value = withDelay(
+        DURATION / 4,
+        withTiming(0, { duration: DURATION, easing: Easing.bezierFn(0.36, 0, 0.66, -0.56) })
+      );
+      transYCamera.value = withDelay(
+        DURATION / 8,
+        withTiming(0, { duration: DURATION, easing: Easing.bezierFn(0.36, 0, 0.66, -0.56) })
+      );
+      transYAudio.value = withDelay(
+        0,
+        withTiming(0, { duration: DURATION, easing: Easing.bezierFn(0.36, 0, 0.66, -0.56) })
+      );
+      opacity.value = withTiming(1, {
+        duration: DURATION,
+      });
+
+      // Hide background overlay and closing layer
+      isOpenedShared.value = withTiming(0, { duration: DURATION });
+    } else {
+      const config: WithSpringConfig = { damping: 12 };
+      transYManual.value = withDelay(0, withSpring(TRANSLATE_Y, config));
+      transYCamera.value = withDelay(DURATION / 8, withSpring(TRANSLATE_Y, config));
+      transYAudio.value = withDelay(DURATION / 4, withSpring(TRANSLATE_Y, config));
+      opacity.value = withTiming(0, {
+        duration: DURATION,
+      });
+
+      // Show background overlay and closing layer
+      isOpenedShared.value = withTiming(0.9, { duration: DURATION });
+    }
+  };
 
   const rManualAnimateStyles = useAnimatedStyle(() => {
     const menuScale = interpolate(transYManual.value, [TRANSLATE_Y, 0], [1, 0]);
@@ -99,7 +242,9 @@ export default function ActionMenu({
     return {
       transform: [
         { translateY: interpolate(transYAudio.value, [TRANSLATE_Y, 0], [TRANSLATE_Y * 0.5, 0]) },
-        { translateX: interpolate(transYAudio.value, [TRANSLATE_Y, 0], [-TRANSLATE_Y * 0.866, 0]) },
+        {
+          translateX: interpolate(transYAudio.value, [TRANSLATE_Y, 0], [-TRANSLATE_Y * 0.866, 0]),
+        },
         { scale: baseScale * holdScale * pulseScale },
       ],
       backgroundColor: audioHolding.value > 0.5 ? theme.colors.primary : theme.colors.secondary,
@@ -121,91 +266,52 @@ export default function ActionMenu({
     };
   }, []);
 
-  const handlePress = () => {
-    if (isOpenedShared.value > 0) {
-      transYManual.value = withDelay(
-        DURATION / 4,
-        withTiming(0, { duration: DURATION, easing: Easing.bezierFn(0.36, 0, 0.66, -0.56) })
-      );
-      transYCamera.value = withDelay(
-        DURATION / 8,
-        withTiming(0, { duration: DURATION, easing: Easing.bezierFn(0.36, 0, 0.66, -0.56) })
-      );
-      transYAudio.value = withDelay(
-        0,
-        withTiming(0, { duration: DURATION, easing: Easing.bezierFn(0.36, 0, 0.66, -0.56) })
-      );
-      opacity.value = withTiming(1, {
-        duration: DURATION,
-      });
-
-      // Hide background overlay
-      backgroundOverlay.value = withTiming(0, { duration: DURATION });
-      isOpenedShared.value = withTiming(0, { duration: DURATION });
-    } else {
-      const config: WithSpringConfig = { damping: 12 };
-      transYManual.value = withDelay(0, withSpring(TRANSLATE_Y, config));
-      transYCamera.value = withDelay(DURATION / 8, withSpring(TRANSLATE_Y, config));
-      transYAudio.value = withDelay(DURATION / 4, withSpring(TRANSLATE_Y, config));
-      opacity.value = withTiming(0, {
-        duration: DURATION,
-      });
-
-      // Show background overlay
-      backgroundOverlay.value = withTiming(0.9, { duration: DURATION });
-      isOpenedShared.value = withTiming(1, { duration: DURATION });
-    }
-  };
-
   if (!visible) {
     return null;
   }
 
   return (
     <>
-      {/* Full Screen Background Overlay */}
-      <FullScreenBackgroundOverlay backgroundOverlay={backgroundOverlay} />
+      {/* Full Screen Background overlay */}
+      <FullScreenOverlay opacityValue={isOpenedShared} onPress={handleFullScreenOverlay} />
 
-      {/* Tap to Close Overlay - Only visible when menu is opened */}
-      <TapToCloseOverlay
-        isOpenedShared={isOpenedShared}
-        onPress={() => {
-          if (isOpenedShared.value > 0) {
-            handlePress();
-          }
-        }}
+      {/* Audio Too Short Indicator */}
+      <ErrorDialog
+        visible={showTooShortIndicator}
+        message="Audio too short to process"
+        onDismiss={() => setShowTooShortIndicator(false)}
       />
 
-      {/* Listening Indicator - Centered on Screen */}
+      {/* Listening Indicator */}
       <ListeningIndicator
         isListening={isListening}
         soundWave1={soundWave1}
         soundWave2={soundWave2}
       />
 
+      {/* Camera Options */}
+      <CameraOptionsModal
+        visible={cameraMenuVisible && isOpenedShared.value > 0}
+        onDismiss={() => setCameraMenuVisible(false)}
+        onPhotoLibrary={handlePhotoLibrary}
+        onTakePhoto={handleTakePhoto}
+        onChooseFile={handleChooseFile}
+      />
+
       <View style={styles.container}>
         {/* Main Action Button */}
         <AnimatedPressable
           style={[styles.menuButton, rMenuButtonStyles, { transform: [{ scale: 1 }] }]}
-          onPress={handlePress}>
+          onPress={toggleMenu}>
           <Animated.View style={rMenuAnimateStyles}>
             <Ionicons name="add" size={46} color={theme.colors.onSecondary} />
           </Animated.View>
         </AnimatedPressable>
-        <AnimatedPressable
-          style={[styles.actionButton, rCameraAnimateStyles]}
-          onPress={onCameraPress}
-          onPressIn={() => {
-            cameraPressed.value = withTiming(1, { duration: 100 });
-          }}
-          onPressOut={() => {
-            cameraPressed.value = withTiming(0, { duration: 100 });
-          }}>
-          <FontAwesome name="camera" size={26} color={theme.colors.onSecondary} />
-        </AnimatedPressable>
+
+        {/* Manual Button */}
         <AnimatedPressable
           style={[styles.actionButton, rManualAnimateStyles]}
-          onPress={onManualPress}
+          onPress={handleManualPress}
           onPressIn={() => {
             manualPressed.value = withTiming(1, { duration: 100 });
           }}
@@ -214,39 +320,25 @@ export default function ActionMenu({
           }}>
           <Feather name="type" size={26} color={theme.colors.onSecondary} />
         </AnimatedPressable>
+
+        {/* Camera Buttons */}
         <AnimatedPressable
-          style={[styles.actionButton, rAudioAnimateStyles]}
+          style={[styles.actionButton, rCameraAnimateStyles]}
+          onPress={handleCameraPress}
           onPressIn={() => {
-            audioPressed.value = withTiming(1, { duration: 100 });
-            audioHolding.value = withTiming(1, { duration: 200 });
-            audioPulse.value = withRepeat(withTiming(1, { duration: 800 }), -1, true);
-
-            // Start listening indicator
-            isListening.value = withTiming(1, { duration: 300 });
-
-            // Start sound wave animations with different delays and durations
-            soundWave1.value = withRepeat(withTiming(1, { duration: 600 }), -1, true);
-            soundWave2.value = withDelay(
-              300,
-              withRepeat(withTiming(1, { duration: 600 }), -1, true)
-            );
-
-            onAudioHoldStart?.();
+            cameraPressed.value = withTiming(1, { duration: 100 });
           }}
           onPressOut={() => {
-            audioPressed.value = withTiming(0, { duration: 100 });
-            audioHolding.value = withTiming(0, { duration: 200 });
-            audioPulse.value = withTiming(0, { duration: 100 });
-
-            // Stop listening indicator
-            isListening.value = withTiming(0, { duration: 300 });
-
-            // Stop sound wave animations
-            soundWave1.value = withTiming(0, { duration: 200 });
-            soundWave2.value = withTiming(0, { duration: 200 });
-
-            onAudioHoldEnd?.();
+            cameraPressed.value = withTiming(0, { duration: 100 });
           }}>
+          <FontAwesome name="camera" size={26} color={theme.colors.onSecondary} />
+        </AnimatedPressable>
+
+        {/* Audio Button */}
+        <AnimatedPressable
+          style={[styles.actionButton, rAudioAnimateStyles]}
+          onPressIn={handleAudioPressIn}
+          onPressOut={handleAudioPressOut}>
           <FontAwesome name="microphone" size={26} color={theme.colors.onSecondary} />
         </AnimatedPressable>
       </View>

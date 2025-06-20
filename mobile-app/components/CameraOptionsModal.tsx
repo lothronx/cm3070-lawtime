@@ -1,6 +1,7 @@
 import * as React from "react";
-import { View, StyleSheet, Modal, TouchableOpacity } from "react-native";
+import { StyleSheet } from "react-native";
 import { List, Surface } from "react-native-paper";
+import Animated, { useAnimatedStyle, withTiming } from "react-native-reanimated";
 
 interface CameraOptionsModalProps {
   visible: boolean;
@@ -13,7 +14,9 @@ interface CameraOptionsModalProps {
 /**
  * CameraOptionsModal component
  *
- * A modal that provides camera and file selection options.
+ * A component that provides camera and file selection options.
+ * It is rendered directly without using Modal component to prevent
+ * blocking interaction with underlying components.
  */
 export default function CameraOptionsModal({
   visible,
@@ -29,64 +32,63 @@ export default function CameraOptionsModal({
     }
   }, [visible]);
 
+  // Animated styles for fade in/out
+  const animatedStyles = useAnimatedStyle(() => {
+    return {
+      opacity: withTiming(visible ? 1 : 0, { duration: 200 }),
+      transform: [
+        {
+          translateY: withTiming(visible ? 0 : 20, { duration: 200 }),
+        },
+      ],
+      // When not visible, don't capture touches
+      pointerEvents: visible ? "auto" : "none",
+    };
+  }, [visible]);
+
+  // If not visible at all, don't render
+  if (!visible) return null;
+
   return (
-    <Modal
-      animationType="fade"
-      transparent={true}
-      visible={visible}
-      onRequestClose={onDismiss}
-      statusBarTranslucent={true}>
-      <TouchableOpacity style={styles.modalOverlay} activeOpacity={1} onPress={onDismiss}>
-        <View style={styles.centeredView}>
-          <Surface style={styles.modalView}>
-            <List.Item
-              title="Photo Library"
-              left={(props) => <List.Icon {...props} icon="image" />}
-              onPress={() => {
-                onPhotoLibrary();
-                onDismiss();
-              }}
-              style={styles.listItem}
-            />
-            <List.Item
-              title="Take Photo"
-              left={(props) => <List.Icon {...props} icon="camera" />}
-              onPress={() => {
-                onTakePhoto();
-                onDismiss();
-              }}
-              style={styles.listItem}
-            />
-            <List.Item
-              title="Choose File"
-              left={(props) => <List.Icon {...props} icon="file" />}
-              onPress={() => {
-                onChooseFile();
-                onDismiss();
-              }}
-              style={styles.listItem}
-            />
-          </Surface>
-        </View>
-      </TouchableOpacity>
-    </Modal>
+    <Animated.View style={[styles.container, animatedStyles]}>
+      <Surface style={styles.modalView}>
+        <List.Item
+          title="Photo Library"
+          left={(props) => <List.Icon {...props} icon="image" />}
+          onPress={() => {
+            onPhotoLibrary();
+          }}
+          style={styles.listItem}
+        />
+        <List.Item
+          title="Take Photo"
+          left={(props) => <List.Icon {...props} icon="camera" />}
+          onPress={() => {
+            onTakePhoto();
+          }}
+          style={styles.listItem}
+        />
+        <List.Item
+          title="Choose File"
+          left={(props) => <List.Icon {...props} icon="file" />}
+          onPress={() => {
+            onChooseFile();
+          }}
+          style={styles.listItem}
+        />
+      </Surface>
+    </Animated.View>
   );
 }
 
 const styles = StyleSheet.create({
-  modalOverlay: {
-    flex: 1,
+  container: {
+    position: "absolute",
     bottom: 200,
-    justifyContent: "flex-end",
     alignItems: "center",
-    zIndex: 9999,
-  },
-  centeredView: {
-    justifyContent: "center",
-    alignItems: "center",
+    zIndex: 3,
   },
   modalView: {
-    width: "100%",
     borderRadius: 8,
     overflow: "hidden",
   },

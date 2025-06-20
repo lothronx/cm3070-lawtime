@@ -1,12 +1,12 @@
 import React from "react";
 import { StyleSheet, Text, View } from "react-native";
-import Animated, { interpolate, useAnimatedStyle } from "react-native-reanimated";
+import Animated, { interpolate, useAnimatedStyle, SharedValue } from "react-native-reanimated";
 import { useAppTheme } from "../theme/ThemeProvider";
 
 interface ListeningIndicatorProps {
-  isListening: Animated.SharedValue<number>;
-  soundWave1: Animated.SharedValue<number>;
-  soundWave2: Animated.SharedValue<number>;
+  isListening: SharedValue<number>;
+  soundWave1: SharedValue<number>;
+  soundWave2: SharedValue<number>;
 }
 
 export default function ListeningIndicator({

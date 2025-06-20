@@ -25,8 +25,8 @@ const customColors = {
   // Error colors
   error: "#BA1A1A",
   onError: "#FFFFFF",
-  errorContainer: "#FFDAD6",
-  onErrorContainer: "#410002",
+  errorContainer: "#1f2a2da0",
+  onErrorContainer: "#F4F6F7",
   // Outline colors
   outline: "#72777F",
   outlineVariant: "#C2C7CE",
