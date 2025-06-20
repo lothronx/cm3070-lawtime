@@ -1,7 +1,8 @@
 import React from "react";
-import { View, Text, StyleSheet } from "react-native";
+import { View, Text, StyleSheet, ScrollView } from "react-native";
 import { useAppTheme } from "../theme/ThemeProvider";
 import ActionMenu from "../components/ActionMenu";
+import Header from "@/components/Header";
 
 export default function HomePage() {
   const { theme } = useAppTheme();
@@ -32,13 +33,11 @@ export default function HomePage() {
 
   return (
     <View style={[styles.container, { backgroundColor: theme.colors.background }]}>
-      <Text style={[styles.text, { color: theme.colors.onBackground }]}>
-        LawTime App is Working!
-      </Text>
-      <Text style={[styles.subtitle, { color: theme.colors.onSurfaceVariant }]}>
-        Theme colors are loading correctly.
-      </Text>
-
+      <Header
+        title="Calendar"
+        variant="main"
+      />
+      
       <ActionMenu
         onPhotoLibrary={handlePhotoLibrary}
         onTakePhoto={handleTakePhoto}
@@ -54,18 +53,21 @@ export default function HomePage() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    justifyContent: "center",
-    alignItems: "center",
+  },
+  scrollContent: {
     padding: 20,
+    paddingBottom: 160,
   },
   text: {
     fontSize: 24,
     fontWeight: "bold",
     marginBottom: 10,
-    textAlign: "center",
   },
   subtitle: {
     fontSize: 16,
-    textAlign: "center",
+    marginBottom: 16,
+  },
+  previewBlock: {
+    gap: 12,
   },
 });
