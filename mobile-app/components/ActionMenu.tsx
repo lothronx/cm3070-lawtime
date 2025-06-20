@@ -1,6 +1,7 @@
 import React, { useState } from "react";
 import { Pressable, StyleSheet, View } from "react-native";
 import { useAppTheme } from "@/theme/ThemeProvider";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { FontAwesome, Ionicons, Feather } from "@expo/vector-icons";
 import Animated, {
   Easing,
@@ -42,6 +43,7 @@ export default function ActionMenu({
   visible = true,
 }: ActionMenuProps) {
   const { theme } = useAppTheme();
+  const insets = useSafeAreaInsets();
 
   const transYCamera = useSharedValue(0);
   const transYManual = useSharedValue(0);
@@ -298,7 +300,7 @@ export default function ActionMenu({
         onChooseFile={handleChooseFile}
       />
 
-      <View style={styles.container}>
+      <View style={[styles.container, { bottom: insets.bottom + 40 }]}>
         {/* Main Action Button */}
         <AnimatedPressable
           style={[styles.menuButton, rMenuButtonStyles, { transform: [{ scale: 1 }] }]}
@@ -350,7 +352,6 @@ const styles = StyleSheet.create({
   container: {
     position: "absolute",
     width: "100%",
-    bottom: 40,
     alignItems: "center",
     justifyContent: "flex-end",
   },

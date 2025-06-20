@@ -24,7 +24,9 @@ export default function FullScreenOverlay({ opacityValue, onPress }: FullScreenO
   // If onPress is provided, use AnimatedTouchable, otherwise use Animated.View
   const Component = onPress ? AnimatedTouchable : Animated.View;
 
-  return <Component style={[styles.fullScreenOverlay, FullScreenOverlayStyles]} onPress={onPress} />;
+  return (
+    <Component style={[styles.fullScreenOverlay, FullScreenOverlayStyles]} onPress={onPress} />
+  );
 }
 
 const styles = StyleSheet.create({
