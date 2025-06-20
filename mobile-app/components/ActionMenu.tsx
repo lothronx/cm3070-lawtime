@@ -1,4 +1,4 @@
-import React, { useRef } from "react";
+import React from "react";
 import { Pressable, StyleSheet, View } from "react-native";
 import { useAppTheme } from "@/theme/ThemeProvider";
 import { FontAwesome, Ionicons, Feather } from "@expo/vector-icons";
@@ -38,7 +38,6 @@ export default function ActionMenu({
 }: ActionMenuProps) {
   const { theme } = useAppTheme();
 
-  const isOpened = useRef(false);
   const transYCamera = useSharedValue(0);
   const transYManual = useSharedValue(0);
   const transYAudio = useSharedValue(0);
@@ -59,7 +58,7 @@ export default function ActionMenu({
   const soundWave1 = useSharedValue(0);
   const soundWave2 = useSharedValue(0);
 
-  // Background overlay state
+  // Background overlay state and menu open state
   const backgroundOverlay = useSharedValue(0);
   const isOpenedShared = useSharedValue(0);
 
@@ -123,7 +122,7 @@ export default function ActionMenu({
   }, []);
 
   const handlePress = () => {
-    if (isOpened.current) {
+    if (isOpenedShared.value > 0) {
       transYManual.value = withDelay(
         DURATION / 4,
         withTiming(0, { duration: DURATION, easing: Easing.bezierFn(0.36, 0, 0.66, -0.56) })
@@ -156,8 +155,6 @@ export default function ActionMenu({
       backgroundOverlay.value = withTiming(0.9, { duration: DURATION });
       isOpenedShared.value = withTiming(1, { duration: DURATION });
     }
-
-    isOpened.current = !isOpened.current;
   };
 
   if (!visible) {
@@ -173,7 +170,7 @@ export default function ActionMenu({
       <TapToCloseOverlay
         isOpenedShared={isOpenedShared}
         onPress={() => {
-          if (isOpened.current) {
+          if (isOpenedShared.value > 0) {
             handlePress();
           }
         }}
