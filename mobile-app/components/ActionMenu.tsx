@@ -63,31 +63,32 @@ export default function ActionMenu({
   const backgroundOverlay = useSharedValue(0);
   const isOpenedShared = useSharedValue(0);
 
-  const rCameraAnimateStyles = useAnimatedStyle(() => {
-    const menuScale = interpolate(transYCamera.value, [TRANSLATE_Y, 0], [1, 0]);
-    const pressScale = interpolate(cameraPressed.value, [0, 1], [1, 0.9]);
-
-    return {
-      transform: [
-        { translateY: interpolate(transYCamera.value, [TRANSLATE_Y, 0], [TRANSLATE_Y * 0.5, 0]) },
-        {
-          translateX: interpolate(transYCamera.value, [TRANSLATE_Y, 0], [TRANSLATE_Y * 0.866, 0]),
-        },
-        { scale: menuScale * pressScale },
-      ],
-      backgroundColor: theme.colors.secondary,
-      opacity: interpolate(cameraPressed.value, [0, 1], [1, 0.6]),
-    };
-  }, []);
-
   const rManualAnimateStyles = useAnimatedStyle(() => {
     const menuScale = interpolate(transYManual.value, [TRANSLATE_Y, 0], [1, 0]);
     const pressScale = interpolate(manualPressed.value, [0, 1], [1, 0.9]);
 
     return {
-      transform: [{ translateY: transYManual.value }, { scale: menuScale * pressScale }],
+      transform: [
+        { translateY: interpolate(transYManual.value, [TRANSLATE_Y, 0], [TRANSLATE_Y * 0.5, 0]) },
+        {
+          translateX: interpolate(transYManual.value, [TRANSLATE_Y, 0], [TRANSLATE_Y * 0.866, 0]),
+        },
+        { scale: menuScale * pressScale },
+      ],
       backgroundColor: theme.colors.secondary,
       opacity: interpolate(manualPressed.value, [0, 1], [1, 0.6]),
+    };
+  }, []);
+
+  const rCameraAnimateStyles = useAnimatedStyle(() => {
+    const menuScale = interpolate(transYCamera.value, [TRANSLATE_Y, 0], [1, 0]);
+    const pressScale = interpolate(cameraPressed.value, [0, 1], [1, 0.9]);
+
+    return {
+      transform: [{ translateY: transYCamera.value }, { scale: menuScale * pressScale }],
+
+      backgroundColor: theme.colors.secondary,
+      opacity: interpolate(cameraPressed.value, [0, 1], [1, 0.6]),
     };
   }, []);
 
@@ -123,11 +124,11 @@ export default function ActionMenu({
 
   const handlePress = () => {
     if (isOpened.current) {
-      transYCamera.value = withDelay(
+      transYManual.value = withDelay(
         DURATION / 4,
         withTiming(0, { duration: DURATION, easing: Easing.bezierFn(0.36, 0, 0.66, -0.56) })
       );
-      transYManual.value = withDelay(
+      transYCamera.value = withDelay(
         DURATION / 8,
         withTiming(0, { duration: DURATION, easing: Easing.bezierFn(0.36, 0, 0.66, -0.56) })
       );
@@ -144,8 +145,8 @@ export default function ActionMenu({
       isOpenedShared.value = withTiming(0, { duration: DURATION });
     } else {
       const config: WithSpringConfig = { damping: 12 };
-      transYCamera.value = withDelay(0, withSpring(TRANSLATE_Y, config));
-      transYManual.value = withDelay(DURATION / 8, withSpring(TRANSLATE_Y, config));
+      transYManual.value = withDelay(0, withSpring(TRANSLATE_Y, config));
+      transYCamera.value = withDelay(DURATION / 8, withSpring(TRANSLATE_Y, config));
       transYAudio.value = withDelay(DURATION / 4, withSpring(TRANSLATE_Y, config));
       opacity.value = withTiming(0, {
         duration: DURATION,
