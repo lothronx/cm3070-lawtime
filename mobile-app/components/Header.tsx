@@ -3,6 +3,12 @@ import { View, Text, Pressable, StyleSheet } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import { useAppTheme } from "@/theme/ThemeProvider";
+import Animated, {
+  useSharedValue,
+  useAnimatedStyle,
+  withTiming,
+  interpolate,
+} from "react-native-reanimated";
 
 type HeaderVariant = "main" | "modal";
 
@@ -19,12 +25,7 @@ interface HeaderProps {
  * - Task & Settings screens: title left, close icon right.
  * - Task screen can also display a stack indicator (e.g., 1/3) when provided.
  */
-const Header: React.FC<HeaderProps> = ({
-  title,
-  variant,
-  stackIndex,
-  stackTotal,
-}) => {
+const Header: React.FC<HeaderProps> = ({ title, variant, stackIndex, stackTotal }) => {
   const insets = useSafeAreaInsets();
   const { theme } = useAppTheme();
 
@@ -37,10 +38,20 @@ const Header: React.FC<HeaderProps> = ({
 
   const isSettingsVariant = variant === "main";
   const rightIconName = isSettingsVariant ? "settings-outline" : "close";
+  const rightIconSize = isSettingsVariant ? 26 : 32;
 
   const handlePress = () => {
     console.log(`${rightIconName} pressed`);
   };
+
+  // Animated press state for right button
+  const press = useSharedValue(0);
+  const rButton = useAnimatedStyle(() => {
+    return {
+      transform: [{ scale: interpolate(press.value, [0, 1], [1, 0.88]) }],
+      opacity: interpolate(press.value, [0, 1], [1, 0.65]),
+    };
+  }, []);
 
   return (
     <View
@@ -63,16 +74,20 @@ const Header: React.FC<HeaderProps> = ({
             </View>
           )}
         </View>
-        <Pressable
-          style={({ pressed }) => [
-            styles.iconButton,
-            {
-              backgroundColor: pressed ? theme.colors.primaryContainer : "transparent",
-            },
-          ]}
-          onPress={handlePress}>
-          <Ionicons name={rightIconName as any} size={26} color={theme.colors.onSurface} />
-        </Pressable>
+        <Animated.View style={[styles.iconButton, rButton]}>
+          <Pressable
+            hitSlop={8}
+            onPress={handlePress}
+            onPressIn={() => {
+              press.value = withTiming(1, { duration: 100 });
+            }}
+            onPressOut={() => {
+              press.value = withTiming(0, { duration: 100 });
+            }}
+            style={styles.pressableFill}>
+            <Ionicons name={rightIconName} size={rightIconSize} color={theme.colors.onSurface} />
+          </Pressable>
+        </Animated.View>
       </View>
     </View>
   );
@@ -117,5 +132,11 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     alignItems: "center",
     justifyContent: "center",
+  },
+  pressableFill: {
+    flex: 1,
+    alignItems: "center",
+    justifyContent: "center",
+    borderRadius: 12,
   },
 });

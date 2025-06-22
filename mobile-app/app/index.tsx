@@ -1,5 +1,5 @@
 import React from "react";
-import { View, Text, StyleSheet, ScrollView } from "react-native";
+import { View, StyleSheet } from "react-native";
 import { useAppTheme } from "../theme/ThemeProvider";
 import ActionMenu from "../components/ActionMenu";
 import Header from "@/components/Header";
@@ -34,8 +34,8 @@ export default function HomePage() {
   return (
     <View style={[styles.container, { backgroundColor: theme.colors.background }]}>
       <Header
-        title="Calendar"
-        variant="main"
+        title="Settings"
+        variant="modal"
       />
       
       <ActionMenu
