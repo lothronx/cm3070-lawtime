@@ -2,98 +2,117 @@ import { MD3LightTheme, MD3DarkTheme } from "react-native-paper";
 import type { MD3Theme } from "react-native-paper";
 
 // Custom color palette for LawTime app
+// Base palette: Wine Red, Light Beige, Light Camel, Light Gray, White
 const customColors = {
-  primary: "#2c404a", // Primary color
-  darkBlue: "#1f2a2d", // Dark blue
-  lightBlue: "#3e5a66", // Light blue
-  secondary: "#ffa02d", // Accent color (orange)
-  // Derived colors
-  primaryContainer: "#f4f7f9",
-  onPrimary: "#FFFFFF",
-  onPrimaryContainer: "#1f2a2d",
-  secondaryContainer: "#ffaf3f",
-  onSecondary: "#FFFFFF",
-  onSecondaryContainer: "#1A1A1A",
+  // Primary colors - Wine Red (#7c0102) for key actions and branding
+  primary: "#7c0102", // Wine red - primary brand color
+  primaryContainer: "#f0ebd5", // Light beige container for primary elements
+  onPrimary: "#ffffff", // White text on wine red
+  onPrimaryContainer: "#7c0102", // Wine red text on light beige
+  
+  // Secondary colors - Light Camel (#d0b38b) for secondary actions
+  secondary: "#d0b38b", // Light camel for secondary elements
+  secondaryContainer: "#f0ebd5", // Light beige for secondary containers
+  onSecondary: "#7c0102", // Wine red text on camel
+  onSecondaryContainer: "#7c0102", // Wine red text on light beige
+  
   // Surface colors for professional look
-  surface: "#FEFBFF",
-  surfaceVariant: "#F4F6F7",
-  onSurface: "#1A1C1E",
-  onSurfaceVariant: "#42474E",
+  surface: "#ffffff", // Pure white for main surfaces
+  surfaceVariant: "#f0ebd5", // Light beige for variant surfaces
+  onSurface: "#7c0102", // Wine red text on white
+  onSurfaceVariant: "#7c0102", // Wine red text on light beige
+  
   // Background colors
-  background: "#FEFBFF",
-  onBackground: "#1A1C1E",
-  // Error colors
-  error: "#BA1A1A",
-  onError: "#FFFFFF",
-  errorContainer: "#1f2a2da0",
-  onErrorContainer: "#F4F6F7",
+  background: "#ffffff", // Pure white background
+  onBackground: "#7c0102", // Wine red text on white background
+  
+  // Error colors - Using wine red tones for consistency
+  error: "#d32f2f", // Slightly brighter red for errors
+  onError: "#ffffff", // White text on error red
+  errorContainer: "#ffebee", // Very light red container
+  onErrorContainer: "#d32f2f", // Error red text on light container
+  
   // Outline colors
-  outline: "#72777F",
-  outlineVariant: "#C2C7CE",
+  outline: "#ababab", // Light gray for borders and dividers
+  outlineVariant: "#d0b38b", // Light camel for subtle outlines
+  
   // Other semantic colors
-  shadow: "#000000",
-  scrim: "#000000",
-  inverseSurface: "#2F3033",
-  inverseOnSurface: "#F1F0F4",
-  inversePrimary: "#A6C8D4",
+  shadow: "#000000", // Black shadow
+  scrim: "rgba(124, 1, 2, 0.6)", // Wine red scrim with transparency
+  inverseSurface: "#7c0102", // Wine red inverse surface
+  inverseOnSurface: "#ffffff", // White on wine red
+  inversePrimary: "#f0ebd5", // Light beige as inverse primary
+  
+  // Elevation levels with subtle beige tints
   elevation: {
     level0: "transparent",
-    level1: "#F7F9FA",
-    level2: "#F2F5F7",
-    level3: "#ECF1F4",
-    level4: "#EAEFF2",
-    level5: "#E6ECF0",
+    level1: "rgba(240, 235, 213, 0.05)", // Very subtle beige tint
+    level2: "rgba(240, 235, 213, 0.08)",
+    level3: "rgba(240, 235, 213, 0.11)",
+    level4: "rgba(240, 235, 213, 0.12)",
+    level5: "rgba(240, 235, 213, 0.14)",
   },
-  surfaceDisabled: "rgba(26, 28, 30, 0.12)",
-  onSurfaceDisabled: "rgba(26, 28, 30, 0.38)",
-  backdrop: "rgba(42, 47, 78, 0.4)",
+  
+  // Disabled states
+  surfaceDisabled: "rgba(240, 235, 213, 0.12)", // Disabled surface with beige tint
+  onSurfaceDisabled: "rgba(124, 1, 2, 0.38)", // Disabled text with wine red
+  backdrop: "rgba(171, 171, 171, 0.4)", // Light gray backdrop
 };
 
 const customDarkColors = {
-  primary: "#7A9AA8", // Lighter version of primary for dark mode
-  darkBlue: "#3e5a66", // Becomes lighter in dark mode
-  lightBlue: "#5A7A88", // Lighter blue for dark mode
-  secondary: "#e28f2a", // Muted orange for dark mode
-  // Derived colors for dark mode
-  primaryContainer: "#1f2a2d",
-  onPrimary: "#0A0E10",
-  onPrimaryContainer: "#7A9AA8",
-  secondaryContainer: "#cc7a1f",
-  onSecondary: "#1A1A1A",
-  onSecondaryContainer: "#fff4e2",
-  // Surface colors for dark mode
-  surface: "#121212", // Pure Material dark surface
-  surfaceVariant: "#42474E",
-  onSurface: "#E2E2E6",
-  onSurfaceVariant: "#C2C7CE",
+  // Primary colors - Softer wine red for dark mode
+  primary: "#b71c1c", // Slightly brighter wine red for better contrast in dark mode
+  primaryContainer: "#3e2723", // Dark brown container
+  onPrimary: "#ffffff", // White text on wine red
+  onPrimaryContainer: "#f0ebd5", // Light beige text on dark container
+  
+  // Secondary colors - Muted camel for dark mode
+  secondary: "#a1887f", // Muted camel for better dark mode contrast
+  secondaryContainer: "#4e342e", // Dark brown secondary container
+  onSecondary: "#ffffff", // White text on muted camel
+  onSecondaryContainer: "#f0ebd5", // Light beige text on dark container
+  
+  // Surface colors for dark mode - using dark browns and grays
+  surface: "#1c1b1f", // Dark surface following Material Design
+  surfaceVariant: "#2e2e2e", // Dark gray variant surface
+  onSurface: "#e6e1e5", // Light text on dark surface
+  onSurfaceVariant: "#c8c5ca", // Muted light text on dark variant
+  
   // Background colors for dark mode
-  background: "#121212",
-  onBackground: "#E2E2E6",
+  background: "#121212", // Pure dark background
+  onBackground: "#e6e1e5", // Light text on dark background
+  
   // Error colors for dark mode
-  error: "#FFB4AB",
-  onError: "#690005",
-  errorContainer: "#93000A",
-  onErrorContainer: "#FFDAD6",
+  error: "#ffb4ab", // Light red for dark mode errors
+  onError: "#690005", // Dark red text on light error background
+  errorContainer: "#93000a", // Dark red container
+  onErrorContainer: "#ffb4ab", // Light red text on dark container
+  
   // Outline colors for dark mode
-  outline: "#8C9199",
-  outlineVariant: "#42474E",
+  outline: "#696969", // Medium gray for borders and dividers
+  outlineVariant: "#5a4a42", // Dark brownish gray for subtle outlines
+  
   // Other semantic colors for dark mode
-  shadow: "#000000",
-  scrim: "#000000",
-  inverseSurface: "#E2E2E6",
-  inverseOnSurface: "#2F3033",
-  inversePrimary: "#2c404a",
+  shadow: "#000000", // Black shadow
+  scrim: "rgba(0, 0, 0, 0.8)", // Dark scrim
+  inverseSurface: "#e6e1e5", // Light inverse surface
+  inverseOnSurface: "#1c1b1f", // Dark text on light surface
+  inversePrimary: "#7c0102", // Original wine red as inverse primary
+  
+  // Elevation levels with subtle warm tints for dark mode
   elevation: {
     level0: "transparent",
-    level1: "#1D2024",
-    level2: "#24272C",
-    level3: "#2C3137",
-    level4: "#2E3439",
-    level5: "#31373D",
+    level1: "rgba(94, 52, 46, 0.05)", // Very subtle warm tint
+    level2: "rgba(94, 52, 46, 0.08)",
+    level3: "rgba(94, 52, 46, 0.11)",
+    level4: "rgba(94, 52, 46, 0.12)",
+    level5: "rgba(94, 52, 46, 0.14)",
   },
-  surfaceDisabled: "rgba(226, 226, 230, 0.12)",
-  onSurfaceDisabled: "rgba(226, 226, 230, 0.38)",
-  backdrop: "rgba(0, 0, 0, 0.6)", // Different backdrop for dark mode
+  
+  // Disabled states for dark mode
+  surfaceDisabled: "rgba(230, 225, 229, 0.12)", // Disabled surface
+  onSurfaceDisabled: "rgba(230, 225, 229, 0.38)", // Disabled text
+  backdrop: "rgba(0, 0, 0, 0.6)", // Dark backdrop
 };
 
 // Light theme configuration
