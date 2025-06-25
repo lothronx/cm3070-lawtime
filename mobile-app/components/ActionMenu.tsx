@@ -14,9 +14,9 @@ import Animated, {
   WithSpringConfig,
   withTiming,
 } from "react-native-reanimated";
-import FullScreenOverlay from "@/components/FullScreenOverlay";
-import ListeningIndicator from "@/components/ListeningIndicator";
-import ErrorDialog from "@/components/ErrorDialog";
+import FullScreenOverlay from "@/components/ui/FullScreenOverlay";
+import ListeningIndicator from "@/components/ui/ListeningIndicator";
+import ErrorDialog from "@/components/ui/ErrorDialog";
 import CameraOptionsModal from "@/components/CameraOptionsModal";
 
 const DURATION = 300;

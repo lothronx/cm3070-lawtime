@@ -1,7 +1,7 @@
 import React from "react";
 import { Pressable, StyleSheet } from "react-native";
 import Animated, { useAnimatedStyle, SharedValue } from "react-native-reanimated";
-import { useAppTheme } from "../theme/ThemeProvider";
+import { useAppTheme } from "../../theme/ThemeProvider";
 
 const AnimatedTouchable = Animated.createAnimatedComponent(Pressable);
 
