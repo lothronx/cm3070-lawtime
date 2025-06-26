@@ -8,7 +8,7 @@ export default function WelcomeMessage() {
   const styles = StyleSheet.create({
     container: {
       alignItems: "flex-start",
-      marginBottom: 32,
+      marginBottom: 24,
     },
     welcomeText: {
       color: theme.colors.surfaceVariant,
@@ -37,7 +37,7 @@ export default function WelcomeMessage() {
         Welcome to <Text style={styles.appName}>LawTime</Text>
       </Text>
       <Text variant="bodyLarge" style={styles.slogan}>
-        Your AI-powered legal assistant
+        Your AI-powered scheduling assistant
       </Text>
     </View>
   );
