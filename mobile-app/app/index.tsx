@@ -4,7 +4,6 @@ import {
   StyleSheet,
   KeyboardAvoidingView,
   Platform,
-  TouchableOpacity,
   Keyboard,
   TouchableWithoutFeedback,
 } from "react-native";
@@ -12,6 +11,7 @@ import { Text, TextInput, Button, Card, useTheme, HelperText, Snackbar } from "r
 import { SafeAreaView } from "react-native-safe-area-context";
 import WelcomeMessage from "../components/ui/WelcomeMessage";
 import CurvedBackground from "../components/ui/CurvedBackground";
+import TermsAndConditionsCheckbox from "../components/ui/TermsAndConditionsCheckbox";
 
 export default function App() {
   const [mobileNumber, setMobileNumber] = useState("");
@@ -81,10 +81,7 @@ export default function App() {
   };
 
   const handleNext = async () => {
-    if (!validatePhoneNumber(mobileNumber)) {
-      setPhoneError("Enter the correct phone number");
-      return;
-    }
+    Keyboard.dismiss();
 
     if (!agreedToTerms) {
       setGeneralError("Please agree to Terms of Service and Privacy Policy");
@@ -122,6 +119,8 @@ export default function App() {
   };
 
   const handleSignIn = () => {
+    Keyboard.dismiss();
+
     if (!validateCode(smsCode)) {
       setCodeError("Enter the correct OTP");
       return;
@@ -159,21 +158,6 @@ export default function App() {
   const nextButtonEnabled = isPhoneValid && !isLoading;
   const signInButtonEnabled = isCodeValid && !isLoading;
 
-  // Custom Checkbox Component
-  const CustomCheckbox = ({ checked, onPress }: { checked: boolean; onPress: () => void }) => (
-    <TouchableOpacity onPress={onPress} style={styles.customCheckbox}>
-      <View
-        style={[
-          styles.checkboxOuter,
-          { borderColor: checked ? theme.colors.primary : theme.colors.outline },
-        ]}>
-        {checked && (
-          <View style={[styles.checkboxInner, { backgroundColor: theme.colors.primary }]} />
-        )}
-      </View>
-    </TouchableOpacity>
-  );
-
   return (
     <CurvedBackground>
       <SafeAreaView style={styles.container}>
@@ -192,39 +176,25 @@ export default function App() {
                 <Card.Content style={styles.cardContent}>
                   {/* Phone Number Input */}
                   <TextInput
-                    mode="outlined"
+                    mode="flat"
                     label="Phone Number"
                     placeholder="Enter 11-digit phone number"
                     value={mobileNumber}
                     onChangeText={handlePhoneChange}
                     keyboardType="number-pad"
+                    textContentType="telephoneNumber"
                     maxLength={11}
                     error={!!phoneError}
                     disabled={codeSent}
-                    style={[
-                      styles.input,
-                      {
-                        backgroundColor: codeSent
-                          ? theme.colors.surfaceVariant
-                          : theme.colors.surface,
-                      },
-                    ]}
-                    outlineColor={theme.colors.outline}
-                    activeOutlineColor={theme.colors.primary}
-                    textColor={codeSent ? theme.colors.onSurfaceVariant : theme.colors.onSurface}
+                    placeholderTextColor={theme.colors.backdrop}
                   />
                   <HelperText type="error" visible={!!phoneError}>
                     {phoneError}
                   </HelperText>
-
                   {/* Change Phone Number Button - Show after Next is pressed */}
                   {codeSent && (
-                    <Button
-                      mode="text"
-                      onPress={handleChangePhoneNumber}
-                      textColor={theme.colors.primary}
-                      style={styles.changePhoneButton}>
-                      Change Phone Number
+                    <Button mode="text" onPress={handleChangePhoneNumber} style={styles.helpButton}>
+                      <Text style={styles.helpButtonText}>Change Phone Number</Text>
                     </Button>
                   )}
 
@@ -232,44 +202,28 @@ export default function App() {
                   {codeSent && (
                     <>
                       <TextInput
-                        mode="outlined"
+                        mode="flat"
                         label="Verification Code"
                         placeholder="Enter 6-digit code"
                         value={smsCode}
                         onChangeText={handleCodeChange}
                         keyboardType="number-pad"
+                        textContentType="oneTimeCode"
                         maxLength={6}
                         error={!!codeError}
-                        style={[styles.input, { backgroundColor: theme.colors.surface }]}
-                        outlineColor={theme.colors.outline}
-                        activeOutlineColor={theme.colors.primary}
-                        textColor={theme.colors.onSurface}
+                        placeholderTextColor={theme.colors.backdrop}
                       />
-
-                      {/* Countdown or Resend */}
-                      <View style={styles.resendContainer}>
-                        {countdown > 0 ? (
-                          <Text
-                            style={[
-                              styles.countdownText,
-                              { color: theme.colors.onSurfaceVariant },
-                            ]}>
-                            Resend in {countdown} seconds...
-                          </Text>
-                        ) : (
-                          <Button
-                            mode="text"
-                            onPress={handleResend}
-                            textColor={theme.colors.primary}
-                            style={styles.resendButton}>
-                            Resend
-                          </Button>
-                        )}
-                      </View>
-
                       <HelperText type="error" visible={!!codeError}>
                         {codeError}
                       </HelperText>
+
+                      {countdown > 0 ? (
+                        <Text style={[styles.countdownText]}>Resend in {countdown} seconds...</Text>
+                      ) : (
+                        <Button mode="text" onPress={handleResend} style={styles.helpButton}>
+                          <Text style={styles.helpButtonText}>Resend</Text>
+                        </Button>
+                      )}
                     </>
                   )}
 
@@ -283,56 +237,26 @@ export default function App() {
                       styles.actionButton,
                       {
                         backgroundColor: (codeSent ? !signInButtonEnabled : !nextButtonEnabled)
-                          ? theme.colors.surfaceVariant
-                          : theme.colors.primary,
+                          ? theme.colors.secondaryContainer
+                          : theme.colors.secondary,
                       },
                     ]}
                     contentStyle={styles.buttonContent}
                     labelStyle={{
                       color: (codeSent ? !signInButtonEnabled : !nextButtonEnabled)
-                        ? theme.colors.onSurfaceVariant
-                        : theme.colors.onPrimary,
+                        ? theme.colors.onSecondaryContainer
+                        : theme.colors.onSecondary,
+                      fontWeight: "bold",
                     }}>
                     {codeSent ? "Sign In / Register" : "Next"}
                   </Button>
 
                   {/* Terms and Conditions Checkbox */}
-                  {!codeSent && (
-                    <View style={styles.checkboxContainer}>
-                      <CustomCheckbox
-                        checked={agreedToTerms}
-                        onPress={() => setAgreedToTerms(!agreedToTerms)}
-                      />
-                      <View style={styles.termsTextContainer}>
-                        <Text style={[styles.checkboxText, { color: theme.colors.onSurface }]}>
-                          I accept the{" "}
-                        </Text>
-                        <TouchableOpacity
-                          onPress={() => {
-                            /* TODO: Navigate to Terms of Service */
-                          }}>
-                          <Text style={[styles.linkText, { color: theme.colors.primary }]}>
-                            Terms of Service
-                          </Text>
-                        </TouchableOpacity>
-                        <Text style={[styles.checkboxText, { color: theme.colors.onSurface }]}>
-                          {" "}
-                          and{" "}
-                        </Text>
-                        <TouchableOpacity
-                          onPress={() => {
-                            /* TODO: Navigate to Privacy Policy */
-                          }}>
-                          <Text style={[styles.linkText, { color: theme.colors.primary }]}>
-                            Privacy Policy
-                          </Text>
-                        </TouchableOpacity>
-                        <Text style={[styles.checkboxText, { color: theme.colors.onSurface }]}>
-                          .
-                        </Text>
-                      </View>
-                    </View>
-                  )}
+                  <TermsAndConditionsCheckbox
+                    checked={agreedToTerms}
+                    onPress={() => setAgreedToTerms(!agreedToTerms)}
+                    disabled={codeSent}
+                  />
                 </Card.Content>
               </Card>
             </View>
@@ -344,9 +268,9 @@ export default function App() {
       <Snackbar
         visible={!!generalError}
         onDismiss={() => setGeneralError("")}
-        duration={4000}
+        duration={2000}
         action={{
-          label: "Dismiss",
+          label: "OK",
           onPress: () => setGeneralError(""),
         }}
         style={{ backgroundColor: theme.colors.errorContainer }}>
@@ -359,7 +283,6 @@ export default function App() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: "transparent",
   },
   keyboardAvoidingView: {
     flex: 1,
@@ -380,74 +303,30 @@ const styles = StyleSheet.create({
     shadowRadius: 8,
   },
   cardContent: {
-    paddingVertical: 28,
+    paddingTop: 24,
+    paddingBottom: 16,
     paddingHorizontal: 24,
-    gap: 16,
   },
-  input: {
-    marginBottom: 4,
-  },
-  changePhoneButton: {
+  helpButton: {
     alignSelf: "flex-end",
-    marginTop: -8,
+    marginTop: -28,
+    marginRight: -10,
     marginBottom: 8,
   },
-  resendContainer: {
-    alignItems: "flex-end",
-    marginBottom: 8,
-    marginTop: -4,
+  helpButtonText: {
+    fontSize: 12,
+    fontWeight: "bold",
   },
   countdownText: {
+    alignSelf: "flex-end",
+    marginTop: -18,
+    marginBottom: 16,
     fontSize: 12,
-    fontStyle: "italic",
-  },
-  resendButton: {
-    margin: 0,
-    padding: 0,
-  },
-  checkboxContainer: {
-    flexDirection: "row",
-    alignItems: "flex-start",
-    marginVertical: 8,
-    paddingRight: 8,
-  },
-  customCheckbox: {
-    paddingTop: 5,
-    paddingLeft: 6,
-  },
-  checkboxOuter: {
-    width: 12,
-    height: 12,
-    borderRadius: 999,
-    borderWidth: 2,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  checkboxInner: {
-    width: 6,
-    height: 6,
-    borderRadius: 999,
-  },
-  termsTextContainer: {
-    flex: 1,
-    flexDirection: "row",
-    flexWrap: "wrap",
-    alignItems: "center",
-    marginLeft: 8,
-  },
-  checkboxText: {
-    fontSize: 14,
-    lineHeight: 20,
-  },
-  linkText: {
-    fontSize: 14,
-    lineHeight: 20,
-    textDecorationLine: "underline",
   },
   actionButton: {
     borderRadius: 12,
-    marginTop: 8,
-    marginBottom: 8,
+    marginTop: 16,
+    marginBottom: 6,
   },
   buttonContent: {
     height: 52,

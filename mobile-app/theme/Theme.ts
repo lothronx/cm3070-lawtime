@@ -22,7 +22,7 @@ const customColors = {
   surface: "#ffffff", // Pure white for main surfaces
   surfaceVariant: "#f5f9ff", // Very subtle blue tint for variant surfaces
   onSurface: "#013364", // Dark blue text on white
-  onSurfaceVariant: "#1565c0", // Medium blue text on light surfaces
+  onSurfaceVariant: "#013364", // Medium blue text on light surfaces
   
   // Background colors
   background: "#ffffff", // Pure white background
@@ -100,7 +100,8 @@ const customDarkColors = {
   inverseSurface: "#e3f2fd", // Light blue inverse surface
   inverseOnSurface: "#0d47a1", // Dark blue text on light surface
   inversePrimary: "#013364", // Original dark blue as inverse primary
-  
+  placeholder: "rgba(0, 0, 0, 0.6)",
+
   // Elevation levels with subtle blue tints for dark mode
   elevation: {
     level0: "transparent",

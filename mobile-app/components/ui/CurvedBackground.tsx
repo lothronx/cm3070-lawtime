@@ -25,11 +25,8 @@ export default function CurvedBackground({ children }: CurvedBackgroundProps) {
 
   return (
     <View style={styles.container}>
-      {/* Background for the whole screen */}
-      <View style={[styles.background]} />
-
       {/* Upper colored section with large circular curve */}
-      <View style={styles.svgContainer}>
+      <View style={[styles.svgContainer, { backgroundColor: theme.colors.surfaceVariant }]}>
         <Svg
           style={[
             styles.svgCurve,
@@ -59,20 +56,12 @@ const styles = StyleSheet.create({
     flex: 1,
     position: "relative",
   },
-  background: {
-    position: "absolute",
-    top: 0,
-    left: 0,
-    right: 0,
-    bottom: 0,
-    zIndex: 0,
-  },
   svgContainer: {
     position: "absolute",
     top: 0,
     left: 0,
     right: 0,
-    height: screenHeight * 0.6 + 50,
+    bottom: 0,
     zIndex: 1,
   },
   svgCurve: {

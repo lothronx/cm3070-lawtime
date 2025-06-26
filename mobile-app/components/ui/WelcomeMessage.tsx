@@ -1,28 +1,33 @@
-import React from 'react';
-import { View, StyleSheet } from 'react-native';
-import { Text, useTheme } from 'react-native-paper';
+import React from "react";
+import { View, StyleSheet } from "react-native";
+import { Text, useTheme } from "react-native-paper";
 
 export default function WelcomeMessage() {
   const theme = useTheme();
-  
+
   const styles = StyleSheet.create({
     container: {
       alignItems: "flex-start",
-      marginBottom: 48,
+      marginBottom: 32,
     },
     welcomeText: {
-      color: theme.colors.onPrimary,
-      fontWeight: "500",
+      color: theme.colors.surfaceVariant,
+      fontWeight: "700",
+      shadowColor: theme.colors.shadow,
+      shadowOffset: { width: 0, height: 2 },
+      shadowOpacity: 0.2,
+      shadowRadius: 4,
+      elevation: 2,
     },
     appName: {
-      color: theme.colors.secondary,
+      color: theme.colors.surfaceVariant,
       fontSize: 30,
-      fontWeight: "bold",
+      fontWeight: "900",
     },
     slogan: {
-      color: theme.colors.onPrimary,
+      color: theme.colors.surfaceVariant,
+      fontWeight: "500",
       textAlign: "left",
-      marginTop: 8,
     },
   });
 
@@ -32,7 +37,7 @@ export default function WelcomeMessage() {
         Welcome to <Text style={styles.appName}>LawTime</Text>
       </Text>
       <Text variant="bodyLarge" style={styles.slogan}>
-        Your zero-entry schedule is waiting
+        Your AI-powered legal assistant
       </Text>
     </View>
   );
