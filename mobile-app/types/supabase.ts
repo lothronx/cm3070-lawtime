@@ -81,21 +81,18 @@ export type Database = {
       profiles: {
         Row: {
           default_alert_offset_minutes: number
-          display_name: string | null
           id: string
           status: Database["public"]["Enums"]["profile_status"]
           updated_at: string | null
         }
         Insert: {
           default_alert_offset_minutes?: number
-          display_name?: string | null
           id: string
           status?: Database["public"]["Enums"]["profile_status"]
           updated_at?: string | null
         }
         Update: {
           default_alert_offset_minutes?: number
-          display_name?: string | null
           id?: string
           status?: Database["public"]["Enums"]["profile_status"]
           updated_at?: string | null

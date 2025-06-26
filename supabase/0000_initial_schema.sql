@@ -27,7 +27,6 @@ CREATE TYPE public.task_file_role AS ENUM (
 
 CREATE TABLE public.profiles (
     id uuid NOT NULL PRIMARY KEY,
-    display_name text,
     status public.profile_status NOT NULL DEFAULT 'active',
     default_alert_offset_minutes integer NOT NULL DEFAULT 1440, -- Default to 1 day (24 * 60)
     updated_at timestamp with time zone DEFAULT now()

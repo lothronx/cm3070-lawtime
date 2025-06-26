@@ -14,7 +14,7 @@ import CurvedBackground from "@/components/auth/CurvedBackground";
 import AuthCard from "@/components/auth/AuthCard";
 import useAuth from "@/hooks/useAuth";
 
-export default function App() {
+export default function Auth() {
   const {
     mobileNumber,
     smsCode,

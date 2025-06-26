@@ -1,6 +1,6 @@
 import React, { useEffect, useRef } from "react";
 import { StyleSheet, Text, Animated, ViewStyle } from "react-native";
-import { useAppTheme } from "../../theme/ThemeProvider";
+import { useAppTheme } from "@/theme/ThemeProvider";
 
 interface ErrorDialogProps {
   visible: boolean;

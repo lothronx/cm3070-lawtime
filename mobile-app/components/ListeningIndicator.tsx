@@ -1,7 +1,7 @@
 import React from "react";
 import { StyleSheet, Text, View } from "react-native";
 import Animated, { interpolate, useAnimatedStyle, SharedValue } from "react-native-reanimated";
-import { useAppTheme } from "../../theme/ThemeProvider";
+import { useAppTheme } from "@/theme/ThemeProvider";
 
 interface ListeningIndicatorProps {
   isListening: SharedValue<number>;
