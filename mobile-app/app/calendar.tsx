@@ -1,7 +1,7 @@
 import React from "react";
 import { View, StyleSheet } from "react-native";
 import { useAppTheme } from "../theme/ThemeProvider";
-import ActionMenu from "../components/ActionMenu";
+import ActionMenu from "@/components/ActionMenu";
 import Header from "@/components/ui/Header";
 
 export default function HomePage() {
