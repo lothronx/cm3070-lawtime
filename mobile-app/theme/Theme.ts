@@ -1,5 +1,6 @@
 import { MD3LightTheme, MD3DarkTheme } from "react-native-paper";
 import type { MD3Theme } from "react-native-paper";
+import { Platform } from 'react-native';
 
 // LawTime Color Schema - Blue-Red Corporate Theme
 // Base palette: Light Blue, Dark Blue, Red
@@ -116,6 +117,126 @@ const customDarkColors = {
   backdrop: "rgba(0, 0, 0, 0.6)", // Dark backdrop
 };
 
+// Font family configuration - use Avenir on iOS, fallback on Android
+const fontFamily = Platform.OS === 'ios' ? 'Avenir' : 'Roboto';
+
+// Font configuration
+const fontConfig = {
+  displayLarge: {
+    fontFamily,
+    fontWeight: "400" as const,
+    fontSize: 57,
+    lineHeight: 64,
+    letterSpacing: 0,
+  },
+  displayMedium: {
+    fontFamily,
+    fontWeight: "400" as "400",
+    fontSize: 45,
+    lineHeight: 52,
+    letterSpacing: 0,
+  },
+  displaySmall: {
+    fontFamily,
+    fontWeight: "400" as "400",
+    fontSize: 36,
+    lineHeight: 44,
+    letterSpacing: 0,
+  },
+  headlineLarge: {
+    fontFamily,
+    fontWeight: "400" as "400",
+    fontSize: 32,
+    lineHeight: 40,
+    letterSpacing: 0,
+  },
+  headlineMedium: {
+    fontFamily,
+    fontWeight: "400" as "400",
+    fontSize: 28,
+    lineHeight: 36,
+    letterSpacing: 0,
+  },
+  headlineSmall: {
+    fontFamily,
+    fontWeight: "400" as "400",
+    fontSize: 24,
+    lineHeight: 32,
+    letterSpacing: 0,
+  },
+  titleLarge: {
+    fontFamily,
+    fontWeight: "400" as "400",
+    fontSize: 22,
+    lineHeight: 28,
+    letterSpacing: 0,
+  },
+  titleMedium: {
+    fontFamily,
+    fontWeight: "500" as "500",
+    fontSize: 16,
+    lineHeight: 24,
+    letterSpacing: 0.1,
+  },
+  titleSmall: {
+    fontFamily,
+    fontWeight: "500" as "500",
+    fontSize: 14,
+    lineHeight: 20,
+    letterSpacing: 0.1,
+  },
+  labelLarge: {
+    fontFamily,
+    fontWeight: "500" as "500",
+    fontSize: 14,
+    lineHeight: 20,
+    letterSpacing: 0.1,
+  },
+  labelMedium: {
+    fontFamily,
+    fontWeight: "500" as "500",
+    fontSize: 12,
+    lineHeight: 16,
+    letterSpacing: 0.5,
+  },
+  labelSmall: {
+    fontFamily,
+    fontWeight: "500" as "500",
+    fontSize: 11,
+    lineHeight: 16,
+    letterSpacing: 0.5,
+  },
+  bodyLarge: {
+    fontFamily,
+    fontWeight: "400" as "400",
+    fontSize: 16,
+    lineHeight: 24,
+    letterSpacing: 0.15,
+  },
+  bodyMedium: {
+    fontFamily,
+    fontWeight: "400" as "400",
+    fontSize: 14,
+    lineHeight: 20,
+    letterSpacing: 0.25,
+  },
+  bodySmall: {
+    fontFamily,
+    fontWeight: "400" as "400",
+    fontSize: 12,
+    lineHeight: 16,
+    letterSpacing: 0.4,
+  },
+  default: {
+    fontFamily,
+    fontWeight: "400" as "400",
+    fontSize: 14,
+    lineHeight: 20,
+    letterSpacing: 0.25,
+  },
+};
+
+
 // Light theme configuration
 export const lightTheme: MD3Theme = {
   ...MD3LightTheme,
@@ -123,6 +244,7 @@ export const lightTheme: MD3Theme = {
     ...MD3LightTheme.colors,
     ...customColors,
   },
+  fonts: fontConfig,
 };
 
 // Dark theme configuration
@@ -132,6 +254,7 @@ export const darkTheme: MD3Theme = {
     ...MD3DarkTheme.colors,
     ...customDarkColors,
   },
+  fonts: fontConfig,
 };
 
 // Default theme (can be light or dark based on preference)
