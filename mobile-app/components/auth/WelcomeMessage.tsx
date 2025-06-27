@@ -1,44 +1,46 @@
 import React from "react";
 import { View, StyleSheet } from "react-native";
-import { Text, useTheme } from "react-native-paper";
+import { Text } from "react-native-paper";
+import { useAppTheme, SPACING } from "@/theme/ThemeProvider";
 
 export default function WelcomeMessage() {
-  const theme = useTheme();
-
-  const styles = StyleSheet.create({
-    container: {
-      alignItems: "flex-start",
-      marginBottom: 24,
-    },
-    welcomeText: {
-      color: theme.colors.surfaceVariant,
-      fontWeight: "700",
-      shadowColor: theme.colors.shadow,
-      shadowOffset: { width: 0, height: 2 },
-      shadowOpacity: 0.2,
-      shadowRadius: 4,
-      elevation: 2,
-    },
-    appName: {
-      color: theme.colors.surfaceVariant,
-      fontSize: 30,
-      fontWeight: "900",
-    },
-    slogan: {
-      color: theme.colors.surfaceVariant,
-      fontWeight: "500",
-      textAlign: "left",
-    },
-  });
+  const { theme } = useAppTheme();
 
   return (
     <View style={styles.container}>
-      <Text variant="headlineMedium" style={styles.welcomeText}>
-        Welcome to <Text style={styles.appName}>LawTime</Text>
+      <Text variant="headlineMedium" style={[styles.headline, { color: theme.colors.onPrimary }]}>
+        Welcome to{" "}
+        <Text
+          style={[
+            {
+              color: theme.colors.onPrimary,
+            },
+            styles.headlineVariant,
+          ]}>
+          LawTime
+        </Text>
       </Text>
-      <Text variant="bodyLarge" style={styles.slogan}>
+      <Text variant="bodyLarge" style={{ color: theme.colors.onPrimary }}>
         Your AI-powered scheduling assistant
       </Text>
     </View>
   );
 }
+
+const styles = StyleSheet.create({
+  container: {
+    alignItems: "flex-start",
+    marginBottom: SPACING.lg,
+  },
+  headline: {
+    fontWeight: "700",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.2,
+    shadowRadius: 4,
+    elevation: 2,
+  },
+  headlineVariant: {
+    fontSize: 30,
+    fontWeight: "900",
+  },
+});

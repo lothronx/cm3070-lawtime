@@ -1,6 +1,7 @@
 import React from "react";
 import { StyleSheet } from "react-native";
-import { TextInput, HelperText, Button, Text, useTheme } from "react-native-paper";
+import { TextInput, HelperText, Button, Text } from "react-native-paper";
+import { useAppTheme } from "@/theme/ThemeProvider";
 
 interface VerificationCodeInputProps {
   value: string;
@@ -17,7 +18,7 @@ export default function VerificationCodeInput({
   countdown,
   onResend,
 }: VerificationCodeInputProps) {
-  const theme = useTheme();
+  const { theme } = useAppTheme();
 
   return (
     <>

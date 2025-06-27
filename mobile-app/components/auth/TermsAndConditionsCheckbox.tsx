@@ -1,7 +1,8 @@
 import React from "react";
 import { View, StyleSheet, TouchableOpacity } from "react-native";
-import { Text, useTheme } from "react-native-paper";
+import { Text } from "react-native-paper";
 import { CheckBox } from "react-native-elements";
+import { useAppTheme } from "@/theme/ThemeProvider";
 
 interface TermsAndConditionsCheckboxProps {
   checked: boolean;
@@ -14,7 +15,7 @@ export default function TermsAndConditionsCheckbox({
   onPress,
   disabled = false,
 }: TermsAndConditionsCheckboxProps) {
-  const theme = useTheme();
+  const { theme } = useAppTheme();
 
   const handleTermsPress = () => {
     // TODO: Navigate to Terms of Service

@@ -1,7 +1,7 @@
 import React from "react";
 import { View, StyleSheet, Dimensions } from "react-native";
 import Svg, { Path } from "react-native-svg";
-import { useTheme } from "react-native-paper";
+import { useAppTheme } from "@/theme/ThemeProvider";
 const { width: screenWidth, height: screenHeight } = Dimensions.get("window");
 
 interface CurvedBackgroundProps {
@@ -9,7 +9,7 @@ interface CurvedBackgroundProps {
 }
 
 export default function CurvedBackground({ children }: CurvedBackgroundProps) {
-  const theme = useTheme();
+  const { theme } = useAppTheme();
 
   // Calculate dimensions for a large circular arc
   const curveHeight = screenHeight * 0.5;

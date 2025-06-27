@@ -2,8 +2,8 @@ import { MD3LightTheme, MD3DarkTheme } from "react-native-paper";
 import type { MD3Theme } from "react-native-paper";
 import { Platform } from 'react-native';
 
-// LawTime Color Schema - Blue-Red Corporate Theme
-// Base palette: Light Blue, Dark Blue, Red
+// LawTime Color Schema - Blue-Teal Professional Theme
+// Base palette: Dark Blue, Teal, Clean Neutrals
 
 const customColors = {
   // Primary colors - Dark Blue (#013364) for authority and trust
@@ -12,31 +12,31 @@ const customColors = {
   onPrimary: "#ffffff", // White text on dark blue
   onPrimaryContainer: "#013364", // Dark blue text on light blue
   
-  // Secondary colors - Red (#d30b0d) for secondary actions and visual interest
-  secondary: "#d30b0d", // Red for secondary elements - creates warmth and contrast
-  secondaryContainer: "#ffebee", // Very light red secondary container
-  onSecondary: "#ffffff", // White text on red
-  onSecondaryContainer: "#d30b0d", // Red text on light red container
+  // Secondary colors - Light Blue (#428bca) for secondary actions
+  secondary: "#428bca", // Light blue for secondary elements - complements primary blue
+  secondaryContainer: "#e3f2fd", // Very light blue container
+  onSecondary: "#ffffff", // White text on light blue
+  onSecondaryContainer: "#1976d2", // Dark blue text on light blue container
   
   // Surface colors for clean look
   surface: "#ffffff", // Pure white for main surfaces
-  surfaceVariant: "#f5f9ff", // Very subtle blue tint for variant surfaces
+  surfaceVariant: "#fafafa", // Neutral light gray for variant surfaces
   onSurface: "#013364", // Dark blue text on white
-  onSurfaceVariant: "#013364", // Medium blue text on light surfaces
+  onSurfaceVariant: "#37474f", // Dark blue-gray text on light surfaces
   
   // Background colors
   background: "#ffffff", // Pure white background
   onBackground: "#013364", // Dark blue text on white background
   
-  // Error colors - Light Blue (#428bca) for errors (since red is now secondary)
-  error: "#428bca", // Light blue for errors - softer than traditional red
-  onError: "#ffffff", // White text on light blue
-  errorContainer: "#e1f5fe", // Very light blue container
-  onErrorContainer: "#013364", // Dark blue text on light container
+  // Error colors - Red (#d32f2f) for clear error indication
+  error: "#d32f2f", // Standard red for errors - clear and recognizable
+  onError: "#ffffff", // White text on red
+  errorContainer: "#ffebee", // Very light red container
+  onErrorContainer: "#c62828", // Dark red text on light container
   
   // Outline colors
   outline: "#90a4ae", // Blue-gray for borders and dividers
-  outlineVariant: "#d30b0d", // Red for subtle outlines - adds warmth
+  outlineVariant: "#90caf9", // Lighter blue for subtle outlines - complements secondary color
   
   // Other semantic colors
   shadow: "#000000", // Black shadow
@@ -45,20 +45,20 @@ const customColors = {
   inverseOnSurface: "#ffffff", // White on dark blue
   inversePrimary: "#64b5f6", // Light blue as inverse primary
   
-  // Elevation levels with subtle blue tints
+  // Elevation levels with neutral tints
   elevation: {
     level0: "transparent",
-    level1: "rgba(227, 242, 253, 0.05)", // Very subtle blue tint
-    level2: "rgba(227, 242, 253, 0.08)",
-    level3: "rgba(227, 242, 253, 0.11)",
-    level4: "rgba(227, 242, 253, 0.12)",
-    level5: "rgba(227, 242, 253, 0.14)",
+    level1: "rgba(0, 0, 0, 0.05)", // Very subtle shadow
+    level2: "rgba(0, 0, 0, 0.08)",
+    level3: "rgba(0, 0, 0, 0.11)",
+    level4: "rgba(0, 0, 0, 0.12)",
+    level5: "rgba(0, 0, 0, 0.14)",
   },
   
   // Disabled states
-  surfaceDisabled: "rgba(227, 242, 253, 0.12)", // Disabled surface with blue tint
-  onSurfaceDisabled: "rgba(1, 51, 100, 0.38)", // Disabled text with dark blue
-  backdrop: "rgba(144, 164, 174, 0.4)", // Blue-gray backdrop
+  surfaceDisabled: "rgba(0, 0, 0, 0.12)", // Disabled surface with neutral tint
+  onSurfaceDisabled: "rgba(0, 0, 0, 0.38)", // Disabled text with neutral opacity
+  backdrop: "rgba(0, 0, 0, 0.4)", // Neutral backdrop
 };
 
 const customDarkColors = {
@@ -68,53 +68,53 @@ const customDarkColors = {
   onPrimary: "#ffffff", // White text on blue
   onPrimaryContainer: "#bbdefb", // Light blue text on dark container
   
-  // Secondary colors - Red for dark mode
-  secondary: "#f44336", // Brighter red for dark mode contrast
-  secondaryContainer: "#b71c1c", // Dark red secondary container
-  onSecondary: "#ffffff", // White text on red
-  onSecondaryContainer: "#ffcdd2", // Light red text on dark container
+  // Secondary colors - Light Blue for dark mode
+  secondary: "#64b5f6", // Brighter light blue for dark mode contrast
+  secondaryContainer: "#0d47a1", // Dark blue secondary container
+  onSecondary: "#000000", // Black text on light blue
+  onSecondaryContainer: "#bbdefb", // Light blue text on dark container
   
   // Surface colors for dark mode
-  surface: "#262627ff", // Dark surface
-  surfaceVariant: "#2e3440", // Dark blue-gray variant surface
-  onSurface: "#e3f2fd", // Light blue text on dark surface
-  onSurfaceVariant: "#90caf9", // Medium light blue text on dark variant
+  surface: "#1e1e1e", // Dark surface
+  surfaceVariant: "#424242", // Dark gray variant surface
+  onSurface: "#ffffff", // White text on dark surface
+  onSurfaceVariant: "#e0e0e0", // Light gray text on dark variant
   
   // Background colors for dark mode
-  background: "#292929ff", // Pure dark background
-  onBackground: "#e3f2fd", // Light blue text on dark background
+  background: "#121212", // Pure dark background
+  onBackground: "#ffffff", // White text on dark background
   
-  // Error colors for dark mode - Light blue (since red is now secondary)
-  error: "#64b5f6", // Light blue for dark mode errors
-  onError: "#000000", // Black text on light blue
-  errorContainer: "#1565c0", // Medium blue container
-  onErrorContainer: "#e3f2fd", // Very light blue text on dark container
+  // Error colors for dark mode - Red for clear error indication
+  error: "#ef5350", // Bright red for dark mode errors
+  onError: "#ffffff", // White text on red
+  errorContainer: "#b71c1c", // Dark red container
+  onErrorContainer: "#ffcdd2", // Light red text on dark container
   
   // Outline colors for dark mode
   outline: "#546e7a", // Blue-gray for borders in dark mode
-  outlineVariant: "#f44336", // Red for subtle outlines in dark mode
+  outlineVariant: "#64b5f6", // Light blue for subtle outlines in dark mode
   
   // Other semantic colors for dark mode
   shadow: "#000000", // Black shadow
   scrim: "rgba(0, 0, 0, 0.8)", // Dark scrim
-  inverseSurface: "#e3f2fd", // Light blue inverse surface
-  inverseOnSurface: "#0d47a1", // Dark blue text on light surface
+  inverseSurface: "#ffffff", // White inverse surface
+  inverseOnSurface: "#013364", // Dark blue text on light surface
   inversePrimary: "#013364", // Original dark blue as inverse primary
   placeholder: "rgba(0, 0, 0, 0.6)",
 
-  // Elevation levels with subtle blue tints for dark mode
+  // Elevation levels with neutral tints for dark mode
   elevation: {
     level0: "transparent",
-    level1: "rgba(46, 52, 64, 0.05)", // Very subtle blue-gray tint
-    level2: "rgba(46, 52, 64, 0.08)",
-    level3: "rgba(46, 52, 64, 0.11)",
-    level4: "rgba(46, 52, 64, 0.12)",
-    level5: "rgba(46, 52, 64, 0.14)",
+    level1: "rgba(255, 255, 255, 0.05)", // Very subtle light tint
+    level2: "rgba(255, 255, 255, 0.08)",
+    level3: "rgba(255, 255, 255, 0.11)",
+    level4: "rgba(255, 255, 255, 0.12)",
+    level5: "rgba(255, 255, 255, 0.14)",
   },
   
   // Disabled states for dark mode
-  surfaceDisabled: "rgba(227, 242, 253, 0.12)", // Disabled surface
-  onSurfaceDisabled: "rgba(227, 242, 253, 0.38)", // Disabled text
+  surfaceDisabled: "rgba(255, 255, 255, 0.12)", // Disabled surface
+  onSurfaceDisabled: "rgba(255, 255, 255, 0.38)", // Disabled text
   backdrop: "rgba(0, 0, 0, 0.6)", // Dark backdrop
 };
 

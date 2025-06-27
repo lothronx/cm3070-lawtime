@@ -1,6 +1,6 @@
 import React from "react";
-import { StyleSheet } from "react-native";
-import { Button, useTheme } from "react-native-paper";
+import { Button } from "react-native-paper";
+import { BORDER_RADIUS, SPACING } from "@/theme/ThemeProvider";
 
 interface ActionButtonProps {
   onPress: () => void;
@@ -9,47 +9,22 @@ interface ActionButtonProps {
   title: string;
 }
 
-export default function ActionButton({
-  onPress,
-  loading,
-  disabled,
-  title,
-}: ActionButtonProps) {
-  const theme = useTheme();
-
+export default function ActionButton({ onPress, loading, disabled, title }: ActionButtonProps) {
   return (
     <Button
       mode="contained"
       onPress={onPress}
       loading={loading}
       disabled={disabled}
-      style={[
-        styles.actionButton,
-        {
-          backgroundColor: disabled
-            ? theme.colors.secondaryContainer
-            : theme.colors.secondary,
-        },
-      ]}
-      contentStyle={styles.buttonContent}
-      labelStyle={{
-        color: disabled
-          ? theme.colors.onSecondaryContainer
-          : theme.colors.onSecondary,
-        fontWeight: "bold",
+      style={{
+        borderRadius: BORDER_RADIUS.lg,
+        marginTop: SPACING.md,
+        marginBottom: SPACING.sm,
+      }}
+      contentStyle={{
+        height: 52,
       }}>
       {title}
     </Button>
   );
 }
-
-const styles = StyleSheet.create({
-  actionButton: {
-    borderRadius: 12,
-    marginTop: 12,
-    marginBottom: 6,
-  },
-  buttonContent: {
-    height: 52,
-  },
-});

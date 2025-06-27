@@ -1,6 +1,6 @@
 import React from "react";
-import { StyleSheet } from "react-native";
-import { Card, useTheme } from "react-native-paper";
+import { Card } from "react-native-paper";
+import { useAppTheme, BORDER_RADIUS, SPACING } from "@/theme/ThemeProvider";
 import PhoneNumberInput from "./PhoneNumberInput";
 import VerificationCodeInput from "./VerificationCodeInput";
 import ActionButton from "./ActionButton";
@@ -11,7 +11,7 @@ interface AuthCardProps {
   mobileNumber: string;
   onPhoneChange: (text: string) => void;
   phoneError: string;
-  
+
   // Code input props (only shown when code is sent)
   codeSent: boolean;
   smsCode: string;
@@ -20,13 +20,13 @@ interface AuthCardProps {
   countdown: number;
   onResend: () => void;
   onChangePhoneNumber: () => void;
-  
+
   // Action button props
   onAction: () => void;
   isLoading: boolean;
   actionEnabled: boolean;
   actionTitle: string;
-  
+
   // Terms checkbox props
   agreedToTerms: boolean;
   onTermsChange: (agreed: boolean) => void;
@@ -50,13 +50,20 @@ export default function AuthCard({
   agreedToTerms,
   onTermsChange,
 }: AuthCardProps) {
-  const theme = useTheme();
+  const { theme } = useAppTheme();
 
   return (
     <Card
-      style={[styles.authCard, { backgroundColor: theme.colors.surface }]}
+      style={{
+        backgroundColor: theme.colors.surface,
+        borderRadius: BORDER_RADIUS.xl,
+      }}
       elevation={4}>
-      <Card.Content style={styles.cardContent}>
+      <Card.Content
+        style={{
+          paddingVertical: SPACING.lg,
+          paddingHorizontal: SPACING.lg,
+        }}>
         <PhoneNumberInput
           value={mobileNumber}
           onChangeText={onPhoneChange}
@@ -92,19 +99,3 @@ export default function AuthCard({
     </Card>
   );
 }
-
-const styles = StyleSheet.create({
-  authCard: {
-    borderRadius: 16,
-    shadowOffset: {
-      width: 0,
-      height: 4,
-    },
-    shadowOpacity: 0.15,
-    shadowRadius: 8,
-  },
-  cardContent: {
-    paddingVertical: 24,
-    paddingHorizontal: 24,
-  },
-});

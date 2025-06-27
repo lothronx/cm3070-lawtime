@@ -7,12 +7,13 @@ import {
   Keyboard,
   TouchableWithoutFeedback,
 } from "react-native";
-import { Text, Snackbar, useTheme } from "react-native-paper";
+import { Text, Snackbar } from "react-native-paper";
 import { SafeAreaView } from "react-native-safe-area-context";
 import WelcomeMessage from "@/components/auth/WelcomeMessage";
 import CurvedBackground from "@/components/auth/CurvedBackground";
 import AuthCard from "@/components/auth/AuthCard";
 import useAuth from "@/hooks/useAuth";
+import { useAppTheme } from "@/theme/ThemeProvider";
 
 export default function Auth() {
   const {
@@ -37,7 +38,7 @@ export default function Auth() {
     setGeneralError,
   } = useAuth();
 
-  const theme = useTheme();
+  const { theme } = useAppTheme();
 
   const handleAction = () => {
     Keyboard.dismiss();

@@ -4,7 +4,7 @@ import { useAppTheme } from "../theme/ThemeProvider";
 import ActionMenu from "@/components/ActionMenu";
 import Header from "@/components/Header";
 
-export default function HomePage() {
+export default function Calendar() {
   const { theme } = useAppTheme();
 
   const handlePhotoLibrary = () => {

@@ -1,8 +1,8 @@
 import React from "react";
 import { StyleSheet } from "react-native";
-import { TextInput, HelperText, Button, useTheme } from "react-native-paper";
+import { TextInput, HelperText, Button } from "react-native-paper";
 import { Text } from "react-native-paper";
-
+import { useAppTheme } from "@/theme/ThemeProvider";
 interface PhoneNumberInputProps {
   value: string;
   onChangeText: (text: string) => void;
@@ -20,7 +20,7 @@ export default function PhoneNumberInput({
   onChangePhoneNumber,
   showChangeButton,
 }: PhoneNumberInputProps) {
-  const theme = useTheme();
+  const { theme } = useAppTheme();
 
   return (
     <>
