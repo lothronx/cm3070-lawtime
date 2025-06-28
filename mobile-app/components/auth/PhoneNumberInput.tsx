@@ -36,6 +36,7 @@ export default function PhoneNumberInput({
         error={!!error}
         disabled={disabled}
         placeholderTextColor={theme.colors.backdrop}
+        left={<TextInput.Affix text="+86 " />}
       />
       <HelperText type="error" visible={!!error}>
         {error}

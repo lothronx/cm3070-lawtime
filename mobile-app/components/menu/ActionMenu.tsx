@@ -14,10 +14,10 @@ import Animated, {
   WithSpringConfig,
   withTiming,
 } from "react-native-reanimated";
-import FullScreenOverlay from "@/components/FullScreenOverlay";
-import ListeningIndicator from "@/components/ListeningIndicator";
+import FullScreenOverlay from "@/components/menu/FullScreenOverlay";
+import ListeningIndicator from "@/components/menu/ListeningIndicator";
 import ErrorDialog from "@/components/ErrorDialog";
-import CameraOptionsModal from "@/components/CameraOptionsModal";
+import CameraOptionsModal from "@/components/menu/CameraOptionsModal";
 
 const DURATION = 300;
 const TRANSLATE_Y = -80;

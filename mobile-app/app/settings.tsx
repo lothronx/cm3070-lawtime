@@ -2,8 +2,8 @@ import React, { useState } from "react";
 import { View, StyleSheet } from "react-native";
 import { useAppTheme } from "@/theme/ThemeProvider";
 import Header from "@/components/Header";
-import AlertTimePicker from "@/components/AlertTimePicker";
-import LogoutSection from "@/components/LogoutSection";
+import AlertTimePicker from "@/components/settings/AlertTimePicker";
+import LogoutSection from "@/components/settings/LogoutSection";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 export default function Settings() {
