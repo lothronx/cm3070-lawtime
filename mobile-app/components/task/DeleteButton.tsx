@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { StyleSheet, Alert } from "react-native";
+import { StyleSheet, Alert, Keyboard } from "react-native";
 import { Button } from "react-native-paper";
 import { useAppTheme, SPACING, BORDER_RADIUS } from "@/theme/ThemeProvider";
 
@@ -21,6 +21,7 @@ const DeleteButton: React.FC<DeleteButtonProps> = ({
   const { theme } = useAppTheme();
 
   const handlePress = () => {
+    Keyboard.dismiss();
     Alert.alert(
       confirmTitle,
       confirmMessage,

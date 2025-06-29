@@ -1,5 +1,5 @@
 import React from "react";
-import { StyleSheet } from "react-native";
+import { StyleSheet, Keyboard } from "react-native";
 import { Button } from "react-native-paper";
 import { SPACING, BORDER_RADIUS } from "@/theme/ThemeProvider";
 
@@ -10,10 +10,15 @@ interface SaveButtonProps {
 }
 
 const SaveButton: React.FC<SaveButtonProps> = ({ onPress, loading = false, title = "Save" }) => {
+  const handlePress = () => {
+    Keyboard.dismiss();
+    onPress();
+  };
+
   return (
     <Button
       mode="contained"
-      onPress={onPress}
+      onPress={handlePress}
       loading={loading}
       disabled={loading}
       style={styles.button}

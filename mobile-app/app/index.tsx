@@ -1,6 +1,5 @@
-import React, { useState } from "react";
-import { View, ScrollView, StyleSheet } from "react-native";
-import { SafeAreaProvider } from "react-native-safe-area-context";
+import React, { useState, useRef } from "react";
+import { View, ScrollView, StyleSheet, KeyboardAvoidingView, Platform } from "react-native";
 import { Snackbar } from "react-native-paper";
 import { useForm } from "react-hook-form";
 import Header from "@/components/Header";
@@ -14,14 +13,19 @@ import { useAppTheme, SPACING } from "@/theme/ThemeProvider";
 
 interface TaskFormData {
   title: string;
-  client: string;
+  client: string | null;
   datetime: Date | null;
+  location: string | null;
 }
 
 export default function App() {
   const { theme } = useAppTheme();
   const [snackbarVisible, setSnackbarVisible] = useState(false);
   const [snackbarMessage, setSnackbarMessage] = useState("");
+  
+  // Refs for focus chaining
+  const titleInputRef = useRef<any>(null);
+  const clientInputRef = useRef<any>(null);
 
   // Screen mode state - for demo purposes
   const [isAIFlow, setIsAIFlow] = useState(false); // Set to false to test Edit mode
@@ -37,8 +41,9 @@ export default function App() {
   } = useForm<TaskFormData>({
     defaultValues: {
       title: "",
-      client: "",
+      client: null,
       datetime: null,
+      location: null,
     },
     mode: "onBlur", // Only validate after user leaves field
   });
@@ -121,40 +126,55 @@ export default function App() {
   };
 
   return (
-    <SafeAreaProvider>
-      <View style={[styles.container, { backgroundColor: theme.colors.background }]}>
-        <Header
-          title={isEditMode ? "Edit Task" : "New Task"}
-          variant="modal"
-          stackIndex={isAIFlow ? currentTaskIndex : undefined}
-          stackTotal={isAIFlow ? totalTasks : undefined}
+    <KeyboardAvoidingView 
+      style={[styles.container, { backgroundColor: theme.colors.background }]}
+      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+      keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 20}
+    >
+      <Header
+        title={isEditMode ? "Edit Task" : "New Task"}
+        variant="modal"
+        stackIndex={isAIFlow ? currentTaskIndex : undefined}
+        stackTotal={isAIFlow ? totalTasks : undefined}
+      />
+      <ScrollView
+        style={styles.scrollView}
+        contentContainerStyle={styles.scrollContent}
+        showsVerticalScrollIndicator={true}
+        keyboardShouldPersistTaps="handled"
+        keyboardDismissMode="on-drag">
+        <TitleInput 
+          control={control} 
+          name="title" 
+          error={errors.title}
+          ref={titleInputRef}
+          onSubmitEditing={() => clientInputRef.current?.focus()} 
         />
-        <ScrollView
-          style={styles.scrollView}
-          contentContainerStyle={styles.scrollContent}
-          showsVerticalScrollIndicator={false}>
-          <TitleInput control={control} name="title" error={errors.title} />
-          <ClientAutocompleteInput control={control} name="client" error={errors.client} />
-          <DateTimeInput control={control} name="datetime" error={errors.datetime} />
-          <View style={isAIFlow ? styles.buttonRow : styles.buttonSingle}>
-            <SaveButton onPress={handleSavePress} loading={isSubmitting} />
-            {isAIFlow && <DiscardButton onPress={handleDiscardPress} loading={isSubmitting} />}
-          </View>
-          {isEditMode && <DeleteButton onPress={handleDeletePress} loading={isSubmitting} />}
-        </ScrollView>
-        <Snackbar
-          visible={snackbarVisible}
-          onDismiss={() => setSnackbarVisible(false)}
-          duration={3000}
-          style={{
-            backgroundColor: snackbarMessage.includes("successfully")
-              ? theme.colors.primary
-              : theme.colors.error,
-          }}>
-          {snackbarMessage}
-        </Snackbar>
-      </View>
-    </SafeAreaProvider>
+        <ClientAutocompleteInput 
+          control={control} 
+          name="client" 
+          error={errors.client}
+          ref={clientInputRef}
+        />
+        <DateTimeInput control={control} name="datetime" error={errors.datetime} />
+        <View style={isAIFlow ? styles.buttonRow : styles.buttonSingle}>
+          <SaveButton onPress={handleSavePress} loading={isSubmitting} />
+          {isAIFlow && <DiscardButton onPress={handleDiscardPress} loading={isSubmitting} />}
+        </View>
+        {isEditMode && <DeleteButton onPress={handleDeletePress} loading={isSubmitting} />}
+      </ScrollView>
+      <Snackbar
+        visible={snackbarVisible}
+        onDismiss={() => setSnackbarVisible(false)}
+        duration={3000}
+        style={{
+          backgroundColor: snackbarMessage.includes("successfully")
+            ? theme.colors.secondary
+            : theme.colors.error,
+        }}>
+        {snackbarMessage}
+      </Snackbar>
+    </KeyboardAvoidingView>
   );
 }
 
