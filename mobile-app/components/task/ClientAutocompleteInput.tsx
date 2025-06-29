@@ -106,7 +106,8 @@ const ClientAutocompleteInput = forwardRef<any, ClientAutocompleteInputProps>(
                 }}
                 onFocus={() => {
                   setShowDropdown(true);
-                  setSearchQuery(value);
+                  setSearchQuery(value || "");
+                  filterClients(value || "");
                 }}
                 onBlur={() => {
                   // Handle null/empty gracefully for database
