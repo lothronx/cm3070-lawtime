@@ -5,6 +5,7 @@ import { useForm } from "react-hook-form";
 import Header from "@/components/Header";
 import TitleInput from "@/components/task/TitleInput";
 import ClientAutocompleteInput from "@/components/task/ClientAutocompleteInput";
+import LocationInput from "@/components/task/LocationInput";
 import DateTimeInput from "@/components/task/DateTimeInput";
 import SaveButton from "@/components/task/SaveButton";
 import DiscardButton from "@/components/task/DiscardButton";
@@ -22,7 +23,7 @@ export default function App() {
   const { theme } = useAppTheme();
   const [snackbarVisible, setSnackbarVisible] = useState(false);
   const [snackbarMessage, setSnackbarMessage] = useState("");
-  
+
   // Refs for focus chaining
   const titleInputRef = useRef<any>(null);
   const clientInputRef = useRef<any>(null);
@@ -126,11 +127,10 @@ export default function App() {
   };
 
   return (
-    <KeyboardAvoidingView 
+    <KeyboardAvoidingView
       style={[styles.container, { backgroundColor: theme.colors.background }]}
-      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-      keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 20}
-    >
+      behavior={Platform.OS === "ios" ? "padding" : "height"}
+      keyboardVerticalOffset={Platform.OS === "ios" ? 0 : 20}>
       <Header
         title={isEditMode ? "Edit Task" : "New Task"}
         variant="modal"
@@ -143,20 +143,22 @@ export default function App() {
         showsVerticalScrollIndicator={true}
         keyboardShouldPersistTaps="handled"
         keyboardDismissMode="on-drag">
-        <TitleInput 
-          control={control} 
-          name="title" 
+        <TitleInput
+          control={control}
+          name="title"
           error={errors.title}
           ref={titleInputRef}
-          onSubmitEditing={() => clientInputRef.current?.focus()} 
+          onSubmitEditing={() => clientInputRef.current?.focus()}
         />
-        <ClientAutocompleteInput 
-          control={control} 
-          name="client" 
+        <ClientAutocompleteInput
+          control={control}
+          name="client"
           error={errors.client}
           ref={clientInputRef}
         />
+
         <DateTimeInput control={control} name="datetime" error={errors.datetime} />
+        <LocationInput control={control} name="location" error={errors.location} />
         <View style={isAIFlow ? styles.buttonRow : styles.buttonSingle}>
           <SaveButton onPress={handleSavePress} loading={isSubmitting} />
           {isAIFlow && <DiscardButton onPress={handleDiscardPress} loading={isSubmitting} />}
