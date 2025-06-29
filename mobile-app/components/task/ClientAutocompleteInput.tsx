@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, forwardRef, useCallback } from "react";
 import { View, StyleSheet, ScrollView, Pressable } from "react-native";
 import { TextInput, Text, Card } from "react-native-paper";
 import { Control, Controller, FieldError } from "react-hook-form";
@@ -45,189 +45,148 @@ interface ClientAutocompleteInputProps {
   control: Control<any>;
   name: string;
   error?: FieldError;
-  clients?: Client[]; // Optional prop to override mock data
+  clients?: Client[];
+  onSubmitEditing?: () => void;
 }
 
-export default function ClientAutocompleteInput({
-  control,
-  name,
-  error,
-  clients = MOCK_CLIENTS,
-}: ClientAutocompleteInputProps) {
-  const { theme } = useAppTheme();
-  const [isFocused, setIsFocused] = useState(false);
-  const [showDropdown, setShowDropdown] = useState(false);
-  const [searchQuery, setSearchQuery] = useState("");
-  const [filteredClients, setFilteredClients] = useState<Client[]>([]);
+const ClientAutocompleteInput = forwardRef<any, ClientAutocompleteInputProps>(
+  ({ control, name, error, clients = MOCK_CLIENTS, onSubmitEditing }, ref) => {
+    const { theme } = useAppTheme();
+    const [showDropdown, setShowDropdown] = useState(false);
+    const [searchQuery, setSearchQuery] = useState("");
+    const [filteredClients, setFilteredClients] = useState<Client[]>([]);
 
-  const sanitizeInput = (text: string): string => {
-    // Remove potentially dangerous characters and limit length
-    return text
-      .replace(/[<>'"&;]/g, "") // Remove HTML/SQL injection chars
-      .replace(/\s+/g, " ") // Normalize whitespace
-      .trim()
-      .substring(0, 100); // Limit to 100 characters
-  };
+    const sanitizeInput = (text: string): string => {
+      // Remove potentially dangerous characters
+      return text
+        .replace(/[<>"'&;`\\|{}[\]]/g, "") // Remove HTML/SQL injection chars
+        .replace(/[\r\n\t]/g, "") // Remove line breaks and tabs
+        .replace(/[\u200B-\u200D\uFEFF]/g, "") // Remove zero-width chars
+        .replace(/[\x00-\x08\x0B\x0C\x0E-\x1F\x7F]/g, "") // Remove control chars
+        .replace(/\s+/g, " ") // Normalize remaining whitespace
+        .trim();
+    };
 
-  const filterClients = (query: string) => {
-    if (!query.trim()) {
-      setFilteredClients([]);
-      return;
-    }
+    const filterClients = useCallback(
+      (query: string) => {
+        if (!query) {
+          setFilteredClients(clients);
+          return;
+        }
 
-    const filtered = clients
-      .filter((client) => client.client_name.toLowerCase().includes(query.toLowerCase()))
-      .slice(0, 5); // Limit to 5 suggestions
+        const filtered = clients.filter((client) =>
+          client.client_name.toLowerCase().includes(query.toLowerCase())
+        );
 
-    setFilteredClients(filtered);
-  };
+        setFilteredClients(filtered);
+      },
+      [clients]
+    );
 
-  useEffect(() => {
-    filterClients(searchQuery);
-  }, [searchQuery, clients]);
+    useEffect(() => {
+      filterClients(searchQuery);
+    }, [searchQuery, clients, filterClients]);
 
-  const hasError = Boolean(error);
+    const hasError = Boolean(error);
 
-  return (
-    <View style={styles.container}>
-      <Controller
-        control={control}
-        name={name}
-        rules={{
-          required: "Client is required",
-          minLength: {
-            value: 2,
-            message: "Client name must be at least 2 characters",
-          },
-          maxLength: {
-            value: 100,
-            message: "Client name must be less than 100 characters",
-          },
-          validate: (value: string) => {
-            const trimmed = value?.trim();
-            if (!trimmed) return "Client is required";
-            if (trimmed.length < 2) return "Client name must be at least 2 characters";
-            return true;
-          },
-        }}
-        render={({ field: { onChange, onBlur, value } }) => (
-          <View>
-            <TextInput
-              label="Client"
-              value={value || ""}
-              onChangeText={(text) => {
-                const sanitized = sanitizeInput(text);
-                onChange(sanitized);
-                setSearchQuery(sanitized);
-                setShowDropdown(sanitized.length > 0);
-              }}
-              onFocus={() => {
-                setIsFocused(true);
-                if (value && value.length > 0) {
+    return (
+      <View style={styles.container}>
+        <Controller
+          control={control}
+          name={name}
+          render={({ field: { onChange, onBlur, value } }) => (
+            <View>
+              <TextInput
+                label="Client"
+                value={value || null}
+                onChangeText={(text) => {
+                  onChange(text);
+                  setShowDropdown(true);
+                  setSearchQuery(text);
+                }}
+                onFocus={() => {
                   setShowDropdown(true);
                   setSearchQuery(value);
-                }
-              }}
-              onBlur={() => {
-                setIsFocused(false);
-                // Delay hiding dropdown to allow selection
-                setTimeout(() => {
-                  setShowDropdown(false);
-                }, 150);
-                onBlur();
-              }}
-              mode="outlined"
-              error={hasError}
-              multiline={false}
-              maxLength={100}
-              autoCapitalize="words"
-              autoCorrect={false}
-              returnKeyType="next"
-              style={[
-                styles.input,
-                {
+                }}
+                onBlur={() => {
+                  // Handle null/empty gracefully for database
+                  const sanitized = value?.trim() ? sanitizeInput(value) : null;
+                  onChange(sanitized);
+                  // Delay hiding dropdown to allow selection
+                  setTimeout(() => {
+                    setShowDropdown(false);
+                  }, 150);
+                  onBlur();
+                }}
+                mode="outlined"
+                error={hasError}
+                multiline={false}
+                maxLength={100}
+                autoCapitalize="words"
+                autoCorrect={false}
+                returnKeyType="next"
+                onSubmitEditing={onSubmitEditing}
+                ref={ref}
+                style={{
                   backgroundColor: theme.colors.surface,
-                },
-              ]}
-              outlineStyle={{
-                borderRadius: BORDER_RADIUS.md,
-              }}
-              theme={{
-                colors: {
-                  primary: theme.colors.primary,
-                  error: theme.colors.error,
-                  outline: hasError ? theme.colors.error : theme.colors.outline,
-                },
-              }}
-              right={
-                showDropdown && filteredClients.length > 0 ? (
-                  <TextInput.Icon icon="chevron-down" />
-                ) : null
-              }
-            />
+                }}
+                right={
+                  showDropdown && filteredClients.length > 0 ? (
+                    <TextInput.Icon icon="chevron-down" />
+                  ) : null
+                }
+              />
 
-            {showDropdown && filteredClients.length > 0 && (
-              <Card
-                style={[
-                  styles.dropdown,
-                  {
-                    backgroundColor: theme.colors.surface,
-                    borderColor: theme.colors.outline,
-                  },
-                ]}>
-                <ScrollView
-                  style={styles.dropdownList}
-                  keyboardShouldPersistTaps="handled"
-                  nestedScrollEnabled={true}>
-                  {filteredClients.map((item) => (
-                    <Pressable
-                      key={item.id.toString()}
-                      style={[
-                        styles.dropdownItem,
-                        { borderBottomColor: theme.colors.surfaceVariant },
-                      ]}
-                      onPress={() => {
-                        onChange(item.client_name);
-                        setShowDropdown(false);
-                        setSearchQuery(item.client_name);
-                      }}>
-                      <Text style={[styles.clientName, { color: theme.colors.onSurface }]}>
-                        {item.client_name}
-                      </Text>
-                    </Pressable>
-                  ))}
-                </ScrollView>
-              </Card>
-            )}
-          </View>
+              {showDropdown && filteredClients.length > 0 && (
+                <Card style={[styles.dropdown, { backgroundColor: theme.colors.surface }]}>
+                  <ScrollView
+                    style={styles.dropdownList}
+                    keyboardShouldPersistTaps="handled"
+                    nestedScrollEnabled={true}>
+                    {filteredClients.map((item) => (
+                      <Pressable
+                        key={item.id.toString()}
+                        style={styles.dropdownItem}
+                        onPress={() => {
+                          onChange(item.client_name);
+                          setShowDropdown(false);
+                          setSearchQuery(item.client_name);
+                        }}>
+                        <Text style={styles.clientName}>{item.client_name}</Text>
+                      </Pressable>
+                    ))}
+                  </ScrollView>
+                </Card>
+              )}
+            </View>
+          )}
+        />
+
+        {hasError && error?.message && (
+          <Text style={[styles.errorText, { color: theme.colors.error }]}>{error.message}</Text>
         )}
-      />
+      </View>
+    );
+  }
+);
 
-      {hasError && error?.message && (
-        <Text style={[styles.errorText, { color: theme.colors.error }]}>{error.message}</Text>
-      )}
-    </View>
-  );
-}
+ClientAutocompleteInput.displayName = "ClientAutocompleteInput";
+
+export default ClientAutocompleteInput;
 
 const styles = StyleSheet.create({
   container: {
     marginBottom: SPACING.md,
-    zIndex: 1000, // Ensure dropdown appears above other elements
-  },
-  input: {
-    fontSize: 16,
+    zIndex: 2000,
   },
   dropdown: {
     position: "absolute",
     top: "100%",
     left: 0,
     right: 0,
-    zIndex: 1000,
     maxHeight: 200,
-    borderWidth: StyleSheet.hairlineWidth,
+    borderRadius: BORDER_RADIUS.md,
     elevation: 4,
-    shadowColor: "#000",
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.1,
     shadowRadius: 4,
@@ -238,11 +197,9 @@ const styles = StyleSheet.create({
   dropdownItem: {
     paddingHorizontal: SPACING.md,
     paddingVertical: SPACING.sm,
-    borderBottomWidth: StyleSheet.hairlineWidth,
   },
   clientName: {
     fontSize: 16,
-    fontWeight: "400",
   },
   errorText: {
     fontSize: 12,
