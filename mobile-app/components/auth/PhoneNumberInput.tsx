@@ -25,9 +25,9 @@ export default function PhoneNumberInput({
   return (
     <>
       <TextInput
-        mode="flat"
+        mode="outlined"
         label="Phone Number"
-        placeholder="Enter 11-digit phone number"
+        placeholder="Enter your phone number"
         value={value}
         onChangeText={onChangeText}
         keyboardType="number-pad"

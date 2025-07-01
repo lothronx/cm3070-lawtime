@@ -1,192 +1,187 @@
-import React, { useRef, useState } from "react";
+import React, { forwardRef, useState, useEffect } from "react";
 import { View, StyleSheet } from "react-native";
-import { TextInput, IconButton } from "react-native-paper";
+import { TextInput, Text } from "react-native-paper";
 import { Control, Controller, FieldError } from "react-hook-form";
-import { TextInputMask } from "react-native-masked-text";
-import { useAppTheme, SPACING, BORDER_RADIUS } from "@/theme/ThemeProvider";
+import { useAppTheme, SPACING } from "@/theme/ThemeProvider";
 
 interface DateTimeInputProps {
   control: Control<any>;
   name: string;
   error?: FieldError;
+  onSubmitEditing?: () => void;
 }
 
-const DateTimeInput: React.FC<DateTimeInputProps> = ({ control, name, error }) => {
-  const { theme } = useAppTheme();
-  const dateRef = useRef<TextInputMask>(null);
-  const timeRef = useRef<TextInputMask>(null);
-  const [dateText, setDateText] = useState("");
-  const [timeText, setTimeText] = useState("");
+const DateTimeInput = forwardRef<any, DateTimeInputProps>(
+  ({ control, name, error, onSubmitEditing }, ref) => {
+    const { theme } = useAppTheme();
 
-  const formatDate = (dateValue: Date | null): string => {
-    if (!dateValue) return "";
-    const day = String(dateValue.getDate()).padStart(2, '0');
-    const month = String(dateValue.getMonth() + 1).padStart(2, '0');
-    const year = dateValue.getFullYear();
-    return `${day}/${month}/${year}`;
-  };
+    const [displayValue, setDisplayValue] = useState("");
 
-  const formatTime = (dateValue: Date | null): string => {
-    if (!dateValue) return "";
-    const hours = String(dateValue.getHours()).padStart(2, '0');
-    const minutes = String(dateValue.getMinutes()).padStart(2, '0');
-    return `${hours}:${minutes}`;
-  };
+    const formatDateInput = (text: string): string => {
+      // Remove all non-digits
+      const digits = text.replace(/\D/g, "");
 
-  const getDefaultDateTime = (): Date => {
-    const today = new Date();
-    today.setHours(9, 0, 0, 0); // Set to 9:00 AM
-    return today;
-  };
+      if (digits.length === 0) return "";
 
-  const combineDateTime = (dateStr: string, timeStr: string): Date | null => {
-    // If both fields are empty, return null (optional field)
-    if (!dateStr && !timeStr) return null;
-    
-    const defaultDate = getDefaultDateTime();
-    
-    // Simple parsing without relying on moment objects immediately
-    let finalDate = new Date(defaultDate);
-    
-    // Parse date if provided and complete
-    if (dateStr && dateStr.length === 10) { // DD/MM/YYYY
-      const [day, month, year] = dateStr.split('/').map(num => parseInt(num, 10));
-      if (day && month && year && year >= 1900 && year <= 2100) {
-        finalDate = new Date(year, month - 1, day, 9, 0); // Default to 9 AM
+      // Format based on length with smart parsing for single digit months/days
+      if (digits.length <= 4) {
+        return digits; // Just year: "2025"
+      } else if (digits.length === 5) {
+        // Could be "20258" (2025/8) or "20251" (2025/1)
+        const year = digits.slice(0, 4);
+        const month = digits.slice(4);
+        return `${year}/${month}`;
+      } else if (digits.length === 6) {
+        // Could be "202508" (2025/08) or "202581" (2025/8/1)
+        const year = digits.slice(0, 4);
+        const monthDay = digits.slice(4);
+
+        // Check if last digit could be a valid single-digit day
+        const potentialMonth = parseInt(monthDay.slice(0, 1));
+        const potentialDay = parseInt(monthDay.slice(1));
+
+        if (potentialMonth >= 1 && potentialMonth <= 9 && potentialDay >= 1 && potentialDay <= 31) {
+          // Likely format: 202581 -> 2025/8/1
+          return `${year}/${potentialMonth}/${potentialDay}`;
+        } else {
+          // Standard format: 202508 -> 2025/08
+          return `${year}/${monthDay}`;
+        }
+      } else if (digits.length === 7) {
+        // Could be "2025829" (2025/8/29) or "2025121" (2025/12/1)
+        const year = digits.slice(0, 4);
+        const rest = digits.slice(4); // "829" or "121"
+
+        // Try double digit month first: 121 -> 12/1 (more likely for 10-12 months)
+        const doubleMonth = parseInt(rest.slice(0, 2));
+        const singleDay = parseInt(rest.slice(2));
+
+        if (doubleMonth >= 10 && doubleMonth <= 12 && singleDay >= 1 && singleDay <= 31) {
+          return `${year}/${rest.slice(0, 2)}/${singleDay}`;
+        }
+
+        // Try single digit month: 829 -> 8/29
+        const singleMonth = parseInt(rest.slice(0, 1));
+        const dayPart = rest.slice(1);
+
+        if (singleMonth >= 1 && singleMonth <= 9 && dayPart.length === 2) {
+          const day = parseInt(dayPart);
+          if (day >= 1 && day <= 31) {
+            return `${year}/${singleMonth}/${dayPart}`;
+          }
+        }
+
+        // Fallback to double digit month interpretation
+        return `${year}/${rest.slice(0, 2)}/${rest.slice(2)}`;
+      } else {
+        // Standard format: "20250101" -> "2025/01/01"
+        return `${digits.slice(0, 4)}/${digits.slice(4, 6)}/${digits.slice(6, 8)}`;
       }
-    }
-    
-    // Parse time if provided and complete
-    if (timeStr && timeStr.length === 5) { // HH:MM
-      const [hours, minutes] = timeStr.split(':').map(num => parseInt(num, 10));
-      if (hours >= 0 && hours <= 23 && minutes >= 0 && minutes <= 59) {
-        finalDate.setHours(hours, minutes);
+    };
+
+    const parseDate = (dateStr: string): Date | null => {
+      if (!dateStr) return null;
+
+      // Handle partial dates: "2025", "2025/8", "2025/8/29"
+      const parts = dateStr.split("/");
+      if (parts.length < 1 || parts.length > 3) return null;
+
+      const year = parseInt(parts[0]);
+      const month = parts.length >= 2 ? parseInt(parts[1]) : 1;
+      const day = parts.length >= 3 ? parseInt(parts[2]) : 1;
+
+      // Basic validation
+      if (isNaN(year) || isNaN(month) || isNaN(day)) return null;
+
+      const date = new Date(year, month - 1, day, 9, 0, 0); // Default to 9 AM
+
+      // Check if date is valid (handles invalid dates like Feb 31)
+      if (date.getFullYear() !== year || date.getMonth() !== month - 1 || date.getDate() !== day) {
+        return null;
       }
-    }
-    
-    return finalDate;
-  };
 
-  const hasError = Boolean(error);
+      return date;
+    };
 
-  return (
-    <View style={styles.container}>
-      <Controller
-        control={control}
-        name={name}
-        // No required validation - fields are optional
-        render={({ field: { onChange, onBlur, value } }) => {
-          const handleClear = () => {
-            setDateText("");
-            setTimeText("");
-            onChange(null);
-          };
+    const formatDateFromObject = (date: Date): string => {
+      const year = date.getFullYear();
+      const month = (date.getMonth() + 1).toString().padStart(2, "0");
+      const day = date.getDate().toString().padStart(2, "0");
 
-          const hasValues = dateText || timeText;
+      return `${year}/${month}/${day}`;
+    };
 
-          return (
-            <>
-              <View style={styles.inputRow}>
-                <View style={styles.dateContainer}>
-                  <TextInput
-                    label="Date"
-                    mode="outlined"
-                    error={hasError}
-                    render={(props) => (
-                      <TextInputMask
-                        {...props}
-                        ref={dateRef}
-                        type="datetime"
-                        options={{
-                          format: 'DD/MM/YYYY'
-                        }}
-                        value={dateText}
-                        onChangeText={(text) => {
-                          setDateText(text);
-                          const combined = combineDateTime(text, timeText);
-                          onChange(combined);
-                        }}
-                        placeholder="DD/MM/YYYY"
-                        keyboardType="numeric"
-                        returnKeyType="next"
-                      />
-                    )}
-                    style={[
-                      styles.input,
-                      { backgroundColor: theme.colors.surface }
-                    ]}
-                    outlineStyle={{
-                      borderRadius: BORDER_RADIUS.md,
-                    }}
-                    theme={{
-                      colors: {
-                        primary: theme.colors.primary,
-                        error: theme.colors.error,
-                        outline: hasError ? theme.colors.error : theme.colors.outline,
-                      }
-                    }}
-                  />
-                </View>
+    const hasError = Boolean(error);
 
-                <View style={styles.timeContainer}>
-                  <TextInput
-                    label="Time"
-                    mode="outlined"
-                    error={hasError}
-                    render={(props) => (
-                      <TextInputMask
-                        {...props}
-                        ref={timeRef}
-                        type="datetime"
-                        options={{
-                          format: 'HH:mm'
-                        }}
-                        value={timeText}
-                        onChangeText={(text) => {
-                          setTimeText(text);
-                          const combined = combineDateTime(dateText, text);
-                          onChange(combined);
-                        }}
-                        placeholder="09:00"
-                        keyboardType="numeric"
-                        returnKeyType="done"
-                      />
-                    )}
-                    style={[
-                      styles.input,
-                      { backgroundColor: theme.colors.surface }
-                    ]}
-                    outlineStyle={{
-                      borderRadius: BORDER_RADIUS.md,
-                    }}
-                    theme={{
-                      colors: {
-                        primary: theme.colors.primary,
-                        error: theme.colors.error,
-                        outline: hasError ? theme.colors.error : theme.colors.outline,
-                      }
-                    }}
-                  />
-                </View>
+    return (
+      <View style={styles.container}>
+        <Controller
+          control={control}
+          name={name}
+          rules={{
+            validate: (value: Date | null) => {
+              if (!value) return true; // Allow empty/null
 
-                {hasValues && (
-                  <View style={styles.clearButtonContainer}>
-                    <IconButton
-                      icon="close-circle"
-                      size={20}
-                      iconColor={theme.colors.outline}
-                      onPress={handleClear}
-                    />
-                  </View>
-                )}
-              </View>
-            </>
-          );
-        }}
-      />
-    </View>
-  );
-};
+              // Value is already a Date object, just check if it's valid
+              if (!(value instanceof Date) || isNaN(value.getTime())) {
+                return "Please enter a valid date (e.g., 20250101)";
+              }
+
+              return true;
+            },
+          }}
+          render={({ field: { onChange, onBlur, value } }) => {
+            // Get current display value - use form value if displayValue is empty
+            const currentDisplay = displayValue || (value ? formatDateFromObject(value) : "");
+
+            return (
+              <TextInput
+                label="Date"
+                placeholder="20250101"
+                placeholderTextColor={theme.colors.backdrop}
+                value={displayValue}
+                onChangeText={(text) => {
+                  const formatted = formatDateInput(text);
+                  setDisplayValue(formatted);
+                  // Don't update form value during typing
+                }}
+                onBlur={() => {
+                  // Convert display string to Date object and update form
+                  const dateObj = parseDate(displayValue);
+                  onChange(dateObj);
+                  
+                  // Normalize display format if we have a valid date
+                  if (dateObj) {
+                    const normalized = formatDateFromObject(dateObj);
+                    setDisplayValue(normalized);
+                  }
+                  
+                  onBlur();
+                }}
+                mode="outlined"
+                error={hasError}
+                multiline={false}
+                maxLength={10}
+                keyboardType="numeric"
+                autoCapitalize="none"
+                autoCorrect={false}
+                returnKeyType="done"
+                onSubmitEditing={onSubmitEditing}
+                ref={ref}
+                style={{ backgroundColor: theme.colors.surface }}
+              />
+            );
+          }}
+        />
+        {hasError && error?.message && (
+          <Text style={[styles.errorText, { color: theme.colors.error }]}>{error.message}</Text>
+        )}
+      </View>
+    );
+  }
+);
+
+DateTimeInput.displayName = "DateTimeInput";
 
 export default DateTimeInput;
 
@@ -194,21 +189,9 @@ const styles = StyleSheet.create({
   container: {
     marginBottom: SPACING.md,
   },
-  inputRow: {
-    flexDirection: "row",
-    alignItems: "flex-start",
-    gap: SPACING.sm,
-  },
-  dateContainer: {
-    flex: 2,
-  },
-  timeContainer: {
-    flex: 1,
-  },
-  clearButtonContainer: {
-    paddingTop: SPACING.xs,
-  },
-  input: {
-    fontSize: 16,
+  errorText: {
+    fontSize: 12,
+    marginTop: SPACING.xs,
+    marginLeft: SPACING.sm,
   },
 });
