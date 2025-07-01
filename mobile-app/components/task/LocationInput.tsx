@@ -1,7 +1,7 @@
 import React, { forwardRef } from "react";
 import { View, StyleSheet } from "react-native";
 import { TextInput, Text } from "react-native-paper";
-import { Control, Controller, FieldError } from "react-hook-form";
+import { Control, useController, FieldError } from "react-hook-form";
 import { useAppTheme, SPACING } from "@/theme/ThemeProvider";
 
 interface LocationInputProps {
@@ -26,43 +26,44 @@ const LocationInput = forwardRef<any, LocationInputProps>(
         .trim();
     };
 
+    const {
+      field: { onChange, onBlur, value }
+    } = useController({
+      control,
+      name,
+      rules: {
+        validate: (value: string) => {
+          if (!value?.trim()) return true; // Allow empty/null
+          const trimmed = value.trim();
+          if (trimmed.length > 200) return "Location must be at most 200 characters";
+          return true;
+        },
+      }
+    });
+
     const hasError = Boolean(error);
 
     return (
       <View style={styles.container}>
-        <Controller
-          control={control}
-          name={name}
-          rules={{
-            validate: (value: string) => {
-              if (!value?.trim()) return true; // Allow empty/null
-              const trimmed = value.trim();
-              if (trimmed.length > 200) return "Location must be at most 200 characters";
-              return true;
-            },
+        <TextInput
+          label="Location"
+          value={value || ""}
+          onChangeText={onChange}
+          onBlur={() => {
+            // Handle null/empty gracefully for database
+            const sanitized = value?.trim() ? sanitizeInput(value) : null;
+            onChange(sanitized);
+            onBlur();
           }}
-          render={({ field: { onChange, onBlur, value } }) => (
-            <TextInput
-              label="Location"
-              value={value || ""}
-              onChangeText={onChange}
-              onBlur={() => {
-                // Handle null/empty gracefully for database
-                const sanitized = value?.trim() ? sanitizeInput(value) : null;
-                onChange(sanitized);
-                onBlur();
-              }}
-              mode="outlined"
-              error={hasError}
-              multiline={false}
-              maxLength={200}
-              autoCapitalize="words"
-              returnKeyType="done"
-              onSubmitEditing={onSubmitEditing}
-              ref={ref}
-              style={{ backgroundColor: theme.colors.surface }}
-            />
-          )}
+          mode="outlined"
+          error={hasError}
+          multiline={false}
+          maxLength={200}
+          autoCapitalize="words"
+          returnKeyType="done"
+          onSubmitEditing={onSubmitEditing}
+          ref={ref}
+          style={{ backgroundColor: theme.colors.surface }}
         />
         {hasError && error?.message && (
           <Text style={[styles.errorText, { color: theme.colors.error }]}>

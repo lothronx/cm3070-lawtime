@@ -1,7 +1,7 @@
 import React, { useState, useEffect, forwardRef, useCallback } from "react";
 import { View, StyleSheet, ScrollView, Pressable } from "react-native";
 import { TextInput, Text, Card } from "react-native-paper";
-import { Control, Controller, FieldError } from "react-hook-form";
+import { Control, useController, FieldError } from "react-hook-form";
 import { useAppTheme, SPACING, BORDER_RADIUS } from "@/theme/ThemeProvider";
 import { Database } from "@/types/supabase";
 
@@ -87,81 +87,82 @@ const ClientAutocompleteInput = forwardRef<any, ClientAutocompleteInputProps>(
       filterClients(searchQuery);
     }, [searchQuery, clients, filterClients]);
 
+    const {
+      field: { onChange, onBlur, value }
+    } = useController({
+      control,
+      name
+    });
+
     const hasError = Boolean(error);
 
     return (
       <View style={styles.container}>
-        <Controller
-          control={control}
-          name={name}
-          render={({ field: { onChange, onBlur, value } }) => (
-            <View>
-              <TextInput
-                label="Client"
-                value={value || null}
-                onChangeText={(text) => {
-                  onChange(text);
-                  setShowDropdown(true);
-                  setSearchQuery(text);
-                }}
-                onFocus={() => {
-                  setShowDropdown(true);
-                  setSearchQuery(value || "");
-                  filterClients(value || "");
-                }}
-                onBlur={() => {
-                  // Handle null/empty gracefully for database
-                  const sanitized = value?.trim() ? sanitizeInput(value) : null;
-                  onChange(sanitized);
-                  // Delay hiding dropdown to allow selection
-                  setTimeout(() => {
-                    setShowDropdown(false);
-                  }, 150);
-                  onBlur();
-                }}
-                mode="outlined"
-                error={hasError}
-                multiline={false}
-                maxLength={100}
-                autoCapitalize="words"
-                autoCorrect={false}
-                returnKeyType="next"
-                onSubmitEditing={onSubmitEditing}
-                ref={ref}
-                style={{
-                  backgroundColor: theme.colors.surface,
-                }}
-                right={
-                  showDropdown && filteredClients.length > 0 ? (
-                    <TextInput.Icon icon="chevron-down" />
-                  ) : null
-                }
-              />
+        <View>
+          <TextInput
+            label="Client"
+            value={value || null}
+            onChangeText={(text) => {
+              onChange(text);
+              setShowDropdown(true);
+              setSearchQuery(text);
+            }}
+            onFocus={() => {
+              setShowDropdown(true);
+              setSearchQuery(value || "");
+              filterClients(value || "");
+            }}
+            onBlur={() => {
+              // Handle null/empty gracefully for database
+              const sanitized = value?.trim() ? sanitizeInput(value) : null;
+              onChange(sanitized);
+              // Delay hiding dropdown to allow selection
+              setTimeout(() => {
+                setShowDropdown(false);
+              }, 150);
+              onBlur();
+            }}
+            mode="outlined"
+            error={hasError}
+            multiline={false}
+            maxLength={100}
+            autoCapitalize="words"
+            autoCorrect={false}
+            returnKeyType="next"
+            onSubmitEditing={onSubmitEditing}
+            ref={ref}
+            style={{
+              backgroundColor: theme.colors.surface,
+            }}
+            right={
+              showDropdown && filteredClients.length > 0 ? (
+                <TextInput.Icon icon="chevron-down" />
+              ) : null
+            }
+          />
 
-              {showDropdown && filteredClients.length > 0 && (
-                <Card style={[styles.dropdown, { backgroundColor: theme.colors.surface }]}>
-                  <ScrollView
-                    style={styles.dropdownList}
-                    keyboardShouldPersistTaps="handled"
-                    nestedScrollEnabled={true}>
-                    {filteredClients.map((item) => (
-                      <Pressable
-                        key={item.id.toString()}
-                        style={styles.dropdownItem}
-                        onPress={() => {
-                          onChange(item.client_name);
-                          setShowDropdown(false);
-                          setSearchQuery(item.client_name);
-                        }}>
-                        <Text style={styles.clientName}>{item.client_name}</Text>
-                      </Pressable>
-                    ))}
-                  </ScrollView>
-                </Card>
-              )}
-            </View>
+          {showDropdown && filteredClients.length > 0 && (
+            <Card style={[styles.dropdown, { backgroundColor: theme.colors.surface }]}>
+              <ScrollView
+                style={styles.dropdownList}
+                keyboardShouldPersistTaps="handled"
+                nestedScrollEnabled={true}>
+                {filteredClients.map((item) => (
+                  <Pressable
+                    key={item.id.toString()}
+                    style={styles.dropdownItem}
+                    onPress={() => {
+                      onChange(item.client_name);
+                      setShowDropdown(false);
+                      setSearchQuery(item.client_name);
+                    }}>
+                    <Text style={styles.clientName}>{item.client_name}</Text>
+                  </Pressable>
+                ))}
+              </ScrollView>
+            </Card>
           )}
-        />
+        </View>
 
         {hasError && error?.message && (
           <Text style={[styles.errorText, { color: theme.colors.error }]}>{error.message}</Text>

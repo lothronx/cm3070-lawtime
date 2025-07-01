@@ -208,8 +208,7 @@ const DateTimeInput = forwardRef<any, DateTimeInputProps>(
     };
 
     const {
-      field: { onChange, onBlur, value },
-      fieldState: { error: fieldError }
+      field: { onChange, onBlur, value }
     } = useController({
       control,
       name,

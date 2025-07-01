@@ -1,7 +1,7 @@
 import React, { forwardRef } from "react";
 import { View, StyleSheet } from "react-native";
 import { TextInput, Text } from "react-native-paper";
-import { Control, Controller, FieldError } from "react-hook-form";
+import { Control, useController, FieldError } from "react-hook-form";
 import { useAppTheme, SPACING } from "@/theme/ThemeProvider";
 
 interface TitleInputProps {
@@ -26,43 +26,44 @@ const TitleInput = forwardRef<any, TitleInputProps>(
         .trim();
     };
 
+    const {
+      field: { onChange, onBlur, value }
+    } = useController({
+      control,
+      name,
+      rules: {
+        required: "Title is required",
+        validate: (value: string) => {
+          const trimmed = value?.trim();
+          if (!trimmed) return "Title is required";
+          if (trimmed.length < 2) return "Title must be at least 2 characters";
+          if (trimmed.length > 100) return "Title must be at most 100 characters";
+          return true;
+        },
+      }
+    });
+
     const hasError = Boolean(error);
 
     return (
       <View style={styles.container}>
-        <Controller
-          control={control}
-          name={name}
-          rules={{
-            required: "Title is required",
-            validate: (value: string) => {
-              const trimmed = value?.trim();
-              if (!trimmed) return "Title is required";
-              if (trimmed.length < 2) return "Title must be at least 2 characters";
-              if (trimmed.length > 100) return "Title must be at most 100 characters";
-              return true;
-            },
+        <TextInput
+          label="*Title"
+          value={value || ""}
+          onChangeText={onChange}
+          onBlur={() => {
+            onChange(sanitizeInput(value || ""));
+            onBlur();
           }}
-          render={({ field: { onChange, onBlur, value } }) => (
-            <TextInput
-              label="*Title"
-              value={value || ""}
-              onChangeText={onChange}
-              onBlur={() => {
-                onChange(sanitizeInput(value || ""));
-                onBlur();
-              }}
-              mode="outlined"
-              error={hasError}
-              multiline={false}
-              maxLength={100}
-              autoCapitalize="words"
-              returnKeyType="next"
-              onSubmitEditing={onSubmitEditing}
-              ref={ref}
-              style={{backgroundColor: theme.colors.surface}}
-            />
-          )}
+          mode="outlined"
+          error={hasError}
+          multiline={false}
+          maxLength={100}
+          autoCapitalize="words"
+          returnKeyType="next"
+          onSubmitEditing={onSubmitEditing}
+          ref={ref}
+          style={{backgroundColor: theme.colors.surface}}
         />
         {hasError && error?.message && (
           <Text style={[styles.errorText, { color: theme.colors.error }]}>{error.message}</Text>
