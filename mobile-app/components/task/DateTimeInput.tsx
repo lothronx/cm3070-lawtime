@@ -93,7 +93,7 @@ const parseDate = (dateStr: string): Date | null => {
   if (month < 1 || month > 12) return null;
   if (day < 1 || day > 31) return null;
 
-  const date = new Date(year, month - 1, day, 9, 0, 0); // Default to 9 AM
+  const date = new Date(year, month - 1, day, 0, 0, 0); // No default time
 
   // Check if date is valid (handles invalid dates like Feb 31)
   if (date.getFullYear() !== year || date.getMonth() !== month - 1 || date.getDate() !== day) {
@@ -163,9 +163,15 @@ const parseTime = (timeStr: string): { hours: number; minutes: number } | null =
 };
 
 const formatTimeFromObject = (date: Date): string => {
-  const hours = date.getHours().toString().padStart(2, "0");
-  const minutes = date.getMinutes().toString().padStart(2, "0");
-  return `${hours}:${minutes}`;
+  const hours = date.getHours();
+  const minutes = date.getMinutes();
+  
+  // If it's midnight (00:00), return empty string so user can enter time directly
+  if (hours === 0 && minutes === 0) {
+    return "";
+  }
+  
+  return `${hours.toString().padStart(2, "0")}:${minutes.toString().padStart(2, "0")}`;
 };
 
 const DateTimeInput = forwardRef<any, DateTimeInputProps>(
@@ -189,6 +195,7 @@ const DateTimeInput = forwardRef<any, DateTimeInputProps>(
         return "Please enter a valid time (e.g., 0900 or 1400)";
       }
 
+      // Date without time is valid - database accepts null timestamps
       return true;
     }, [dateDisplayValue, timeDisplayValue]);
 
@@ -196,6 +203,9 @@ const DateTimeInput = forwardRef<any, DateTimeInputProps>(
 
     // Helper function to combine date and time into a single Date object
     const combineDateTime = (dateStr: string, timeStr: string): Date | null => {
+      // If no date provided, return null (database accepts null timestamps)
+      if (!dateStr) return null;
+      
       const dateObj = parseDate(dateStr);
       if (!dateObj) return null;
       
@@ -203,6 +213,7 @@ const DateTimeInput = forwardRef<any, DateTimeInputProps>(
       if (timeObj) {
         dateObj.setHours(timeObj.hours, timeObj.minutes, 0, 0);
       }
+      // If no time is provided, keep the date at 00:00:00 (midnight)
       
       return dateObj;
     };
@@ -220,14 +231,15 @@ const DateTimeInput = forwardRef<any, DateTimeInputProps>(
     // Initialize display values from form value
     useEffect(() => {
       if (value instanceof Date && !isNaN(value.getTime())) {
-        if (!dateDisplayValue) {
-          setDateDisplayValue(formatDateFromObject(value));
-        }
-        if (!timeDisplayValue) {
-          setTimeDisplayValue(formatTimeFromObject(value));
-        }
+        // Only set display values if they're empty (initial load)
+        setDateDisplayValue(prev => prev || formatDateFromObject(value));
+        setTimeDisplayValue(prev => prev || formatTimeFromObject(value));
+      } else if (value === null) {
+        // If form value is explicitly null, clear both display values
+        setDateDisplayValue("");
+        setTimeDisplayValue("");
       }
-    }, [value, dateDisplayValue, timeDisplayValue]);
+    }, [value]);
 
     return (
       <View style={styles.container}>
@@ -279,7 +291,7 @@ const DateTimeInput = forwardRef<any, DateTimeInputProps>(
           <View style={styles.timeContainer}>
             <TextInput
               label="Time"
-              placeholder="0900"
+              placeholder="1400"
               placeholderTextColor={theme.colors.backdrop}
               value={timeDisplayValue}
               onChangeText={(text) => {
