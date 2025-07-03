@@ -11,10 +11,11 @@ interface NoteInputProps {
   name: "note";
   error?: FieldError;
   onSubmitEditing?: () => void;
+  onFocus?: () => void;
 }
 
 const NoteInput = forwardRef<any, NoteInputProps>(
-  ({ control, name, error, onSubmitEditing }, ref) => {
+  ({ control, name, error, onSubmitEditing, onFocus }, ref) => {
     const { theme } = useAppTheme();
 
     // Memoized validation function
@@ -53,6 +54,7 @@ const NoteInput = forwardRef<any, NoteInputProps>(
           value={value || ""}
           onChangeText={onChange}
           onBlur={handleBlur}
+          onFocus={onFocus}
           mode="outlined"
           error={hasError}
           multiline={true}

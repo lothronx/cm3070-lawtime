@@ -1,5 +1,5 @@
 import React, { useState, useRef } from "react";
-import { View, ScrollView, StyleSheet, KeyboardAvoidingView, Platform } from "react-native";
+import { View, ScrollView, StyleSheet } from "react-native";
 import { Snackbar } from "react-native-paper";
 import { useForm } from "react-hook-form";
 import Header from "@/components/Header";
@@ -25,6 +25,7 @@ export default function App() {
   const dateTimeInputRef = useRef<any>(null);
   const locationInputRef = useRef<any>(null);
   const noteInputRef = useRef<any>(null);
+  const scrollViewRef = useRef<ScrollView>(null);
 
   // Screen mode state - for demo purposes
   const [isAIFlow, setIsAIFlow] = useState(false); // Set to false to test Edit mode
@@ -108,6 +109,14 @@ export default function App() {
     // TODO: Navigate back to previous screen after deletion
   };
 
+  const handleNoteInputFocus = () => {
+    const scrollY = 120;
+    scrollViewRef.current?.scrollTo({
+      y: scrollY,
+      animated: true,
+    });
+  };
+
   const handleSavePress = async () => {
     // Trigger validation on all fields
     const isValid = await trigger();
@@ -126,10 +135,7 @@ export default function App() {
   };
 
   return (
-    <KeyboardAvoidingView
-      style={[styles.container, { backgroundColor: theme.colors.background }]}
-      behavior={Platform.OS === "ios" ? "padding" : "height"}
-      keyboardVerticalOffset={Platform.OS === "ios" ? 0 : 20}>
+    <View style={[styles.container, { backgroundColor: theme.colors.background }]}>
       <Header
         title={isEditMode ? "Edit Task" : "New Task"}
         variant="modal"
@@ -137,11 +143,14 @@ export default function App() {
         stackTotal={isAIFlow ? totalTasks : undefined}
       />
       <ScrollView
+        ref={scrollViewRef}
         style={styles.scrollView}
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={true}
         keyboardShouldPersistTaps="handled"
-        keyboardDismissMode="on-drag">
+        keyboardDismissMode="on-drag"
+        automaticallyAdjustKeyboardInsets={true}
+        contentInsetAdjustmentBehavior="automatic">
         <TitleInput
           control={control}
           name="title"
@@ -157,25 +166,26 @@ export default function App() {
           onSubmitEditing={() => dateTimeInputRef.current?.focus()}
         />
 
-        <DateTimeInput 
-          control={control} 
-          name="datetime" 
+        <DateTimeInput
+          control={control}
+          name="datetime"
           error={errors.datetime}
           ref={dateTimeInputRef}
           onSubmitEditing={() => locationInputRef.current?.focus()}
         />
-        <LocationInput 
-          control={control} 
-          name="location" 
+        <LocationInput
+          control={control}
+          name="location"
           error={errors.location}
           ref={locationInputRef}
           onSubmitEditing={() => noteInputRef.current?.focus()}
         />
-        <NoteInput 
-          control={control} 
-          name="note" 
+        <NoteInput
+          control={control}
+          name="note"
           error={errors.note}
           ref={noteInputRef}
+          onFocus={handleNoteInputFocus}
         />
         <View style={isAIFlow ? styles.buttonRow : styles.buttonSingle}>
           <SaveButton onPress={handleSavePress} loading={isSubmitting} />
@@ -194,12 +204,15 @@ export default function App() {
         }}>
         {snackbarMessage}
       </Snackbar>
-    </KeyboardAvoidingView>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
+    flex: 1,
+  },
+  keyboardAvoidingView: {
     flex: 1,
   },
   scrollView: {
