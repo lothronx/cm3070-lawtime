@@ -6,6 +6,7 @@ import Header from "@/components/Header";
 import TitleInput from "@/components/task/TitleInput";
 import ClientAutocompleteInput from "@/components/task/ClientAutocompleteInput";
 import LocationInput from "@/components/task/LocationInput";
+import NoteInput from "@/components/task/NoteInput";
 import DateTimeInput from "@/components/task/DateTimeInput";
 import SaveButton from "@/components/task/SaveButton";
 import DiscardButton from "@/components/task/DiscardButton";
@@ -17,6 +18,7 @@ interface TaskFormData {
   client: string | null;
   datetime: Date | null;
   location: string | null;
+  note: string | null;
 }
 
 export default function App() {
@@ -45,6 +47,7 @@ export default function App() {
       client: null,
       datetime: null,
       location: null,
+      note: null,
     },
     mode: "onBlur", // Only validate after user leaves field
   });
@@ -159,6 +162,7 @@ export default function App() {
 
         <DateTimeInput control={control} name="datetime" error={errors.datetime} />
         <LocationInput control={control} name="location" error={errors.location} />
+        <NoteInput control={control} name="note" error={errors.note} />
         <View style={isAIFlow ? styles.buttonRow : styles.buttonSingle}>
           <SaveButton onPress={handleSavePress} loading={isSubmitting} />
           {isAIFlow && <DiscardButton onPress={handleDiscardPress} loading={isSubmitting} />}
