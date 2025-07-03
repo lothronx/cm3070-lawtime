@@ -1,11 +1,10 @@
-import React, { useState, useEffect, forwardRef, useCallback } from "react";
+import React, { useState, forwardRef, useCallback, useMemo } from "react";
 import { View, StyleSheet, ScrollView, Pressable } from "react-native";
 import { TextInput, Text, Card } from "react-native-paper";
 import { Control, useController, FieldError } from "react-hook-form";
 import { useAppTheme, SPACING, BORDER_RADIUS } from "@/theme/ThemeProvider";
-import { Database } from "@/types/supabase";
-
-type Client = Database["public"]["Tables"]["clients"]["Row"];
+import { sanitizeInput } from "@/utils/inputUtils";
+import { Client, filterClients, debounce } from "@/utils/clientUtils";
 
 // Mock data for testing
 const MOCK_CLIENTS: Client[] = [
@@ -42,7 +41,7 @@ const MOCK_CLIENTS: Client[] = [
 ];
 
 interface ClientAutocompleteInputProps {
-  control: Control<any>;
+  control: Control<{ [key: string]: string | null }>;
   name: string;
   error?: FieldError;
   clients?: Client[];
@@ -54,45 +53,47 @@ const ClientAutocompleteInput = forwardRef<any, ClientAutocompleteInputProps>(
     const { theme } = useAppTheme();
     const [showDropdown, setShowDropdown] = useState(false);
     const [searchQuery, setSearchQuery] = useState("");
-    const [filteredClients, setFilteredClients] = useState<Client[]>([]);
-
-    const sanitizeInput = (text: string): string => {
-      // Remove potentially dangerous characters
-      return text
-        .replace(/[<>"'&;`\\|{}[\]]/g, "") // Remove HTML/SQL injection chars
-        .replace(/[\r\n\t]/g, "") // Remove line breaks and tabs
-        .replace(/[\u200B-\u200D\uFEFF]/g, "") // Remove zero-width chars
-        .replace(/[\x00-\x08\x0B\x0C\x0E-\x1F\x7F]/g, "") // Remove control chars
-        .replace(/\s+/g, " ") // Normalize remaining whitespace
-        .trim();
-    };
-
-    const filterClients = useCallback(
-      (query: string) => {
-        if (!query) {
-          setFilteredClients(clients);
-          return;
-        }
-
-        const filtered = clients.filter((client) =>
-          client.client_name.toLowerCase().includes(query.toLowerCase())
-        );
-
-        setFilteredClients(filtered);
-      },
-      [clients]
-    );
-
-    useEffect(() => {
-      filterClients(searchQuery);
-    }, [searchQuery, clients, filterClients]);
 
     const {
-      field: { onChange, onBlur, value }
+      field: { onChange, onBlur, value },
     } = useController({
       control,
-      name
+      name,
     });
+
+    // Memoize filtered clients to avoid unnecessary recalculations
+    const filteredClients = useMemo(() => {
+      return filterClients(clients, searchQuery);
+    }, [clients, searchQuery]);
+
+    // Debounced search to improve performance
+    const debouncedSetSearch = useMemo(() => {
+      return debounce((query: string) => setSearchQuery(query), 150);
+    }, []);
+
+    // Memoized blur handler
+    const handleBlur = useCallback(() => {
+      try {
+        const sanitized = value?.trim() ? sanitizeInput(value) : null;
+        onChange(sanitized);
+        // Delay hiding dropdown to allow selection
+        setTimeout(() => setShowDropdown(false), 150);
+      } catch (error) {
+        console.warn("ClientAutocompleteInput: Error processing blur", error);
+      } finally {
+        onBlur();
+      }
+    }, [value, onChange, onBlur]);
+
+    // Memoized client selection handler
+    const handleClientSelect = useCallback(
+      (clientName: string) => {
+        onChange(clientName);
+        setShowDropdown(false);
+        setSearchQuery(clientName);
+      },
+      [onChange]
+    );
 
     const hasError = Boolean(error);
 
@@ -101,27 +102,17 @@ const ClientAutocompleteInput = forwardRef<any, ClientAutocompleteInputProps>(
         <View>
           <TextInput
             label="Client"
-            value={value || null}
+            value={value || ""}
             onChangeText={(text) => {
               onChange(text);
               setShowDropdown(true);
-              setSearchQuery(text);
+              debouncedSetSearch(text);
             }}
             onFocus={() => {
               setShowDropdown(true);
               setSearchQuery(value || "");
-              filterClients(value || "");
             }}
-            onBlur={() => {
-              // Handle null/empty gracefully for database
-              const sanitized = value?.trim() ? sanitizeInput(value) : null;
-              onChange(sanitized);
-              // Delay hiding dropdown to allow selection
-              setTimeout(() => {
-                setShowDropdown(false);
-              }, 150);
-              onBlur();
-            }}
+            onBlur={handleBlur}
             mode="outlined"
             error={hasError}
             multiline={false}
@@ -139,23 +130,27 @@ const ClientAutocompleteInput = forwardRef<any, ClientAutocompleteInputProps>(
                 <TextInput.Icon icon="chevron-down" />
               ) : null
             }
+            accessibilityLabel="Client input field"
+            accessibilityHint="Enter or select a client name, optional field"
           />
 
           {showDropdown && filteredClients.length > 0 && (
-            <Card style={[styles.dropdown, { backgroundColor: theme.colors.surface }]}>
+            <Card
+              style={[styles.dropdown, { backgroundColor: theme.colors.surface }]}
+              accessibilityLabel="Client suggestions"
+              accessibilityHint={`${filteredClients.length} client suggestions available`}>
               <ScrollView
                 style={styles.dropdownList}
                 keyboardShouldPersistTaps="handled"
                 nestedScrollEnabled={true}>
-                {filteredClients.map((item) => (
+                {filteredClients.map((item, index) => (
                   <Pressable
                     key={item.id.toString()}
                     style={styles.dropdownItem}
-                    onPress={() => {
-                      onChange(item.client_name);
-                      setShowDropdown(false);
-                      setSearchQuery(item.client_name);
-                    }}>
+                    onPress={() => handleClientSelect(item.client_name)}
+                    accessibilityLabel={`Select client ${item.client_name}`}
+                    accessibilityHint={`Option ${index + 1} of ${filteredClients.length}`}
+                    accessibilityRole="button">
                     <Text style={styles.clientName}>{item.client_name}</Text>
                   </Pressable>
                 ))}

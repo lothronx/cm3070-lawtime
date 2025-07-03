@@ -1,11 +1,12 @@
-import React, { forwardRef } from "react";
+import React, { forwardRef, useCallback } from "react";
 import { View, StyleSheet } from "react-native";
 import { TextInput, Text } from "react-native-paper";
 import { Control, useController, FieldError } from "react-hook-form";
 import { useAppTheme, SPACING } from "@/theme/ThemeProvider";
+import { sanitizeInput, validateTextLength } from "@/utils/inputUtils";
 
 interface TitleInputProps {
-  control: Control<any>;
+  control: Control<{ [key: string]: string }>;
   name: string;
   error?: FieldError;
   onSubmitEditing?: () => void;
@@ -15,33 +16,33 @@ const TitleInput = forwardRef<any, TitleInputProps>(
   ({ control, name, error, onSubmitEditing }, ref) => {
     const { theme } = useAppTheme();
 
-    const sanitizeInput = (text: string): string => {
-      // Remove potentially dangerous characters
-      return text
-        .replace(/[<>"'&;`\\|{}[\]]/g, "") // Remove HTML/SQL injection chars
-        .replace(/[\r\n\t]/g, "") // Remove line breaks and tabs
-        .replace(/[\u200B-\u200D\uFEFF]/g, "") // Remove zero-width chars
-        .replace(/[\x00-\x08\x0B\x0C\x0E-\x1F\x7F]/g, "") // Remove control chars
-        .replace(/\s+/g, " ") // Normalize remaining whitespace
-        .trim();
-    };
+    // Memoized validation function
+    const validateTitle = useCallback((value: string) => {
+      return validateTextLength(value, 2, 100, "Title", true);
+    }, []);
 
     const {
-      field: { onChange, onBlur, value }
+      field: { onChange, onBlur, value },
     } = useController({
       control,
       name,
       rules: {
         required: "Title is required",
-        validate: (value: string) => {
-          const trimmed = value?.trim();
-          if (!trimmed) return "Title is required";
-          if (trimmed.length < 2) return "Title must be at least 2 characters";
-          if (trimmed.length > 100) return "Title must be at most 100 characters";
-          return true;
-        },
-      }
+        validate: validateTitle,
+      },
     });
+
+    // Memoized blur handler
+    const handleBlur = useCallback(() => {
+      try {
+        const sanitized = value?.trim() ? sanitizeInput(value) : "";
+        onChange(sanitized);
+      } catch (error) {
+        console.warn("TitleInput: Error processing blur", error);
+      } finally {
+        onBlur();
+      }
+    }, [value, onChange, onBlur]);
 
     const hasError = Boolean(error);
 
@@ -51,10 +52,7 @@ const TitleInput = forwardRef<any, TitleInputProps>(
           label="*Title"
           value={value || ""}
           onChangeText={onChange}
-          onBlur={() => {
-            onChange(sanitizeInput(value || ""));
-            onBlur();
-          }}
+          onBlur={handleBlur}
           mode="outlined"
           error={hasError}
           multiline={false}
@@ -63,7 +61,9 @@ const TitleInput = forwardRef<any, TitleInputProps>(
           returnKeyType="next"
           onSubmitEditing={onSubmitEditing}
           ref={ref}
-          style={{backgroundColor: theme.colors.surface}}
+          style={{ backgroundColor: theme.colors.surface }}
+          accessibilityLabel="Title input field"
+          accessibilityHint="Enter a title for this task, required field"
         />
         {hasError && error?.message && (
           <Text style={[styles.errorText, { color: theme.colors.error }]}>{error.message}</Text>

@@ -1,11 +1,12 @@
-import React, { forwardRef } from "react";
+import React, { forwardRef, useCallback } from "react";
 import { View, StyleSheet } from "react-native";
 import { TextInput, Text } from "react-native-paper";
 import { Control, useController, FieldError } from "react-hook-form";
 import { useAppTheme, SPACING } from "@/theme/ThemeProvider";
+import { sanitizeInput, validateTextLength } from "@/utils/inputUtils";
 
 interface LocationInputProps {
-  control: Control<any>;
+  control: Control<{ [key: string]: string | null }>;
   name: string;
   error?: FieldError;
   onSubmitEditing?: () => void;
@@ -15,31 +16,32 @@ const LocationInput = forwardRef<any, LocationInputProps>(
   ({ control, name, error, onSubmitEditing }, ref) => {
     const { theme } = useAppTheme();
 
-    const sanitizeInput = (text: string): string => {
-      // Remove potentially dangerous characters
-      return text
-        .replace(/[<>"'&;`\\|{}[\]]/g, "") // Remove HTML/SQL injection chars
-        .replace(/[\r\n\t]/g, "") // Remove line breaks and tabs
-        .replace(/[\u200B-\u200D\uFEFF]/g, "") // Remove zero-width chars
-        .replace(/[\x00-\x08\x0B\x0C\x0E-\x1F\x7F]/g, "") // Remove control chars
-        .replace(/\s+/g, " ") // Normalize remaining whitespace
-        .trim();
-    };
+    // Memoized validation function
+    const validateLocation = useCallback((value: string | null) => {
+      return validateTextLength(value, 1, 200, "Location", false);
+    }, []);
 
     const {
-      field: { onChange, onBlur, value }
+      field: { onChange, onBlur, value },
     } = useController({
       control,
       name,
       rules: {
-        validate: (value: string) => {
-          if (!value?.trim()) return true; // Allow empty/null
-          const trimmed = value.trim();
-          if (trimmed.length > 200) return "Location must be at most 200 characters";
-          return true;
-        },
-      }
+        validate: validateLocation,
+      },
     });
+
+    // Memoized blur handler
+    const handleBlur = useCallback(() => {
+      try {
+        const sanitized = value?.trim() ? sanitizeInput(value) : null;
+        onChange(sanitized);
+      } catch (error) {
+        console.warn("LocationInput: Error processing blur", error);
+      } finally {
+        onBlur();
+      }
+    }, [value, onChange, onBlur]);
 
     const hasError = Boolean(error);
 
@@ -49,12 +51,7 @@ const LocationInput = forwardRef<any, LocationInputProps>(
           label="Location"
           value={value || ""}
           onChangeText={onChange}
-          onBlur={() => {
-            // Handle null/empty gracefully for database
-            const sanitized = value?.trim() ? sanitizeInput(value) : null;
-            onChange(sanitized);
-            onBlur();
-          }}
+          onBlur={handleBlur}
           mode="outlined"
           error={hasError}
           multiline={false}
@@ -64,11 +61,11 @@ const LocationInput = forwardRef<any, LocationInputProps>(
           onSubmitEditing={onSubmitEditing}
           ref={ref}
           style={{ backgroundColor: theme.colors.surface }}
+          accessibilityLabel="Location input field"
+          accessibilityHint="Enter a location for this task, optional field"
         />
         {hasError && error?.message && (
-          <Text style={[styles.errorText, { color: theme.colors.error }]}>
-            {error.message}
-          </Text>
+          <Text style={[styles.errorText, { color: theme.colors.error }]}>{error.message}</Text>
         )}
       </View>
     );
