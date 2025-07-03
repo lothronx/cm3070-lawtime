@@ -12,14 +12,7 @@ import SaveButton from "@/components/task/SaveButton";
 import DiscardButton from "@/components/task/DiscardButton";
 import DeleteButton from "@/components/task/DeleteButton";
 import { useAppTheme, SPACING } from "@/theme/ThemeProvider";
-
-interface TaskFormData {
-  title: string;
-  client: string | null;
-  datetime: Date | null;
-  location: string | null;
-  note: string | null;
-}
+import { TaskFormData } from "@/types/taskForm";
 
 export default function App() {
   const { theme } = useAppTheme();
@@ -29,6 +22,9 @@ export default function App() {
   // Refs for focus chaining
   const titleInputRef = useRef<any>(null);
   const clientInputRef = useRef<any>(null);
+  const dateTimeInputRef = useRef<any>(null);
+  const locationInputRef = useRef<any>(null);
+  const noteInputRef = useRef<any>(null);
 
   // Screen mode state - for demo purposes
   const [isAIFlow, setIsAIFlow] = useState(false); // Set to false to test Edit mode
@@ -158,11 +154,29 @@ export default function App() {
           name="client"
           error={errors.client}
           ref={clientInputRef}
+          onSubmitEditing={() => dateTimeInputRef.current?.focus()}
         />
 
-        <DateTimeInput control={control} name="datetime" error={errors.datetime} />
-        <LocationInput control={control} name="location" error={errors.location} />
-        <NoteInput control={control} name="note" error={errors.note} />
+        <DateTimeInput 
+          control={control} 
+          name="datetime" 
+          error={errors.datetime}
+          ref={dateTimeInputRef}
+          onSubmitEditing={() => locationInputRef.current?.focus()}
+        />
+        <LocationInput 
+          control={control} 
+          name="location" 
+          error={errors.location}
+          ref={locationInputRef}
+          onSubmitEditing={() => noteInputRef.current?.focus()}
+        />
+        <NoteInput 
+          control={control} 
+          name="note" 
+          error={errors.note}
+          ref={noteInputRef}
+        />
         <View style={isAIFlow ? styles.buttonRow : styles.buttonSingle}>
           <SaveButton onPress={handleSavePress} loading={isSubmitting} />
           {isAIFlow && <DiscardButton onPress={handleDiscardPress} loading={isSubmitting} />}

@@ -30,7 +30,7 @@ export default function PhoneNumberInput({
         placeholder="Enter your phone number"
         value={value}
         onChangeText={onChangeText}
-        keyboardType="number-pad"
+        keyboardType="numeric"
         textContentType="telephoneNumber"
         maxLength={11}
         error={!!error}

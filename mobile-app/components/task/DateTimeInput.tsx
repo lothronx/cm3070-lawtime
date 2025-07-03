@@ -1,4 +1,11 @@
-import React, { forwardRef, useState, useCallback, useEffect } from "react";
+import React, {
+  forwardRef,
+  useState,
+  useCallback,
+  useEffect,
+  useRef,
+  useImperativeHandle,
+} from "react";
 import { View, StyleSheet } from "react-native";
 import { TextInput, Text } from "react-native-paper";
 import { Control, useController, FieldError } from "react-hook-form";
@@ -11,10 +18,11 @@ import {
   formatTimeForDisplay,
 } from "@/utils/timeUtils";
 import { combineDateTime } from "@/utils/dateTimeUtils";
+import { TaskFormData } from "@/types/taskForm";
 
 interface DateTimeInputProps {
-  control: Control<{ [key: string]: Date | null }>;
-  name: string;
+  control: Control<TaskFormData>;
+  name: "datetime";
   error?: FieldError;
   onSubmitEditing?: () => void;
 }
@@ -24,6 +32,17 @@ const DateTimeInput = forwardRef<any, DateTimeInputProps>(
     const { theme } = useAppTheme();
     const [dateDisplayValue, setDateDisplayValue] = useState("");
     const [timeDisplayValue, setTimeDisplayValue] = useState("");
+
+    // Internal refs for date and time fields
+    const dateInputRef = useRef<any>(null);
+    const timeInputRef = useRef<any>(null);
+
+    // Expose focus method to parent component
+    useImperativeHandle(ref, () => ({
+      focus: () => {
+        dateInputRef.current?.focus();
+      },
+    }));
 
     // Memoize validation function to prevent re-creation on every render
     const validateDateTime = useCallback(
@@ -123,8 +142,8 @@ const DateTimeInput = forwardRef<any, DateTimeInputProps>(
               autoCapitalize="none"
               autoCorrect={false}
               returnKeyType="next"
-              onSubmitEditing={onSubmitEditing}
-              ref={ref}
+              onSubmitEditing={() => timeInputRef.current?.focus()}
+              ref={dateInputRef}
               style={{ backgroundColor: theme.colors.surface }}
               accessibilityLabel="Date input field"
               accessibilityHint="Enter date in format YYYYMMDD, for example 20250101"
@@ -149,6 +168,8 @@ const DateTimeInput = forwardRef<any, DateTimeInputProps>(
               autoCapitalize="none"
               autoCorrect={false}
               returnKeyType="next"
+              onSubmitEditing={onSubmitEditing}
+              ref={timeInputRef}
               style={{ backgroundColor: theme.colors.surface }}
               accessibilityLabel="Time input field"
               accessibilityHint="Enter time in 24-hour format, for example 1400 for 2 PM"

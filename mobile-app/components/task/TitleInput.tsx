@@ -4,10 +4,11 @@ import { TextInput, Text } from "react-native-paper";
 import { Control, useController, FieldError } from "react-hook-form";
 import { useAppTheme, SPACING } from "@/theme/ThemeProvider";
 import { sanitizeInput, validateTextLength } from "@/utils/inputUtils";
+import { TaskFormData } from "@/types/taskForm";
 
 interface TitleInputProps {
-  control: Control<{ [key: string]: string }>;
-  name: string;
+  control: Control<TaskFormData>;
+  name: "title";
   error?: FieldError;
   onSubmitEditing?: () => void;
 }

@@ -4,10 +4,11 @@ import { TextInput, Text } from "react-native-paper";
 import { Control, useController, FieldError } from "react-hook-form";
 import { useAppTheme, SPACING } from "@/theme/ThemeProvider";
 import { sanitizeInput, validateTextLength } from "@/utils/inputUtils";
+import { TaskFormData } from "@/types/taskForm";
 
 interface LocationInputProps {
-  control: Control<{ [key: string]: string | null }>;
-  name: string;
+  control: Control<TaskFormData>;
+  name: "location";
   error?: FieldError;
   onSubmitEditing?: () => void;
 }
@@ -57,7 +58,7 @@ const LocationInput = forwardRef<any, LocationInputProps>(
           multiline={false}
           maxLength={200}
           autoCapitalize="words"
-          returnKeyType="done"
+          returnKeyType="next"
           onSubmitEditing={onSubmitEditing}
           ref={ref}
           style={{ backgroundColor: theme.colors.surface }}

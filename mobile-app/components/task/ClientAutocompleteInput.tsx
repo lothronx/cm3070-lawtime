@@ -5,6 +5,7 @@ import { Control, useController, FieldError } from "react-hook-form";
 import { useAppTheme, SPACING, BORDER_RADIUS } from "@/theme/ThemeProvider";
 import { sanitizeInput } from "@/utils/inputUtils";
 import { Client, filterClients, debounce } from "@/utils/clientUtils";
+import { TaskFormData } from "@/types/taskForm";
 
 // Mock data for testing
 const MOCK_CLIENTS: Client[] = [
@@ -41,8 +42,8 @@ const MOCK_CLIENTS: Client[] = [
 ];
 
 interface ClientAutocompleteInputProps {
-  control: Control<{ [key: string]: string | null }>;
-  name: string;
+  control: Control<TaskFormData>;
+  name: "client";
   error?: FieldError;
   clients?: Client[];
   onSubmitEditing?: () => void;

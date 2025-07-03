@@ -23,12 +23,12 @@ export default function VerificationCodeInput({
   return (
     <>
       <TextInput
-        mode="flat"
+        mode="outlined"
         label="Verification Code"
         placeholder="Enter 6-digit code"
         value={value}
         onChangeText={onChangeText}
-        keyboardType="number-pad"
+        keyboardType="numeric"
         textContentType="oneTimeCode"
         maxLength={6}
         error={!!error}

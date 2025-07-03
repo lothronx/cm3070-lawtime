@@ -4,10 +4,11 @@ import { TextInput, Text } from "react-native-paper";
 import { Control, useController, FieldError } from "react-hook-form";
 import { useAppTheme, SPACING } from "@/theme/ThemeProvider";
 import { sanitizeInput, validateTextLength } from "@/utils/inputUtils";
+import { TaskFormData } from "@/types/taskForm";
 
 interface NoteInputProps {
-  control: Control<{ [key: string]: string | null }>;
-  name: string;
+  control: Control<TaskFormData>;
+  name: "note";
   error?: FieldError;
   onSubmitEditing?: () => void;
 }
@@ -57,7 +58,6 @@ const NoteInput = forwardRef<any, NoteInputProps>(
           multiline={true}
           maxLength={1000}
           autoCapitalize="sentences"
-          returnKeyType="done"
           onSubmitEditing={onSubmitEditing}
           ref={ref}
           style={[styles.noteInput, { backgroundColor: theme.colors.surface }]}
