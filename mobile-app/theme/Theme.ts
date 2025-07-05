@@ -115,7 +115,7 @@ const customDarkColors = {
   // Disabled states for dark mode
   surfaceDisabled: "rgba(255, 255, 255, 0.12)", // Disabled surface
   onSurfaceDisabled: "rgba(255, 255, 255, 0.38)", // Disabled text
-  backdrop: "rgba(0, 0, 0, 0.6)", // Dark backdrop
+  backdrop: "rgba(191, 191, 191, 0.6)", // Dark backdrop
 };
 
 // Font family configuration - use Avenir on iOS, fallback on Android

@@ -141,7 +141,7 @@ export default function App() {
   };
 
   const handleNoteInputFocus = () => {
-    const scrollY = 520;
+    const scrollY = 350;
     scrollViewRef.current?.scrollTo({
       y: scrollY,
       animated: true,

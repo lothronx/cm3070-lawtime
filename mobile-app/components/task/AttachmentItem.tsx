@@ -114,7 +114,7 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
-    marginVertical: SPACING.xs,w
+    marginVertical: SPACING.xs,
     padding: SPACING.sm,
     borderRadius: BORDER_RADIUS.md,
     shadowOffset: {

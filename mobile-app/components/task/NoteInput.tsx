@@ -58,12 +58,11 @@ const NoteInput = forwardRef<any, NoteInputProps>(
           mode="outlined"
           error={hasError}
           multiline={true}
-          maxLength={1000}
+          maxLength={200}
           autoCapitalize="sentences"
           onSubmitEditing={onSubmitEditing}
           ref={ref}
-          style={[styles.noteInput, { backgroundColor: theme.colors.surface }]}
-          contentStyle={styles.noteInputContent}
+          style={{ backgroundColor: theme.colors.surface }}
           accessibilityLabel="Note input field"
           accessibilityHint="Enter additional notes for this task, optional field"
         />
@@ -82,12 +81,6 @@ export default NoteInput;
 const styles = StyleSheet.create({
   container: {
     marginBottom: SPACING.xs,
-  },
-  noteInput: {
-    maxHeight: 120,
-  },
-  noteInputContent: {
-    height: 120,
   },
   errorText: {
     fontSize: 12,

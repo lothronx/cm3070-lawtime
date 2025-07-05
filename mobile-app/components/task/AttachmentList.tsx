@@ -53,6 +53,6 @@ const styles = StyleSheet.create({
   emptyText: {
     textAlign: "center",
     fontStyle: "italic",
-    marginVertical: SPACING.md,
+    marginVertical: SPACING.lg,
   },
 });
