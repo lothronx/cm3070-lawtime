@@ -7,6 +7,8 @@ import TitleInput from "@/components/task/TitleInput";
 import ClientAutocompleteInput from "@/components/task/ClientAutocompleteInput";
 import LocationInput from "@/components/task/LocationInput";
 import NoteInput from "@/components/task/NoteInput";
+import AttachmentsSection from "@/components/task/AttachmentsSection";
+import { AttachmentFile } from "@/components/task/AttachmentList";
 import DateTimeInput from "@/components/task/DateTimeInput";
 import SaveButton from "@/components/task/SaveButton";
 import DiscardButton from "@/components/task/DiscardButton";
@@ -27,6 +29,40 @@ export default function App() {
   const [isEditMode, setIsEditMode] = useState(true); // Set to true to show Delete button
   const [currentTaskIndex, setCurrentTaskIndex] = useState(1);
   const [totalTasks, setTotalTasks] = useState(3);
+
+  // Mock attachment data
+  const [attachments, setAttachments] = useState<AttachmentFile[]>([
+    {
+      id: 301,
+      task_id: 5001,
+      user_id: "123e4567-e89b-12d3-a456-426614174000",
+      file_name: "court-notice-p1.jpg",
+      mime_type: "image/jpeg",
+      role: "source",
+      storage_path: "user-id/5001/uuid1.jpg",
+      created_at: "2025-08-17T11:01:00+08:00",
+    },
+    {
+      id: 302,
+      task_id: 5001,
+      user_id: "123e4567-e89b-12d3-a456-426614174000",
+      file_name: "related-exhibit.pdf",
+      mime_type: "application/pdf",
+      role: "attachment",
+      storage_path: "user-id/5001/uuid2.pdf",
+      created_at: "2025-08-18T14:20:00+08:00",
+    },
+    {
+      id: 303,
+      task_id: 5001,
+      user_id: "123e4567-e89b-12d3-a456-426614174000",
+      file_name: "Client-Email.eml",
+      mime_type: "message/rfc822",
+      role: "attachment",
+      storage_path: "user-id/5001/uuid3.eml",
+      created_at: "2025-08-18T16:05:00+08:00",
+    },
+  ]);
 
   const {
     control,
@@ -129,6 +165,21 @@ export default function App() {
     handleSubmit(onSubmit)();
   };
 
+  const handleAddAttachment = () => {
+    console.log("Add attachment pressed");
+    setSnackbarMessage("File picker would open here");
+    setSnackbarVisible(true);
+    // TODO: Open device file picker
+  };
+
+  const handleDeleteAttachment = (id: string | number) => {
+    console.log("Delete attachment:", id);
+    setAttachments(prev => prev.filter(attachment => attachment.id !== id));
+    setSnackbarMessage("Attachment deleted");
+    setSnackbarVisible(true);
+    // TODO: Add API call to delete file from storage
+  };
+
   return (
     <View style={[styles.container, { backgroundColor: theme.colors.background }]}>
       <Header
@@ -172,6 +223,12 @@ export default function App() {
           name="note"
           error={errors.note}
           onFocus={handleNoteInputFocus}
+        />
+        <AttachmentsSection
+          attachments={attachments}
+          onDeleteAttachment={handleDeleteAttachment}
+          onAddAttachment={handleAddAttachment}
+          loading={isSubmitting}
         />
         <View style={isAIFlow ? styles.buttonRow : styles.buttonSingle}>
           <SaveButton onPress={handleSavePress} loading={isSubmitting} />
