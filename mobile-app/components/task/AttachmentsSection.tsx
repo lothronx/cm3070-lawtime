@@ -1,13 +1,14 @@
 import React from "react";
 import { View, StyleSheet } from "react-native";
-import { Text, Button } from "react-native-paper";
-import { useAppTheme, SPACING } from "@/theme/ThemeProvider";
+import { Text, Button, IconButton } from "react-native-paper";
+import { useAppTheme, SPACING, BORDER_RADIUS } from "@/theme/ThemeProvider";
 import AttachmentList, { AttachmentFile } from "./AttachmentList";
 
 interface AttachmentsSectionProps {
   attachments: AttachmentFile[];
   onDeleteAttachment: (id: string | number) => void;
   onAddAttachment: () => void;
+  onPreviewAttachment?: (id: string | number) => void;
   loading?: boolean;
 }
 
@@ -15,58 +16,61 @@ export default function AttachmentsSection({
   attachments,
   onDeleteAttachment,
   onAddAttachment,
+  onPreviewAttachment,
   loading = false,
 }: AttachmentsSectionProps) {
   const { theme } = useAppTheme();
 
   return (
-    <View style={styles.container}>
-      <View style={styles.header}>
-        <Text
-          variant="titleMedium"
-          style={[styles.sectionTitle, { color: theme.colors.onSurface }]}>
+    <View>
+      <View style={styles.sectionLabelContainer}>
+        <Text variant="labelLarge" style={styles.sectionLabel}>
           Attachments
         </Text>
-        
+
         <Button
-          mode="text"
+          mode="contained"
           onPress={onAddAttachment}
           disabled={loading}
           icon="plus"
           compact
           style={styles.addButton}
-          labelStyle={[styles.addButtonLabel, { color: theme.colors.primary }]}>
-          Add
+          accessibilityLabel="Add attachment"
+          accessibilityHint="Open file picker to add an attachment to this task">
+          <Text
+            variant="labelLarge"
+            style={[styles.addButtonLabel, { color: theme.colors.onPrimary }]}>
+            Add
+          </Text>
         </Button>
       </View>
-      
+
       <AttachmentList
         attachments={attachments}
         onDeleteAttachment={onDeleteAttachment}
+        onPreviewAttachment={onPreviewAttachment}
       />
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
-    marginTop: SPACING.lg,
-  },
-  header: {
+  sectionLabelContainer: {
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
-    marginBottom: SPACING.sm,
   },
-  sectionTitle: {
+  sectionLabel: {
+    padding: SPACING.xs,
     fontWeight: "600",
-    flex: 1,
+    letterSpacing: 0.5,
   },
   addButton: {
-    marginLeft: SPACING.sm,
+    paddingHorizontal: SPACING.sm,
+    borderRadius: BORDER_RADIUS.md,
   },
   addButtonLabel: {
-    fontSize: 14,
-    fontWeight: "500",
+    fontWeight: "600",
+    letterSpacing: 0.5,
   },
 });

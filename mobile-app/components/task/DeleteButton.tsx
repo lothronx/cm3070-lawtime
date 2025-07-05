@@ -1,7 +1,7 @@
-import React, { useState } from "react";
+import React from "react";
 import { StyleSheet, Alert, Keyboard } from "react-native";
 import { Button } from "react-native-paper";
-import { useAppTheme, SPACING, BORDER_RADIUS } from "@/theme/ThemeProvider";
+import { useAppTheme, BORDER_RADIUS } from "@/theme/ThemeProvider";
 
 interface DeleteButtonProps {
   onPress: () => void;
@@ -42,21 +42,19 @@ const DeleteButton: React.FC<DeleteButtonProps> = ({
 
   return (
     <Button
-      mode="outlined"
+      mode="text"
       onPress={handlePress}
       loading={loading}
       disabled={loading}
-      style={[
-        styles.button,
-        {
-          borderColor: theme.colors.error,
-        }
-      ]}
+      style={styles.button}
       contentStyle={styles.buttonContent}
       labelStyle={[
         styles.buttonText,
         { color: theme.colors.error }
       ]}
+      accessibilityLabel="Delete task"
+      accessibilityHint="Permanently delete this task after confirmation"
+      accessibilityRole="button"
     >
       {title}
     </Button>
@@ -67,17 +65,16 @@ export default DeleteButton;
 
 const styles = StyleSheet.create({
   button: {
-    marginTop: SPACING.xl,
+    alignSelf: 'center',
     borderRadius: BORDER_RADIUS.md,
-    borderWidth: 1,
   },
   buttonContent: {
-    height: 48,
+    height: 44,
     justifyContent: 'center',
     alignItems: 'center',
   },
   buttonText: {
-    fontSize: 16,
-    fontWeight: '600',
+    fontSize: 14,
+    fontWeight: '500',
   },
 });

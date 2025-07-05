@@ -81,7 +81,7 @@ export default NoteInput;
 
 const styles = StyleSheet.create({
   container: {
-    marginBottom: SPACING.md,
+    marginBottom: SPACING.xs,
   },
   noteInput: {
     maxHeight: 120,

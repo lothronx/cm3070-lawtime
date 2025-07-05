@@ -10,11 +10,13 @@ export type AttachmentFile = Database["public"]["Tables"]["task_files"]["Row"];
 interface AttachmentListProps {
   attachments: AttachmentFile[];
   onDeleteAttachment: (id: string | number) => void;
+  onPreviewAttachment?: (id: string | number) => void;
 }
 
 export default function AttachmentList({
   attachments,
   onDeleteAttachment,
+  onPreviewAttachment,
 }: AttachmentListProps) {
   const { theme } = useAppTheme();
 
@@ -37,6 +39,7 @@ export default function AttachmentList({
           file_name={attachment.file_name}
           mime_type={attachment.mime_type}
           onDelete={onDeleteAttachment}
+          onPreview={onPreviewAttachment}
         />
       ))}
     </View>
@@ -45,7 +48,7 @@ export default function AttachmentList({
 
 const styles = StyleSheet.create({
   container: {
-    marginTop: SPACING.sm,
+    marginVertical: SPACING.sm,
   },
   emptyText: {
     textAlign: "center",

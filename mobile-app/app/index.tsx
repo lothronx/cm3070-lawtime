@@ -1,6 +1,6 @@
 import React, { useState, useRef } from "react";
 import { View, ScrollView, StyleSheet } from "react-native";
-import { Snackbar } from "react-native-paper";
+import { Snackbar, Text } from "react-native-paper";
 import { useForm } from "react-hook-form";
 import Header from "@/components/Header";
 import TitleInput from "@/components/task/TitleInput";
@@ -13,7 +13,7 @@ import DateTimeInput from "@/components/task/DateTimeInput";
 import SaveButton from "@/components/task/SaveButton";
 import DiscardButton from "@/components/task/DiscardButton";
 import DeleteButton from "@/components/task/DeleteButton";
-import { useAppTheme, SPACING } from "@/theme/ThemeProvider";
+import { useAppTheme, SPACING, BORDER_RADIUS } from "@/theme/ThemeProvider";
 import { TaskFormData } from "@/types/taskForm";
 
 export default function App() {
@@ -174,10 +174,17 @@ export default function App() {
 
   const handleDeleteAttachment = (id: string | number) => {
     console.log("Delete attachment:", id);
-    setAttachments(prev => prev.filter(attachment => attachment.id !== id));
+    setAttachments((prev) => prev.filter((attachment) => attachment.id !== id));
     setSnackbarMessage("Attachment deleted");
     setSnackbarVisible(true);
     // TODO: Add API call to delete file from storage
+  };
+
+  const handlePreviewAttachment = (id: string | number) => {
+    console.log("Preview attachment:", id);
+    setSnackbarMessage("File preview would open here");
+    setSnackbarVisible(true);
+    // TODO: Implement file preview functionality
   };
 
   return (
@@ -197,44 +204,58 @@ export default function App() {
         keyboardDismissMode="on-drag"
         automaticallyAdjustKeyboardInsets={true}
         contentInsetAdjustmentBehavior="automatic">
-        <TitleInput
-          control={control}
-          name="title"
-          error={errors.title}
-        />
-        <ClientAutocompleteInput
-          control={control}
-          name="client"
-          error={errors.client}
-        />
+        {/* Essential Information Section */}
+        <View style={styles.formSection}>
+          <Text variant="labelLarge" style={styles.sectionLabel}>
+            Task Information
+          </Text>
 
-        <DateTimeInput
-          control={control}
-          name="datetime"
-          error={errors.datetime}
-        />
-        <LocationInput
-          control={control}
-          name="location"
-          error={errors.location}
-        />
-        <NoteInput
-          control={control}
-          name="note"
-          error={errors.note}
-          onFocus={handleNoteInputFocus}
-        />
+          <TitleInput control={control} name="title" error={errors.title} />
+          <ClientAutocompleteInput control={control} name="client" error={errors.client} />
+        </View>
+
+        {/* Schedule Section */}
+        <View style={styles.formSection}>
+          <Text variant="labelLarge" style={styles.sectionLabel}>
+            Time & Location
+          </Text>
+
+          <DateTimeInput control={control} name="datetime" error={errors.datetime} />
+
+          <LocationInput control={control} name="location" error={errors.location} />
+        </View>
+
+        {/* Details Section */}
+        <View style={styles.formSection}>
+          <Text variant="labelLarge" style={styles.sectionLabel}>
+            Additional Details
+          </Text>
+
+          <NoteInput
+            control={control}
+            name="note"
+            error={errors.note}
+            onFocus={handleNoteInputFocus}
+          />
+        </View>
+
         <AttachmentsSection
           attachments={attachments}
           onDeleteAttachment={handleDeleteAttachment}
           onAddAttachment={handleAddAttachment}
+          onPreviewAttachment={handlePreviewAttachment}
           loading={isSubmitting}
         />
+
         <View style={isAIFlow ? styles.buttonRow : styles.buttonSingle}>
           <SaveButton onPress={handleSavePress} loading={isSubmitting} />
           {isAIFlow && <DiscardButton onPress={handleDiscardPress} loading={isSubmitting} />}
         </View>
-        {isEditMode && <DeleteButton onPress={handleDeletePress} loading={isSubmitting} />}
+        {isEditMode && (
+          <View style={styles.deleteButtonContainer}>
+            <DeleteButton onPress={handleDeletePress} loading={isSubmitting} />
+          </View>
+        )}
       </ScrollView>
       <Snackbar
         visible={snackbarVisible}
@@ -264,12 +285,23 @@ const styles = StyleSheet.create({
   scrollContent: {
     padding: SPACING.lg,
   },
+  formSection: {
+    marginBottom: SPACING.md,
+  },
+  sectionLabel: {
+    padding: SPACING.xs,
+    fontWeight: "600",
+    letterSpacing: 0.5,
+  },
   buttonRow: {
     flexDirection: "row",
     marginTop: SPACING.lg,
     gap: SPACING.md,
   },
   buttonSingle: {
+    marginTop: SPACING.lg,
+  },
+  deleteButtonContainer: {
     marginTop: SPACING.lg,
   },
 });

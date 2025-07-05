@@ -75,7 +75,7 @@ export default TitleInput;
 
 const styles = StyleSheet.create({
   container: {
-    marginBottom: SPACING.md,
+    marginBottom: SPACING.xs,
   },
   errorText: {
     fontSize: 12,

@@ -23,7 +23,9 @@ const SaveButton: React.FC<SaveButtonProps> = ({ onPress, loading = false, title
       disabled={loading}
       style={styles.button}
       contentStyle={styles.buttonContent}
-      labelStyle={styles.buttonText}>
+      labelStyle={styles.buttonText}
+      accessibilityLabel={`${title} task`}
+      accessibilityHint="Save the current task with entered information">
       {title}
     </Button>
   );

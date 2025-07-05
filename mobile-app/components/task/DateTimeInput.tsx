@@ -168,7 +168,7 @@ export default DateTimeInput;
 
 const styles = StyleSheet.create({
   container: {
-    marginBottom: SPACING.md,
+    marginBottom: SPACING.xs,
   },
   rowContainer: {
     flexDirection: "row",
