@@ -196,7 +196,6 @@ const styles = StyleSheet.create({
   },
   errorText: {
     fontSize: 12,
-    marginTop: SPACING.xs,
     marginLeft: SPACING.sm,
   },
 });
