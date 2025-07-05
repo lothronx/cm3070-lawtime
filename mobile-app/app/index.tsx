@@ -19,12 +19,7 @@ export default function App() {
   const [snackbarVisible, setSnackbarVisible] = useState(false);
   const [snackbarMessage, setSnackbarMessage] = useState("");
 
-  // Refs for focus chaining
-  const titleInputRef = useRef<any>(null);
-  const clientInputRef = useRef<any>(null);
-  const dateTimeInputRef = useRef<any>(null);
-  const locationInputRef = useRef<any>(null);
-  const noteInputRef = useRef<any>(null);
+  // Refs for scroll control
   const scrollViewRef = useRef<ScrollView>(null);
 
   // Screen mode state - for demo purposes
@@ -110,7 +105,7 @@ export default function App() {
   };
 
   const handleNoteInputFocus = () => {
-    const scrollY = 120;
+    const scrollY = 520;
     scrollViewRef.current?.scrollTo({
       y: scrollY,
       animated: true,
@@ -155,36 +150,27 @@ export default function App() {
           control={control}
           name="title"
           error={errors.title}
-          ref={titleInputRef}
-          onSubmitEditing={() => clientInputRef.current?.focus()}
         />
         <ClientAutocompleteInput
           control={control}
           name="client"
           error={errors.client}
-          ref={clientInputRef}
-          onSubmitEditing={() => dateTimeInputRef.current?.focus()}
         />
 
         <DateTimeInput
           control={control}
           name="datetime"
           error={errors.datetime}
-          ref={dateTimeInputRef}
-          onSubmitEditing={() => locationInputRef.current?.focus()}
         />
         <LocationInput
           control={control}
           name="location"
           error={errors.location}
-          ref={locationInputRef}
-          onSubmitEditing={() => noteInputRef.current?.focus()}
         />
         <NoteInput
           control={control}
           name="note"
           error={errors.note}
-          ref={noteInputRef}
           onFocus={handleNoteInputFocus}
         />
         <View style={isAIFlow ? styles.buttonRow : styles.buttonSingle}>

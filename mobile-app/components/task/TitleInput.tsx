@@ -1,4 +1,4 @@
-import React, { forwardRef, useCallback } from "react";
+import React, { useCallback } from "react";
 import { View, StyleSheet } from "react-native";
 import { TextInput, Text } from "react-native-paper";
 import { Control, useController, FieldError } from "react-hook-form";
@@ -10,11 +10,9 @@ interface TitleInputProps {
   control: Control<TaskFormData>;
   name: "title";
   error?: FieldError;
-  onSubmitEditing?: () => void;
 }
 
-const TitleInput = forwardRef<any, TitleInputProps>(
-  ({ control, name, error, onSubmitEditing }, ref) => {
+const TitleInput: React.FC<TitleInputProps> = ({ control, name, error }) => {
     const { theme } = useAppTheme();
 
     // Memoized validation function
@@ -59,9 +57,7 @@ const TitleInput = forwardRef<any, TitleInputProps>(
           multiline={false}
           maxLength={100}
           autoCapitalize="words"
-          returnKeyType="next"
-          onSubmitEditing={onSubmitEditing}
-          ref={ref}
+          returnKeyType="done"
           style={{ backgroundColor: theme.colors.surface }}
           accessibilityLabel="Title input field"
           accessibilityHint="Enter a title for this task, required field"
@@ -71,8 +67,7 @@ const TitleInput = forwardRef<any, TitleInputProps>(
         )}
       </View>
     );
-  }
-);
+  };
 
 TitleInput.displayName = "TitleInput";
 

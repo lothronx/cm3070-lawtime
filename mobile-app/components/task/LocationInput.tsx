@@ -1,4 +1,4 @@
-import React, { forwardRef, useCallback } from "react";
+import React, { useCallback } from "react";
 import { View, StyleSheet } from "react-native";
 import { TextInput, Text } from "react-native-paper";
 import { Control, useController, FieldError } from "react-hook-form";
@@ -10,11 +10,9 @@ interface LocationInputProps {
   control: Control<TaskFormData>;
   name: "location";
   error?: FieldError;
-  onSubmitEditing?: () => void;
 }
 
-const LocationInput = forwardRef<any, LocationInputProps>(
-  ({ control, name, error, onSubmitEditing }, ref) => {
+const LocationInput: React.FC<LocationInputProps> = ({ control, name, error }) => {
     const { theme } = useAppTheme();
 
     // Memoized validation function
@@ -58,9 +56,7 @@ const LocationInput = forwardRef<any, LocationInputProps>(
           multiline={false}
           maxLength={200}
           autoCapitalize="words"
-          returnKeyType="next"
-          onSubmitEditing={onSubmitEditing}
-          ref={ref}
+          returnKeyType="done"
           style={{ backgroundColor: theme.colors.surface }}
           accessibilityLabel="Location input field"
           accessibilityHint="Enter a location for this task, optional field"
@@ -70,8 +66,7 @@ const LocationInput = forwardRef<any, LocationInputProps>(
         )}
       </View>
     );
-  }
-);
+  };
 
 LocationInput.displayName = "LocationInput";
 

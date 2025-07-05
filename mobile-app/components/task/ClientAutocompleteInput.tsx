@@ -1,4 +1,4 @@
-import React, { useState, forwardRef, useCallback, useMemo } from "react";
+import React, { useState, useCallback, useMemo } from "react";
 import { View, StyleSheet, ScrollView, Pressable } from "react-native";
 import { TextInput, Text, Card } from "react-native-paper";
 import { Control, useController, FieldError } from "react-hook-form";
@@ -46,11 +46,9 @@ interface ClientAutocompleteInputProps {
   name: "client";
   error?: FieldError;
   clients?: Client[];
-  onSubmitEditing?: () => void;
 }
 
-const ClientAutocompleteInput = forwardRef<any, ClientAutocompleteInputProps>(
-  ({ control, name, error, clients = MOCK_CLIENTS, onSubmitEditing }, ref) => {
+const ClientAutocompleteInput: React.FC<ClientAutocompleteInputProps> = ({ control, name, error, clients = MOCK_CLIENTS }) => {
     const { theme } = useAppTheme();
     const [showDropdown, setShowDropdown] = useState(false);
     const [searchQuery, setSearchQuery] = useState("");
@@ -120,9 +118,7 @@ const ClientAutocompleteInput = forwardRef<any, ClientAutocompleteInputProps>(
             maxLength={100}
             autoCapitalize="words"
             autoCorrect={false}
-            returnKeyType="next"
-            onSubmitEditing={onSubmitEditing}
-            ref={ref}
+            returnKeyType="done"
             style={{
               backgroundColor: theme.colors.surface,
             }}
@@ -165,8 +161,7 @@ const ClientAutocompleteInput = forwardRef<any, ClientAutocompleteInputProps>(
         )}
       </View>
     );
-  }
-);
+  };
 
 ClientAutocompleteInput.displayName = "ClientAutocompleteInput";
 
