@@ -114,7 +114,9 @@ const TaskItem: React.FC<TaskItemProps> = ({ task, onToggleComplete, onPress, on
         style={[
           styles.card,
           { backgroundColor: theme.colors.surface },
-          overdue && { borderLeftWidth: 4, borderLeftColor: theme.colors.error },
+          task.is_completed
+            ? { borderLeftColor: theme.colors.onSurfaceDisabled }
+            : { borderLeftColor: theme.colors.primary },
         ]}
         mode="contained">
         <GestureDetector gesture={panGesture}>
@@ -134,7 +136,7 @@ const TaskItem: React.FC<TaskItemProps> = ({ task, onToggleComplete, onPress, on
                     checkedIcon="checkbox"
                     uncheckedIcon="square-outline"
                     iconType="ionicon"
-                    checkedColor={theme.colors.primary}
+                    checkedColor={theme.colors.onSurfaceDisabled}
                     uncheckedColor={theme.colors.primary}
                     containerStyle={styles.checkboxStyle}
                   />
@@ -146,7 +148,7 @@ const TaskItem: React.FC<TaskItemProps> = ({ task, onToggleComplete, onPress, on
                   <Text
                     style={[
                       styles.title,
-                      { color: theme.colors.onSurface },
+                      { color: theme.colors.primary },
                       task.is_completed && {
                         textDecorationLine: "line-through" as const,
                         color: theme.colors.onSurfaceDisabled,
@@ -216,15 +218,15 @@ const TaskItem: React.FC<TaskItemProps> = ({ task, onToggleComplete, onPress, on
 
         {/* Edit and Delete buttons revealed on swipe */}
         <View style={styles.actionsContainer}>
-          <TouchableOpacity 
-            onPress={() => onPress(task)} 
+          <TouchableOpacity
+            onPress={() => onPress(task)}
             style={[styles.actionButton, { backgroundColor: theme.colors.primary }]}>
-            <Icon name="edit" size={20} color="white" />
+            <Icon name="edit" size={20} color={theme.colors.onPrimary} />
           </TouchableOpacity>
-          <TouchableOpacity 
-            onPress={handleDelete} 
+          <TouchableOpacity
+            onPress={handleDelete}
             style={[styles.actionButton, { backgroundColor: theme.colors.error }]}>
-            <Icon name="delete" size={20} color="white" />
+            <Icon name="delete" size={20} color={theme.colors.onError} />
           </TouchableOpacity>
         </View>
       </Card>
@@ -240,6 +242,7 @@ const styles = StyleSheet.create({
     marginVertical: SPACING.xs,
   },
   card: {
+    borderLeftWidth: 2,
     elevation: 2,
     shadowOffset: {
       width: 0,
