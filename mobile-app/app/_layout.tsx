@@ -3,6 +3,7 @@ import { PaperProvider } from "react-native-paper";
 import { ThemeProvider, useAppTheme } from "../theme/ThemeProvider";
 import { SafeAreaProvider } from "react-native-safe-area-context";
 import { View, StatusBar, Platform, Text, TextInput } from "react-native";
+import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { useFonts } from "expo-font";
 import * as SplashScreen from "expo-splash-screen";
 import { useEffect } from "react";
@@ -44,16 +45,18 @@ function RootLayoutContent() {
   }
 
   return (
-    <PaperProvider theme={theme}>
-      <View style={{ flex: 1, backgroundColor: theme.colors.background }}>
-        <StatusBar
-          barStyle={isDark ? "light-content" : "dark-content"}
-          backgroundColor={theme.colors.background}
-          translucent={true}
-        />
-        <Stack screenOptions={{ headerShown: false }} />
-      </View>
-    </PaperProvider>
+    <GestureHandlerRootView style={{ flex: 1 }}>
+      <PaperProvider theme={theme}>
+        <View style={{ flex: 1, backgroundColor: theme.colors.background }}>
+          <StatusBar
+            barStyle={isDark ? "light-content" : "dark-content"}
+            backgroundColor={theme.colors.background}
+            translucent={true}
+          />
+          <Stack screenOptions={{ headerShown: false }} />
+        </View>
+      </PaperProvider>
+    </GestureHandlerRootView>
   );
 }
 
