@@ -1,16 +1,12 @@
 import React from "react";
 import { View, StyleSheet, Alert, TouchableOpacity } from "react-native";
 import { Gesture, GestureDetector } from "react-native-gesture-handler";
-import Animated, {
-  runOnJS,
-  useSharedValue,
-  useAnimatedStyle,
-  withSpring,
-} from "react-native-reanimated";
+import Animated, { useSharedValue, useAnimatedStyle, withSpring } from "react-native-reanimated";
 import { Text, Card } from "react-native-paper";
 import { CheckBox } from "react-native-elements";
 import Icon from "react-native-vector-icons/MaterialIcons";
-import { useAppTheme, SPACING } from "@/theme/ThemeProvider";
+import Ionicons from "@expo/vector-icons/Ionicons";
+import { useAppTheme, SPACING, BORDER_RADIUS } from "@/theme/ThemeProvider";
 import { TaskWithClient } from "@/mockData";
 
 interface TaskItemProps {
@@ -23,33 +19,26 @@ interface TaskItemProps {
 const TaskItem: React.FC<TaskItemProps> = ({ task, onToggleComplete, onPress, onDelete }) => {
   const { theme } = useAppTheme();
   const translateX = useSharedValue(0);
-  const [isDeleting, setIsDeleting] = React.useState(false);
+
+  const overdue = !!task.event_time && !task.is_completed && new Date(task.event_time) < new Date();
 
   const formatDateTime = (eventTime: string | null) => {
     if (!eventTime) return null;
 
     try {
       const date = new Date(eventTime);
-      const isPast = date < new Date() && !task.is_completed;
-
       const dateStr = date.toLocaleDateString("cn-CN");
-      const timeStr = date.toLocaleTimeString([], {
+      const timeStr = date.toLocaleTimeString("cn-CN", {
         hour: "2-digit",
         minute: "2-digit",
-        hour12: false,
       });
 
       const formattedDateTime = `${dateStr} ${timeStr}`;
 
-      return isPast ? `${formattedDateTime} - Overdue` : formattedDateTime;
+      return overdue ? `${formattedDateTime} - Overdue` : formattedDateTime;
     } catch {
       return null;
     }
-  };
-
-  const isOverdue = () => {
-    if (!task.event_time || task.is_completed) return false;
-    return new Date(task.event_time) < new Date();
   };
 
   const handleDelete = () => {
@@ -64,10 +53,7 @@ const TaskItem: React.FC<TaskItemProps> = ({ task, onToggleComplete, onPress, on
   };
 
   const resetPosition = () => {
-    translateX.value = withSpring(0, {
-      damping: 20,
-      stiffness: 300,
-    });
+    translateX.value = withSpring(0);
   };
 
   const panGesture = Gesture.Pan()
@@ -79,20 +65,12 @@ const TaskItem: React.FC<TaskItemProps> = ({ task, onToggleComplete, onPress, on
       }
     })
     .onEnd((event) => {
-      if (event.translationX < -80) {
+      if (event.translationX < -20) {
         // Snap to reveal both buttons
-        translateX.value = withSpring(-160, {
-          damping: 20,
-          stiffness: 300,
-        });
-        runOnJS(setIsDeleting)(true);
+        translateX.value = withSpring(-160);
       } else {
         // Snap back to original position
-        translateX.value = withSpring(0, {
-          damping: 20,
-          stiffness: 300,
-        });
-        runOnJS(setIsDeleting)(false);
+        translateX.value = withSpring(0);
       }
     });
 
@@ -106,82 +84,82 @@ const TaskItem: React.FC<TaskItemProps> = ({ task, onToggleComplete, onPress, on
     onToggleComplete(task.id, !task.is_completed);
   };
 
-  const overdue = isOverdue();
-
   return (
-    <View style={styles.container}>
-      <Card
-        style={[
-          styles.card,
-          { backgroundColor: theme.colors.surface },
-          task.is_completed
-            ? { borderLeftColor: theme.colors.onSurfaceDisabled }
-            : { borderLeftColor: theme.colors.primary },
-        ]}
-        mode="contained">
+    <View style={[styles.container]}>
+      <Card mode="contained">
         <GestureDetector gesture={panGesture}>
           <Animated.View
             style={[
               styles.animatedContainer,
-              { backgroundColor: theme.colors.surface },
               animatedStyle,
+              { backgroundColor: theme.colors.surface },
             ]}>
-            <View style={styles.cardContent}>
-              <View style={styles.mainContent}>
-                {/* Left side - Checkbox */}
-                <View style={styles.checkboxContainer}>
-                  <CheckBox
-                    checked={task.is_completed}
-                    onPress={handleToggleComplete}
-                    checkedIcon="checkbox"
-                    uncheckedIcon="square-outline"
-                    iconType="ionicon"
-                    checkedColor={theme.colors.onSurfaceDisabled}
-                    uncheckedColor={theme.colors.primary}
-                    containerStyle={styles.checkboxStyle}
-                  />
-                </View>
+            <View
+              style={[
+                styles.cardContent,
+                { backgroundColor: theme.colors.surface },
+                task.is_completed
+                  ? { borderLeftColor: theme.colors.onSurfaceDisabled }
+                  : { borderLeftColor: theme.colors.primary },
+              ]}>
+              {/* Left side - Checkbox */}
+              <CheckBox
+                checked={task.is_completed}
+                onPress={handleToggleComplete}
+                size={20}
+                checkedIcon="checkbox"
+                uncheckedIcon="square-outline"
+                iconType="ionicon"
+                checkedColor={theme.colors.onSurfaceDisabled}
+                uncheckedColor={theme.colors.primary}
+                containerStyle={styles.checkboxStyle}
+              />
+              {/* Right side - Task Details */}
+              <View style={styles.detailsContainer}>
+                {/* Title */}
+                <Text
+                  variant="titleMedium"
+                  style={[
+                    styles.title,
+                    { color: theme.colors.primary },
+                    task.is_completed && {
+                      textDecorationLine: "line-through" as const,
+                      color: theme.colors.onSurfaceDisabled,
+                    },
+                  ]}
+                  numberOfLines={2}>
+                  {task.title}
+                </Text>
 
-                {/* Center - Task Details */}
-                <View style={styles.detailsContainer}>
-                  {/* Title */}
-                  <Text
-                    style={[
-                      styles.title,
-                      { color: theme.colors.primary },
-                      task.is_completed && {
-                        textDecorationLine: "line-through" as const,
-                        color: theme.colors.onSurfaceDisabled,
-                      },
-                    ]}
-                    numberOfLines={2}>
-                    {task.title}
-                  </Text>
-
-                  {/* Client */}
-                  {task.clients?.client_name && (
-                    <View style={styles.detailRow}>
-                      <Icon
-                        name="person"
-                        size={16}
+                {/* Client */}
+                {task.clients?.client_name && (
+                  <View style={styles.detailRow}>
+                    <View style={styles.iconContainer}>
+                      <Ionicons
+                        name="briefcase-outline"
+                        size={14}
                         color={theme.colors.onSurfaceVariant}
-                        style={styles.icon}
                       />
+                    </View>
+                    <View style={styles.subtitleContainer}>
                       <Text style={[styles.subtitle, { color: theme.colors.onSurfaceVariant }]}>
                         {task.clients.client_name}
                       </Text>
                     </View>
-                  )}
+                  </View>
+                )}
 
-                  {/* Time */}
-                  {formatDateTime(task.event_time) && (
-                    <View style={styles.detailRow}>
-                      <Icon
-                        name="access-time"
+                {/* Time */}
+                {formatDateTime(task.event_time) && (
+                  <View style={styles.detailRow}>
+                    <View style={styles.iconContainer}>
+                      <Ionicons
+                        name="time-outline"
                         size={16}
                         color={theme.colors.onSurfaceVariant}
-                        style={styles.icon}
                       />
+                    </View>
+                    <View style={styles.subtitleContainer}>
                       <Text
                         style={[
                           styles.subtitle,
@@ -192,25 +170,28 @@ const TaskItem: React.FC<TaskItemProps> = ({ task, onToggleComplete, onPress, on
                         {formatDateTime(task.event_time)}
                       </Text>
                     </View>
-                  )}
+                  </View>
+                )}
 
-                  {/* Location */}
-                  {task.location && (
-                    <View style={styles.detailRow}>
-                      <Icon
-                        name="location-on"
+                {/* Location */}
+                {task.location && (
+                  <View style={styles.detailRow}>
+                    <View style={styles.iconContainer}>
+                      <Ionicons
+                        name="location-outline"
                         size={16}
                         color={theme.colors.onSurfaceVariant}
-                        style={styles.icon}
                       />
+                    </View>
+                    <View style={styles.subtitleContainer}>
                       <Text
                         style={[styles.subtitle, { color: theme.colors.onSurfaceVariant }]}
                         numberOfLines={1}>
                         {task.location}
                       </Text>
                     </View>
-                  )}
-                </View>
+                  </View>
+                )}
               </View>
             </View>
           </Animated.View>
@@ -225,7 +206,11 @@ const TaskItem: React.FC<TaskItemProps> = ({ task, onToggleComplete, onPress, on
           </TouchableOpacity>
           <TouchableOpacity
             onPress={handleDelete}
-            style={[styles.actionButton, { backgroundColor: theme.colors.error }]}>
+            style={[
+              styles.actionButton,
+              styles.deleteButton,
+              { backgroundColor: theme.colors.error },
+            ]}>
             <Icon name="delete" size={20} color={theme.colors.onError} />
           </TouchableOpacity>
         </View>
@@ -241,8 +226,14 @@ const styles = StyleSheet.create({
     marginHorizontal: SPACING.md,
     marginVertical: SPACING.xs,
   },
-  card: {
+  animatedContainer: {
+    zIndex: 1,
+  },
+  cardContent: {
     borderLeftWidth: 2,
+    borderRadius: BORDER_RADIUS.md,
+    padding: SPACING.md,
+    flexDirection: "row",
     elevation: 2,
     shadowOffset: {
       width: 0,
@@ -250,40 +241,37 @@ const styles = StyleSheet.create({
     },
     shadowOpacity: 0.1,
     shadowRadius: 2,
-    overflow: "hidden",
-    position: "relative",
-  },
-  animatedContainer: {
-    zIndex: 1,
-  },
-  cardContent: {
-    padding: SPACING.md,
-  },
-  mainContent: {
-    flexDirection: "row",
-    alignItems: "flex-start",
-  },
-  checkboxContainer: {
-    marginRight: SPACING.sm,
-    paddingTop: SPACING.xs,
   },
   checkboxStyle: {
-    backgroundColor: "transparent",
-    borderWidth: 0,
     padding: 0,
-    margin: 0,
+    margin: 1,
   },
   detailsContainer: {
     flex: 1,
   },
+  title: {
+    fontSize: 16,
+    fontWeight: "600",
+    marginBottom: SPACING.xs,
+    lineHeight: 22,
+  },
   detailRow: {
     flexDirection: "row",
-    alignItems: "center",
-    marginBottom: SPACING.xs / 2,
+    marginTop: SPACING.xs,
   },
-  icon: {
-    marginRight: SPACING.xs,
-    width: 20,
+  iconContainer: {
+    alignItems: "center",
+    justifyContent: "center",
+    width: SPACING.md,
+  },
+  subtitleContainer: {
+    alignItems: "center",
+    justifyContent: "center",
+    marginLeft: SPACING.sm,
+    height: 18,
+  },
+  subtitle: {
+    fontSize: 14,
   },
   actionsContainer: {
     position: "absolute",
@@ -300,22 +288,8 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     alignItems: "center",
   },
-  title: {
-    fontSize: 16,
-    fontWeight: "600",
-    marginBottom: SPACING.xs,
-    lineHeight: 22,
-  },
-  subtitle: {
-    fontSize: 14,
-    marginBottom: SPACING.xs / 2,
-    lineHeight: 18,
-  },
-  sourceText: {
-    fontSize: 10,
-    fontWeight: "600",
-    letterSpacing: 0.5,
-    marginTop: SPACING.xs,
-    textAlign: "right",
+  deleteButton: {
+    borderTopRightRadius: BORDER_RADIUS.md,
+    borderBottomRightRadius: BORDER_RADIUS.md,
   },
 });

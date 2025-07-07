@@ -19,7 +19,7 @@ const customColors = {
   onSecondaryContainer: "#1976d2", // Dark blue text on light blue container
   
   // Surface colors for clean look
-  surface: "#ffffff", // Pure white for main surfaces
+  surface: "#f9fcffff", // Pure white for main surfaces
   surfaceVariant: "#fafafa", // Neutral light gray for variant surfaces
   onSurface: "#013364", // Dark blue text on white
   onSurfaceVariant: "#37474f", // Dark blue-gray text on light surfaces
