@@ -1,10 +1,10 @@
 import React, { useState } from "react";
 import { View, StyleSheet, ScrollView } from "react-native";
 import { Text } from "react-native-paper";
-import { useAppTheme, SPACING } from "../theme/ThemeProvider";
+import { useAppTheme, SPACING } from "@/theme/ThemeProvider";
 import ActionMenu from "@/components/menu/ActionMenu";
 import Header from "@/components/Header";
-import TaskItem from "@/components/TaskItem";
+import TaskItem from "@/components/tasks/TaskItem";
 import { mockTasks, TaskWithClient } from "@/mockData";
 
 export default function Calendar() {
@@ -58,7 +58,7 @@ export default function Calendar() {
 
   return (
     <View style={[styles.container, { backgroundColor: theme.colors.background }]}>
-      <Header title="Tasks" variant="modal" />
+      <Header title="Tasks" variant="main" />
 
       <ScrollView style={styles.scrollContainer} showsVerticalScrollIndicator={false}>
         {/* Upcoming Tasks Section */}
