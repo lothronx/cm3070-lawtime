@@ -41,22 +41,22 @@ export default function ListeningIndicator({
     <Animated.View style={[styles.listeningIndicator, rListeningIndicatorStyles]}>
       <View style={styles.soundWaveContainer}>
         <Animated.View
-          style={[styles.soundWave, rSoundWave1Styles, { backgroundColor: theme.colors.secondary }]}
+          style={[styles.soundWave, rSoundWave1Styles, { backgroundColor: theme.colors.primary }]}
         />
         <Animated.View
-          style={[styles.soundWave, rSoundWave2Styles, { backgroundColor: theme.colors.secondary }]}
+          style={[styles.soundWave, rSoundWave2Styles, { backgroundColor: theme.colors.primary }]}
         />
         <Animated.View
-          style={[styles.soundWave, rSoundWave1Styles, { backgroundColor: theme.colors.secondary }]}
+          style={[styles.soundWave, rSoundWave1Styles, { backgroundColor: theme.colors.primary }]}
         />
         <Animated.View
-          style={[styles.soundWave, rSoundWave2Styles, { backgroundColor: theme.colors.secondary }]}
+          style={[styles.soundWave, rSoundWave2Styles, { backgroundColor: theme.colors.primary }]}
         />
         <Animated.View
-          style={[styles.soundWave, rSoundWave1Styles, { backgroundColor: theme.colors.secondary }]}
+          style={[styles.soundWave, rSoundWave1Styles, { backgroundColor: theme.colors.primary }]}
         />
       </View>
-      <Text style={[styles.listeningText, { color: theme.colors.secondary }]}>Listening...</Text>
+      <Text style={[styles.listeningText, { color: theme.colors.primary }]}>Listening...</Text>
     </Animated.View>
   );
 }
@@ -66,9 +66,11 @@ const styles = StyleSheet.create({
     position: "absolute",
     left: 0,
     right: 0,
-    bottom: 200,
+    bottom: 0,
+    top: 0,
     alignItems: "center",
     justifyContent: "center",
+    alignSelf: "center",
     zIndex: 10,
   },
   listeningText: {

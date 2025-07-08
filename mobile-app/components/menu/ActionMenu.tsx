@@ -219,7 +219,7 @@ export default function ActionMenu({
         },
         { scale: menuScale * pressScale },
       ],
-      backgroundColor: theme.colors.secondary,
+      backgroundColor: theme.colors.error,
       opacity: interpolate(manualPressed.value, [0, 1], [1, 0.6]),
     };
   }, []);
@@ -231,7 +231,7 @@ export default function ActionMenu({
     return {
       transform: [{ translateY: transYCamera.value }, { scale: menuScale * pressScale }],
 
-      backgroundColor: theme.colors.secondary,
+      backgroundColor: theme.colors.error,
       opacity: interpolate(cameraPressed.value, [0, 1], [1, 0.6]),
     };
   }, []);
@@ -249,7 +249,7 @@ export default function ActionMenu({
         },
         { scale: baseScale * holdScale * pulseScale },
       ],
-      backgroundColor: audioHolding.value > 0.5 ? theme.colors.primary : theme.colors.secondary,
+      backgroundColor: audioHolding.value > 0.5 ? theme.colors.primary : theme.colors.error,
       opacity: interpolate(audioPressed.value, [0, 1], [1, 0.6]),
     };
   }, []);
@@ -263,7 +263,7 @@ export default function ActionMenu({
   const rMenuButtonStyles = useAnimatedStyle(() => {
     const pressScale = interpolate(menuPressed.value, [0, 1], [1, 0.9]);
     return {
-      backgroundColor: isOpenedShared.value > 0 ? theme.colors.primary : theme.colors.secondary,
+      backgroundColor: isOpenedShared.value > 0 ? theme.colors.primary : theme.colors.error,
       transform: [{ scale: pressScale }],
     };
   }, []);
@@ -306,7 +306,7 @@ export default function ActionMenu({
           style={[styles.menuButton, rMenuButtonStyles, { transform: [{ scale: 1 }] }]}
           onPress={toggleMenu}>
           <Animated.View style={rMenuAnimateStyles}>
-            <Ionicons name="add" size={46} color={theme.colors.onSecondary} />
+            <Ionicons name="add" size={46} color={theme.colors.onError} />
           </Animated.View>
         </AnimatedPressable>
 
@@ -320,7 +320,7 @@ export default function ActionMenu({
           onPressOut={() => {
             manualPressed.value = withTiming(0, { duration: 100 });
           }}>
-          <Feather name="type" size={26} color={theme.colors.onSecondary} />
+          <Feather name="type" size={26} color={theme.colors.onError} />
         </AnimatedPressable>
 
         {/* Camera Buttons */}
@@ -333,7 +333,7 @@ export default function ActionMenu({
           onPressOut={() => {
             cameraPressed.value = withTiming(0, { duration: 100 });
           }}>
-          <FontAwesome name="camera" size={26} color={theme.colors.onSecondary} />
+          <FontAwesome name="camera" size={26} color={theme.colors.onError} />
         </AnimatedPressable>
 
         {/* Audio Button */}
@@ -341,7 +341,7 @@ export default function ActionMenu({
           style={[styles.actionButton, rAudioAnimateStyles]}
           onPressIn={handleAudioPressIn}
           onPressOut={handleAudioPressOut}>
-          <FontAwesome name="microphone" size={26} color={theme.colors.onSecondary} />
+          <FontAwesome name="microphone" size={26} color={theme.colors.onError} />
         </AnimatedPressable>
       </View>
     </>

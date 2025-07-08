@@ -1,8 +1,8 @@
 import * as React from "react";
 import { StyleSheet } from "react-native";
-import { List, Surface } from "react-native-paper";
+import { Divider, List, Surface } from "react-native-paper";
 import Animated, { useAnimatedStyle, withTiming } from "react-native-reanimated";
-
+import { useAppTheme, BORDER_RADIUS } from "@/theme/ThemeProvider";
 interface CameraOptionsModalProps {
   visible: boolean;
   onDismiss: () => void;
@@ -25,6 +25,8 @@ export default function CameraOptionsModal({
   onTakePhoto,
   onChooseFile,
 }: CameraOptionsModalProps) {
+  const { theme } = useAppTheme();
+
   // Use console.log to debug visibility
   React.useEffect(() => {
     if (visible) {
@@ -35,6 +37,7 @@ export default function CameraOptionsModal({
   // Animated styles for fade in/out
   const animatedStyles = useAnimatedStyle(() => {
     return {
+      backgroundColor: "white",
       opacity: withTiming(visible ? 1 : 0, { duration: 200 }),
       transform: [
         {
@@ -83,10 +86,18 @@ export default function CameraOptionsModal({
 
 const styles = StyleSheet.create({
   container: {
+    borderRadius: BORDER_RADIUS.md,
     position: "absolute",
-    bottom: 200,
+    bottom: 230,
     alignItems: "center",
+    alignSelf: "center",
     zIndex: 3,
+    shadowOffset: {
+      width: 0,
+      height: 2,
+    },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
   },
   modalView: {
     borderRadius: 8,
