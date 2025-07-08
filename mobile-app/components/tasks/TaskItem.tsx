@@ -1,13 +1,7 @@
 import React from "react";
 import { View, StyleSheet, Alert, TouchableOpacity } from "react-native";
 import { Gesture, GestureDetector } from "react-native-gesture-handler";
-import Animated, {
-  useSharedValue,
-  useAnimatedStyle,
-  withSpring,
-  withSequence,
-  withTiming,
-} from "react-native-reanimated";
+import Animated, { useSharedValue, useAnimatedStyle, withSpring } from "react-native-reanimated";
 import { Text, Card } from "react-native-paper";
 import { CheckBox } from "react-native-elements";
 import Icon from "react-native-vector-icons/MaterialIcons";
@@ -26,7 +20,6 @@ interface TaskItemProps {
 const TaskItem: React.FC<TaskItemProps> = ({ task, onToggleComplete, onPress, onDelete }) => {
   const { theme } = useAppTheme();
   const translateX = useSharedValue(0);
-  const checkboxScale = useSharedValue(1);
 
   const overdue = !!task.event_time && !task.is_completed && new Date(task.event_time) < new Date();
 
@@ -88,16 +81,7 @@ const TaskItem: React.FC<TaskItemProps> = ({ task, onToggleComplete, onPress, on
     };
   });
 
-  const checkboxAnimatedStyle = useAnimatedStyle(() => ({
-    transform: [{ scale: checkboxScale.value }],
-  }));
-
   const handleToggleComplete = () => {
-    checkboxScale.value = withSequence(
-      withTiming(1.2, { duration: 100 }),
-      withTiming(1, { duration: 100 })
-    );
-
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
     onToggleComplete(task.id, !task.is_completed);
   };
@@ -121,19 +105,17 @@ const TaskItem: React.FC<TaskItemProps> = ({ task, onToggleComplete, onPress, on
                   : { borderLeftColor: theme.colors.primary },
               ]}>
               {/* Left side - Checkbox */}
-              <Animated.View style={checkboxAnimatedStyle}>
-                <CheckBox
-                  checked={task.is_completed}
-                  onPress={handleToggleComplete}
-                  size={20}
-                  checkedIcon="check-circle"
-                  uncheckedIcon="radio-button-unchecked"
-                  iconType="material"
-                  checkedColor={theme.colors.onSurfaceDisabled}
-                  uncheckedColor={theme.colors.primary}
-                  containerStyle={styles.checkboxStyle}
-                />
-              </Animated.View>
+              <CheckBox
+                checked={task.is_completed}
+                onPress={handleToggleComplete}
+                size={20}
+                checkedIcon="check-circle"
+                uncheckedIcon="radio-button-unchecked"
+                iconType="material"
+                checkedColor={theme.colors.onSurfaceDisabled}
+                uncheckedColor={theme.colors.primary}
+                containerStyle={styles.checkboxStyle}
+              />
 
               {/* Right side - Task Details */}
               <View style={styles.detailsContainer}>
