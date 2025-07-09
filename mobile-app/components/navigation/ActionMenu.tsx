@@ -47,7 +47,7 @@ export default function ActionMenu({ visible = true }: ActionMenuProps) {
   const opacity = useSharedValue(1);
 
   // action states
-  const menuState = useSharedValue(0); // Single menu state: 0=closed, 1=open
+  const menuState = useSharedValue(0);
   const cameraState = useSharedValue(0);
   const manualState = useSharedValue(0);
   const audioState = useSharedValue(0);
@@ -55,17 +55,65 @@ export default function ActionMenu({ visible = true }: ActionMenuProps) {
 
   // Camera options menu state
   const [cameraMenuVisible, setCameraMenuVisible] = useState(false);
+  // Menu open React state (synced with menuState shared value)
+  const [isMenuOpen, setIsMenuOpen] = useState(false);
+
+  const toggleMenu = React.useCallback(() => {
+    // Close camera menu if it's open
+    if (cameraMenuVisible) {
+      setCameraMenuVisible(false);
+    }
+
+    if (isMenuOpen) {
+      // Closing menu
+      setIsMenuOpen(false);
+      transYManual.value = withDelay(
+        DURATION / 4,
+        withTiming(0, { duration: DURATION, easing: Easing.bezierFn(0.36, 0, 0.66, -0.56) })
+      );
+      transYCamera.value = withDelay(
+        DURATION / 8,
+        withTiming(0, { duration: DURATION, easing: Easing.bezierFn(0.36, 0, 0.66, -0.56) })
+      );
+      transYAudio.value = withDelay(
+        0,
+        withTiming(0, { duration: DURATION, easing: Easing.bezierFn(0.36, 0, 0.66, -0.56) })
+      );
+      opacity.value = withTiming(1, {
+        duration: DURATION,
+      });
+
+      // Hide background overlay and set menu to closed
+      menuState.value = withTiming(0, { duration: DURATION });
+    } else {
+      // Opening menu
+      setIsMenuOpen(true);
+      const config: WithSpringConfig = { damping: 12 };
+      transYManual.value = withDelay(0, withSpring(TRANSLATE_Y, config));
+      transYCamera.value = withDelay(DURATION / 8, withSpring(TRANSLATE_Y, config));
+      transYAudio.value = withDelay(DURATION / 4, withSpring(TRANSLATE_Y, config));
+      opacity.value = withTiming(0, {
+        duration: DURATION,
+      });
+
+      // Show background overlay and set menu to open
+      menuState.value = withTiming(0.9, { duration: DURATION });
+    }
+  }, [cameraMenuVisible, isMenuOpen, transYManual, transYCamera, transYAudio, opacity, menuState]);
 
   const handleFullScreenOverlay = React.useCallback(() => {
     if (cameraMenuVisible) {
       console.log("1");
       setCameraMenuVisible(false);
-    }
-    // Only close menu if it's actually open
-    if (menuState.value > 0.5) {
+      // Close main menu when camera menu is dismissed by tapping overlay
+      if (isMenuOpen) {
+        toggleMenu();
+      }
+    } else if (isMenuOpen) {
+      // Only close main menu if camera menu is not open
       toggleMenu();
     }
-  }, [cameraMenuVisible, menuState]);
+  }, [cameraMenuVisible, isMenuOpen, toggleMenu]);
 
   // Camera options handlers
   const handlePhotoLibrary = () => {
@@ -100,7 +148,7 @@ export default function ActionMenu({ visible = true }: ActionMenuProps) {
   };
 
   const handleAudioPressIn = () => {
-    // Close camera menu if open
+    // Close camera menu if open (but don't close main menu)
     if (cameraMenuVisible) {
       setCameraMenuVisible(false);
     }
@@ -130,46 +178,6 @@ export default function ActionMenu({ visible = true }: ActionMenuProps) {
     }
   };
 
-  const toggleMenu = () => {
-    // Close camera menu if it's open
-    if (cameraMenuVisible) {
-      setCameraMenuVisible(false);
-    }
-
-    if (menuState.value > 0.5) {
-      // Closing menu
-      transYManual.value = withDelay(
-        DURATION / 4,
-        withTiming(0, { duration: DURATION, easing: Easing.bezierFn(0.36, 0, 0.66, -0.56) })
-      );
-      transYCamera.value = withDelay(
-        DURATION / 8,
-        withTiming(0, { duration: DURATION, easing: Easing.bezierFn(0.36, 0, 0.66, -0.56) })
-      );
-      transYAudio.value = withDelay(
-        0,
-        withTiming(0, { duration: DURATION, easing: Easing.bezierFn(0.36, 0, 0.66, -0.56) })
-      );
-      opacity.value = withTiming(1, {
-        duration: DURATION,
-      });
-
-      // Hide background overlay and set menu to closed
-      menuState.value = withTiming(0, { duration: DURATION });
-    } else {
-      // Opening menu
-      const config: WithSpringConfig = { damping: 12 };
-      transYManual.value = withDelay(0, withSpring(TRANSLATE_Y, config));
-      transYCamera.value = withDelay(DURATION / 8, withSpring(TRANSLATE_Y, config));
-      transYAudio.value = withDelay(DURATION / 4, withSpring(TRANSLATE_Y, config));
-      opacity.value = withTiming(0, {
-        duration: DURATION,
-      });
-
-      // Show background overlay and set menu to open
-      menuState.value = withTiming(0.9, { duration: DURATION });
-    }
-  };
 
   const rManualAnimateStyles = useAnimatedStyle(() => {
     const menuScale = interpolate(transYManual.value, [TRANSLATE_Y, 0], [1, 0]);
@@ -258,7 +266,7 @@ export default function ActionMenu({ visible = true }: ActionMenuProps) {
 
       {/* Camera Options Menu */}
       <CameraOptionsMenu
-        visible={cameraMenuVisible && menuState.value > 0.5}
+        visible={cameraMenuVisible && isMenuOpen}
         onDismiss={() => setCameraMenuVisible(false)}
         onPhotoLibrary={handlePhotoLibrary}
         onTakePhoto={handleTakePhoto}

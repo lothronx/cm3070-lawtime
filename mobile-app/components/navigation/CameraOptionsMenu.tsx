@@ -1,8 +1,11 @@
 import * as React from "react";
-import { StyleSheet, Dimensions } from "react-native";
-import { Menu } from "react-native-paper";
-import { useAppTheme, BORDER_RADIUS } from "@/theme/ThemeProvider";
+import { StyleSheet, Dimensions, Pressable } from "react-native";
+import { Surface, List, Portal } from "react-native-paper";
+import { useAppTheme, BORDER_RADIUS, SPACING } from "@/theme/ThemeProvider";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+import Animated, { FadeIn, FadeOut } from "react-native-reanimated";
+
+const AnimatedPressable = Animated.createAnimatedComponent(Pressable);
 
 interface CameraOptionsMenuProps {
   visible: boolean;
@@ -27,52 +30,58 @@ export default function CameraOptionsMenu({
 }: CameraOptionsMenuProps) {
   const { theme } = useAppTheme();
   const insets = useSafeAreaInsets();
-  const { width, height } = Dimensions.get("window");
+  const { width } = Dimensions.get("window");
 
-  const anchor = {
-    x: (width - 160) / 2,
-    y: height - insets.bottom - 350,
-  };
+  if (!visible) return null;
 
   return (
-    <Menu
-      visible={visible}
-      onDismiss={onDismiss}
-      anchor={anchor}
-      overlayAccessibilityLabel="Close camera options menu"
-      contentStyle={[styles.menuContent, { backgroundColor: theme.colors.surface }]}>
-      <Menu.Item
-        onPress={() => {
-          onPhotoLibrary();
-          onDismiss();
-        }}
-        title="Photo Library"
-        leadingIcon="image"
-        titleStyle={styles.menuItemTitle}
-      />
-      <Menu.Item
-        onPress={() => {
-          onTakePhoto();
-          onDismiss();
-        }}
-        title="Take Photo"
-        leadingIcon="camera"
-        titleStyle={styles.menuItemTitle}
-      />
-      <Menu.Item
-        onPress={() => {
-          onChooseFile();
-          onDismiss();
-        }}
-        title="Choose File"
-        leadingIcon="file"
-        titleStyle={styles.menuItemTitle}
-      />
-    </Menu>
+    <Portal>
+      {/* Menu positioned above camera button */}
+      <AnimatedPressable
+        entering={FadeIn.duration(200)}
+        exiting={FadeOut.duration(150)}
+        style={[styles.menuContainer, { bottom: insets.bottom + 190, left: width / 2 - 90 }]}
+        onPress={() => {}} // Capture touches within menu area but do nothing
+      >
+        <Surface style={[styles.menuContent, { backgroundColor: theme.colors.surface }]}>
+          <List.Item
+            title="Photo Library"
+            left={(props) => <List.Icon {...props} icon="image" />}
+            onPress={() => {
+              onPhotoLibrary();
+              onDismiss();
+            }}
+            titleStyle={styles.menuItemTitle}
+          />
+          <List.Item
+            title="Take Photo"
+            left={(props) => <List.Icon {...props} icon="camera" />}
+            onPress={() => {
+              onTakePhoto();
+              onDismiss();
+            }}
+            titleStyle={styles.menuItemTitle}
+          />
+          <List.Item
+            title="Choose File"
+            left={(props) => <List.Icon {...props} icon="file" />}
+            onPress={() => {
+              onChooseFile();
+              onDismiss();
+            }}
+            titleStyle={styles.menuItemTitle}
+          />
+        </Surface>
+      </AnimatedPressable>
+    </Portal>
   );
 }
 
 const styles = StyleSheet.create({
+  menuContainer: {
+    position: "absolute",
+    zIndex: 10,
+  },
   menuContent: {
     borderRadius: BORDER_RADIUS.md,
     elevation: 4,
@@ -82,6 +91,7 @@ const styles = StyleSheet.create({
     },
     shadowOpacity: 0.1,
     shadowRadius: 4,
+    paddingVertical: SPACING.xs,
   },
   menuItemTitle: {
     fontSize: 16,
