@@ -29,12 +29,9 @@ export default function CameraOptionsMenu({
   const insets = useSafeAreaInsets();
   const { width, height } = Dimensions.get("window");
 
-  // Position menu above the camera button (center the menu horizontally, above action area)
-  // Estimate menu width and offset anchor to center the menu itself
-  const estimatedMenuWidth = 160; // Approximate width of the menu
   const anchor = {
-    x: (width - estimatedMenuWidth) / 2, // Center the menu, not just the anchor point
-    y: height - insets.bottom - 350, // Position higher to appear above the button
+    x: (width - 160) / 2,
+    y: height - insets.bottom - 350,
   };
 
   return (
