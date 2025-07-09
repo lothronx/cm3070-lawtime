@@ -46,31 +46,26 @@ export default function ActionMenu({ visible = true }: ActionMenuProps) {
   const transYAudio = useSharedValue(0);
   const opacity = useSharedValue(1);
 
-  // Press state shared values for dimming effect
-  const cameraPressed = useSharedValue(0);
-  const manualPressed = useSharedValue(0);
-  const menuPressed = useSharedValue(0);
-
-  // Single audio state: 0=idle, 1=recording
+  // action states
+  const menuState = useSharedValue(0); // Single menu state: 0=closed, 1=open
+  const cameraState = useSharedValue(0);
+  const manualState = useSharedValue(0);
   const audioState = useSharedValue(0);
+  const audioRecordingState = useSharedValue(0); // 0=idle, 1=recording
 
-  // Menu open state
-  const isOpenedShared = useSharedValue(0);
-
-  // Menu state
-  const [menuOpen, setMenuOpen] = useState(false);
   // Camera options menu state
   const [cameraMenuVisible, setCameraMenuVisible] = useState(false);
 
   const handleFullScreenOverlay = React.useCallback(() => {
     if (cameraMenuVisible) {
+      console.log("1");
       setCameraMenuVisible(false);
     }
     // Only close menu if it's actually open
-    if (menuOpen) {
+    if (menuState.value > 0.5) {
       toggleMenu();
     }
-  }, [cameraMenuVisible, menuOpen]);
+  }, [cameraMenuVisible, menuState]);
 
   // Camera options handlers
   const handlePhotoLibrary = () => {
@@ -110,19 +105,25 @@ export default function ActionMenu({ visible = true }: ActionMenuProps) {
       setCameraMenuVisible(false);
     }
 
+    // Press feedback (immediate)
+    audioState.value = withTiming(1, { duration: 100 });
+
     // Start recording - single state handles all functionality
-    audioState.value = withTiming(1, { duration: 200 });
+    audioRecordingState.value = withTiming(1, { duration: 200 });
 
     onAudioHoldStart();
   };
 
   const handleAudioPressOut = () => {
+    // Release press feedback (immediate)
+    audioState.value = withTiming(0, { duration: 100 });
+
     // Stop recording - single state handles all functionality
-    audioState.value = withTiming(0, { duration: 200 });
+    audioRecordingState.value = withTiming(0, { duration: 200 });
 
     // Let parent handle validation and return success/failure
     const shouldCloseMenu = onAudioHoldEnd();
-    
+
     // Only close menu if recording was successful
     if (shouldCloseMenu) {
       toggleMenu();
@@ -135,8 +136,8 @@ export default function ActionMenu({ visible = true }: ActionMenuProps) {
       setCameraMenuVisible(false);
     }
 
-    if (menuOpen) {
-      setMenuOpen(false);
+    if (menuState.value > 0.5) {
+      // Closing menu
       transYManual.value = withDelay(
         DURATION / 4,
         withTiming(0, { duration: DURATION, easing: Easing.bezierFn(0.36, 0, 0.66, -0.56) })
@@ -153,10 +154,10 @@ export default function ActionMenu({ visible = true }: ActionMenuProps) {
         duration: DURATION,
       });
 
-      // Hide background overlay and closing layer
-      isOpenedShared.value = withTiming(0, { duration: DURATION });
+      // Hide background overlay and set menu to closed
+      menuState.value = withTiming(0, { duration: DURATION });
     } else {
-      setMenuOpen(true);
+      // Opening menu
       const config: WithSpringConfig = { damping: 12 };
       transYManual.value = withDelay(0, withSpring(TRANSLATE_Y, config));
       transYCamera.value = withDelay(DURATION / 8, withSpring(TRANSLATE_Y, config));
@@ -165,14 +166,14 @@ export default function ActionMenu({ visible = true }: ActionMenuProps) {
         duration: DURATION,
       });
 
-      // Show background overlay and closing layer
-      isOpenedShared.value = withTiming(0.9, { duration: DURATION });
+      // Show background overlay and set menu to open
+      menuState.value = withTiming(0.9, { duration: DURATION });
     }
   };
 
   const rManualAnimateStyles = useAnimatedStyle(() => {
     const menuScale = interpolate(transYManual.value, [TRANSLATE_Y, 0], [1, 0]);
-    const pressScale = interpolate(manualPressed.value, [0, 1], [1, 0.9]);
+    const pressScale = interpolate(manualState.value, [0, 1], [1, 0.9]);
 
     return {
       transform: [
@@ -182,26 +183,28 @@ export default function ActionMenu({ visible = true }: ActionMenuProps) {
         },
         { scale: menuScale * pressScale },
       ],
-      backgroundColor: theme.colors.error,
-      opacity: interpolate(manualPressed.value, [0, 1], [1, 0.6]),
+      backgroundColor:
+        audioRecordingState.value > 0.5 ? theme.colors.onSurfaceDisabled : theme.colors.error,
+      opacity: interpolate(manualState.value, [0, 1], [1, 0.6]),
     };
-  }, []);
+  }, [theme.colors.error]);
 
   const rCameraAnimateStyles = useAnimatedStyle(() => {
     const menuScale = interpolate(transYCamera.value, [TRANSLATE_Y, 0], [1, 0]);
-    const pressScale = interpolate(cameraPressed.value, [0, 1], [1, 0.9]);
+    const pressScale = interpolate(cameraState.value, [0, 1], [1, 0.9]);
 
     return {
       transform: [{ translateY: transYCamera.value }, { scale: menuScale * pressScale }],
-
-      backgroundColor: theme.colors.error,
-      opacity: interpolate(cameraPressed.value, [0, 1], [1, 0.6]),
+      backgroundColor:
+        audioRecordingState.value > 0.5 ? theme.colors.onSurfaceDisabled : theme.colors.error,
+      opacity: interpolate(cameraState.value, [0, 1], [1, 0.6]),
     };
-  }, []);
+  }, [theme.colors.error]);
 
   const rAudioAnimateStyles = useAnimatedStyle(() => {
     const baseScale = interpolate(transYAudio.value, [TRANSLATE_Y, 0], [1, 0]);
-    const recordingScale = interpolate(audioState.value, [0, 1], [1, 1.1]);
+    const recordingScale = interpolate(audioRecordingState.value, [0, 1], [1, 1.1]);
+    const pressScale = interpolate(audioState.value, [0, 1], [1, 0.9]);
 
     return {
       transform: [
@@ -209,12 +212,12 @@ export default function ActionMenu({ visible = true }: ActionMenuProps) {
         {
           translateX: interpolate(transYAudio.value, [TRANSLATE_Y, 0], [-TRANSLATE_Y * 0.866, 0]),
         },
-        { scale: baseScale * recordingScale },
+        { scale: baseScale * recordingScale * pressScale },
       ],
-      backgroundColor: audioState.value > 0.5 ? theme.colors.primary : theme.colors.error,
-      opacity: interpolate(audioState.value, [0, 1], [1, 0.9]),
+      backgroundColor: theme.colors.error,
+      opacity: interpolate(audioState.value, [0, 1], [1, 0.6]), // Press feedback opacity
     };
-  }, [theme.colors.primary, theme.colors.error]);
+  }, [theme.colors.error]);
 
   const rMenuAnimateStyles = useAnimatedStyle(() => {
     return {
@@ -223,9 +226,9 @@ export default function ActionMenu({ visible = true }: ActionMenuProps) {
   }, []);
 
   const rMenuButtonStyles = useAnimatedStyle(() => {
-    const pressScale = interpolate(menuPressed.value, [0, 1], [1, 0.9]);
+    const pressScale = interpolate(menuState.value, [0, 0.1, 1], [1, 0.9, 1]); // Press feedback during transition
     return {
-      backgroundColor: isOpenedShared.value > 0 ? theme.colors.primary : theme.colors.error,
+      backgroundColor: menuState.value > 0.1 ? theme.colors.primary : theme.colors.error,
       transform: [{ scale: pressScale }],
     };
   }, [theme.colors.primary, theme.colors.error]);
@@ -248,14 +251,14 @@ export default function ActionMenu({ visible = true }: ActionMenuProps) {
       </View>
 
       {/* Full Screen Background overlay */}
-      <FullScreenOverlay opacityValue={isOpenedShared} onPress={handleFullScreenOverlay} />
+      <FullScreenOverlay opacityValue={menuState} onPress={handleFullScreenOverlay} />
 
       {/* Listening Indicator */}
-      <ListeningIndicator isListening={audioState} />
+      <ListeningIndicator isListening={audioRecordingState} />
 
       {/* Camera Options Menu */}
       <CameraOptionsMenu
-        visible={cameraMenuVisible && menuOpen}
+        visible={cameraMenuVisible && menuState.value > 0.5}
         onDismiss={() => setCameraMenuVisible(false)}
         onPhotoLibrary={handlePhotoLibrary}
         onTakePhoto={handleTakePhoto}
@@ -264,15 +267,7 @@ export default function ActionMenu({ visible = true }: ActionMenuProps) {
 
       <View style={[styles.container, { bottom: insets.bottom + 40 }]}>
         {/* Main Action Button */}
-        <AnimatedPressable
-          style={[styles.menuButton, rMenuButtonStyles, { transform: [{ scale: 1 }] }]}
-          onPress={toggleMenu}
-          onPressIn={() => {
-            menuPressed.value = withTiming(1, { duration: 100 });
-          }}
-          onPressOut={() => {
-            menuPressed.value = withTiming(0, { duration: 100 });
-          }}>
+        <AnimatedPressable style={[styles.menuButton, rMenuButtonStyles]} onPress={toggleMenu}>
           <Animated.View style={rMenuAnimateStyles}>
             <Ionicons name="add" size={46} color={theme.colors.onError} />
           </Animated.View>
@@ -283,10 +278,10 @@ export default function ActionMenu({ visible = true }: ActionMenuProps) {
           style={[styles.actionButton, rManualAnimateStyles]}
           onPress={handleManualPress}
           onPressIn={() => {
-            manualPressed.value = withTiming(1, { duration: 100 });
+            manualState.value = withTiming(1, { duration: 100 });
           }}
           onPressOut={() => {
-            manualPressed.value = withTiming(0, { duration: 100 });
+            manualState.value = withTiming(0, { duration: 100 });
           }}>
           <Feather name="type" size={26} color={theme.colors.onError} />
         </AnimatedPressable>
@@ -296,10 +291,10 @@ export default function ActionMenu({ visible = true }: ActionMenuProps) {
           style={[styles.actionButton, rCameraAnimateStyles]}
           onPress={handleCameraPress}
           onPressIn={() => {
-            cameraPressed.value = withTiming(1, { duration: 100 });
+            cameraState.value = withTiming(1, { duration: 100 });
           }}
           onPressOut={() => {
-            cameraPressed.value = withTiming(0, { duration: 100 });
+            cameraState.value = withTiming(0, { duration: 100 });
           }}>
           <FontAwesome name="camera" size={26} color={theme.colors.onError} />
         </AnimatedPressable>
