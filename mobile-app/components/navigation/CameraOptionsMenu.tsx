@@ -39,6 +39,7 @@ export default function CameraOptionsMenu({
       visible={visible}
       onDismiss={onDismiss}
       anchor={anchor}
+      overlayAccessibilityLabel="Close camera options menu"
       contentStyle={[styles.menuContent, { backgroundColor: theme.colors.surface }]}>
       <Menu.Item
         onPress={() => {

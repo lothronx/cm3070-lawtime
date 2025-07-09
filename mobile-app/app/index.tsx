@@ -11,30 +11,6 @@ export default function Calendar() {
   const { theme } = useAppTheme();
   const [tasks, setTasks] = useState<TaskWithClient[]>(mockTasks);
 
-  const handlePhotoLibrary = () => {
-    console.log("Photo Library action pressed");
-  };
-
-  const handleTakePhoto = () => {
-    console.log("Take Photo action pressed");
-  };
-
-  const handleChooseFile = () => {
-    console.log("Choose File action pressed");
-  };
-
-  const handleMicrophonePressStart = () => {
-    console.log("Microphone action pressed");
-  };
-
-  const handleMicrophonePressEnd = () => {
-    console.log("Microphone action released");
-  };
-
-  const handleAddPress = () => {
-    console.log("Add action pressed");
-  };
-
   const handleToggleComplete = (taskId: number, completedAt: string | null) => {
     setTasks((prevTasks) =>
       prevTasks.map((task) => (task.id === taskId ? { ...task, completed_at: completedAt } : task))
@@ -112,14 +88,7 @@ export default function Calendar() {
         <View style={styles.bottomSpacing} />
       </ScrollView>
 
-      <ActionMenu
-        onPhotoLibrary={handlePhotoLibrary}
-        onTakePhoto={handleTakePhoto}
-        onChooseFile={handleChooseFile}
-        onAudioHoldStart={handleMicrophonePressStart}
-        onAudioHoldEnd={handleMicrophonePressEnd}
-        onManualPress={handleAddPress}
-      />
+      <ActionMenu />
     </View>
   );
 }

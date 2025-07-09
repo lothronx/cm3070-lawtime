@@ -1,20 +1,44 @@
 import React from "react";
 import { StyleSheet, Text, View } from "react-native";
-import Animated, { interpolate, useAnimatedStyle, SharedValue } from "react-native-reanimated";
+import Animated, {
+  interpolate,
+  useAnimatedStyle,
+  SharedValue,
+  useSharedValue,
+  withRepeat,
+  withTiming,
+  withDelay,
+  useAnimatedReaction,
+} from "react-native-reanimated";
 import { useAppTheme } from "@/theme/ThemeProvider";
 
 interface ListeningIndicatorProps {
   isListening: SharedValue<number>;
-  soundWave1: SharedValue<number>;
-  soundWave2: SharedValue<number>;
 }
 
-export default function ListeningIndicator({
-  isListening,
-  soundWave1,
-  soundWave2,
-}: ListeningIndicatorProps) {
+export default function ListeningIndicator({ isListening }: ListeningIndicatorProps) {
   const { theme } = useAppTheme();
+
+  // Internal sound wave animation shared values
+  const soundWave1 = useSharedValue(0);
+  const soundWave2 = useSharedValue(0);
+
+  // Start/stop sound wave animations based on isListening value
+  useAnimatedReaction(
+    () => isListening.value,
+    (current, previous) => {
+      if (current > 0.5 && (previous === null || previous <= 0.5)) {
+        // Start sound wave animations
+        soundWave1.value = withRepeat(withTiming(1, { duration: 600 }), -1, true);
+        soundWave2.value = withDelay(300, withRepeat(withTiming(1, { duration: 600 }), -1, true));
+      } else if (current <= 0.5 && (previous === null || previous > 0.5)) {
+        // Stop sound wave animations
+        soundWave1.value = withTiming(0, { duration: 200 });
+        soundWave2.value = withTiming(0, { duration: 200 });
+      }
+    },
+    [isListening]
+  );
 
   const rListeningIndicatorStyles = useAnimatedStyle(() => {
     return {
