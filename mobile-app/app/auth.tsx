@@ -89,10 +89,6 @@ export default function Auth() {
         visible={!!generalError}
         onDismiss={() => setGeneralError("")}
         duration={2000}
-        action={{
-          label: "OK",
-          onPress: () => setGeneralError(""),
-        }}
         style={{ backgroundColor: theme.colors.errorContainer }}>
         <Text style={{ color: theme.colors.onErrorContainer }}>{generalError}</Text>
       </Snackbar>

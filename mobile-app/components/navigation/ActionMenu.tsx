@@ -3,6 +3,7 @@ import { Pressable, StyleSheet, View } from "react-native";
 import { useAppTheme } from "@/theme/ThemeProvider";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { FontAwesome, Ionicons, Feather } from "@expo/vector-icons";
+import { Snackbar } from "react-native-paper";
 import Animated, {
   Easing,
   interpolate,
@@ -14,10 +15,9 @@ import Animated, {
   WithSpringConfig,
   withTiming,
 } from "react-native-reanimated";
-import FullScreenOverlay from "@/components/menu/FullScreenOverlay";
-import ListeningIndicator from "@/components/menu/ListeningIndicator";
-import ErrorDialog from "@/components/ErrorDialog";
-import CameraOptionsModal from "@/components/menu/CameraOptionsModal";
+import FullScreenOverlay from "@/components/navigation/FullScreenOverlay";
+import ListeningIndicator from "@/components/navigation/ListeningIndicator";
+import CameraOptionsModal from "@/components/navigation/CameraOptionsModal";
 
 const DURATION = 300;
 const TRANSLATE_Y = -80;
@@ -274,15 +274,19 @@ export default function ActionMenu({
 
   return (
     <>
+      {/* Audio Too Short Snackbar */}
+      <View style={styles.snackbarContainer}>
+        <Snackbar
+          visible={showTooShortIndicator}
+          onDismiss={() => setShowTooShortIndicator(false)}
+          duration={2000}
+          style={{ backgroundColor: theme.colors.error }}>
+          Audio too short to process
+        </Snackbar>
+      </View>
+
       {/* Full Screen Background overlay */}
       <FullScreenOverlay opacityValue={isOpenedShared} onPress={handleFullScreenOverlay} />
-
-      {/* Audio Too Short Indicator */}
-      <ErrorDialog
-        visible={showTooShortIndicator}
-        message="Audio too short to process"
-        onDismiss={() => setShowTooShortIndicator(false)}
-      />
 
       {/* Listening Indicator */}
       <ListeningIndicator
@@ -354,6 +358,15 @@ const styles = StyleSheet.create({
     width: "100%",
     alignItems: "center",
     justifyContent: "flex-end",
+  },
+  snackbarContainer: {
+    position: "absolute",
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    zIndex: 15,
+    pointerEvents: "box-none",
   },
   menuButton: {
     width: 70,

@@ -260,7 +260,7 @@ export default function Task() {
       <Snackbar
         visible={snackbarVisible}
         onDismiss={() => setSnackbarVisible(false)}
-        duration={3000}
+        duration={2000}
         style={{
           backgroundColor: snackbarMessage.includes("successfully")
             ? theme.colors.secondary
