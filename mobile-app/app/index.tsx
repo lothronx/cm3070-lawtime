@@ -4,7 +4,7 @@ import { Text } from "react-native-paper";
 import { useAppTheme, SPACING } from "@/theme/ThemeProvider";
 import ActionMenu from "@/components/menu/ActionMenu";
 import Header from "@/components/Header";
-import TaskItem from "@/components/tasks/TaskItem";
+import TaskSection from "@/components/tasks/TaskSection";
 import { mockTasks, TaskWithClient } from "@/mockData";
 
 export default function Calendar() {
@@ -35,67 +35,69 @@ export default function Calendar() {
     console.log("Add action pressed");
   };
 
-  const handleToggleComplete = (taskId: number, isCompleted: boolean) => {
-    setTasks(prevTasks =>
-      prevTasks.map(task =>
-        task.id === taskId ? { ...task, is_completed: isCompleted } : task
-      )
+  const handleToggleComplete = (taskId: number, completedAt: string | null) => {
+    setTasks((prevTasks) =>
+      prevTasks.map((task) => (task.id === taskId ? { ...task, completed_at: completedAt } : task))
     );
   };
 
-  const handleTaskPress = (task: TaskWithClient) => {
+  const handleTaskEdit = (task: TaskWithClient) => {
     console.log("Task pressed:", task.title);
     // Navigate to edit task screen
   };
 
   const handleDeleteTask = (taskId: number) => {
-    setTasks(prevTasks => prevTasks.filter(task => task.id !== taskId));
+    setTasks((prevTasks) => prevTasks.filter((task) => task.id !== taskId));
   };
 
-  // Separate tasks into sections
-  const upcomingTasks = tasks.filter(task => !task.is_completed);
-  const completedTasks = tasks.filter(task => task.is_completed);
+  // Separate and sort tasks into sections
+  const unscheduledTasks = tasks
+    .filter((task) => !task.completed_at && !task.event_time)
+    .sort((a, b) => new Date(b.created_at!).getTime() - new Date(a.created_at!).getTime());
+
+  const upcomingTasks = tasks
+    .filter((task) => !task.completed_at && task.event_time)
+    .sort((a, b) => new Date(a.event_time!).getTime() - new Date(b.event_time!).getTime());
+
+  const completedTasks = tasks
+    .filter((task) => task.completed_at)
+    .sort((a, b) => new Date(b.completed_at!).getTime() - new Date(a.completed_at!).getTime());
 
   return (
     <View style={[styles.container, { backgroundColor: theme.colors.background }]}>
       <Header title="Tasks" variant="main" />
 
       <ScrollView style={styles.scrollContainer} showsVerticalScrollIndicator={false}>
+        {/* Unscheduled Tasks Section */}
+        <TaskSection
+          title="Unscheduled"
+          tasks={unscheduledTasks}
+          color={theme.colors.secondary}
+          onToggleComplete={handleToggleComplete}
+          onEdit={handleTaskEdit}
+          onDelete={handleDeleteTask}
+        />
+
         {/* Upcoming Tasks Section */}
-        {upcomingTasks.length > 0 && (
-          <View style={styles.section}>
-            <Text style={[styles.sectionTitle, { color: theme.colors.onBackground }]}>
-              Upcoming ({upcomingTasks.length})
-            </Text>
-            {upcomingTasks.map(task => (
-              <TaskItem
-                key={task.id}
-                task={task}
-                onToggleComplete={handleToggleComplete}
-                onPress={handleTaskPress}
-                onDelete={handleDeleteTask}
-              />
-            ))}
-          </View>
-        )}
+        <TaskSection
+          title="Upcoming"
+          tasks={upcomingTasks}
+          color={theme.colors.primary}
+          onToggleComplete={handleToggleComplete}
+          onEdit={handleTaskEdit}
+          onDelete={handleDeleteTask}
+        />
 
         {/* Completed Tasks Section */}
-        {completedTasks.length > 0 && (
-          <View style={styles.section}>
-            <Text style={[styles.sectionTitle, { color: theme.colors.onBackground }]}>
-              Completed ({completedTasks.length})
-            </Text>
-            {completedTasks.map(task => (
-              <TaskItem
-                key={task.id}
-                task={task}
-                onToggleComplete={handleToggleComplete}
-                onPress={handleTaskPress}
-                onDelete={handleDeleteTask}
-              />
-            ))}
-          </View>
-        )}
+        <TaskSection
+          title="Completed"
+          tasks={completedTasks}
+          color={theme.colors.onSurfaceDisabled}
+          defaultExpanded={false}
+          onToggleComplete={handleToggleComplete}
+          onEdit={handleTaskEdit}
+          onDelete={handleDeleteTask}
+        />
 
         {/* Empty State */}
         {tasks.length === 0 && (
@@ -128,15 +130,6 @@ const styles = StyleSheet.create({
   },
   scrollContainer: {
     flex: 1,
-  },
-  section: {
-    marginTop: SPACING.md,
-  },
-  sectionTitle: {
-    fontSize: 18,
-    fontWeight: "600",
-    marginBottom: SPACING.sm,
-    marginHorizontal: SPACING.md,
   },
   emptyState: {
     flex: 1,

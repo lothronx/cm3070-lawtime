@@ -12,16 +12,17 @@ import { TaskWithClient } from "@/mockData";
 
 interface TaskItemProps {
   task: TaskWithClient;
-  onToggleComplete: (taskId: number, isCompleted: boolean) => void;
-  onPress: (task: TaskWithClient) => void;
+  color: string;
+  onToggleComplete: (taskId: number, completedAt: string | null) => void;
+  onEdit: (task: TaskWithClient) => void;
   onDelete: (taskId: number) => void;
 }
 
-const TaskItem: React.FC<TaskItemProps> = ({ task, onToggleComplete, onPress, onDelete }) => {
+const TaskItem: React.FC<TaskItemProps> = ({ task, color, onToggleComplete, onEdit, onDelete }) => {
   const { theme } = useAppTheme();
   const translateX = useSharedValue(0);
 
-  const overdue = !!task.event_time && !task.is_completed && new Date(task.event_time) < new Date();
+  const overdue = !!task.event_time && !task.completed_at && new Date(task.event_time) < new Date();
 
   const formatDateTime = (eventTime: string | null) => {
     if (!eventTime) return null;
@@ -83,37 +84,32 @@ const TaskItem: React.FC<TaskItemProps> = ({ task, onToggleComplete, onPress, on
 
   const handleToggleComplete = () => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-    onToggleComplete(task.id, !task.is_completed);
+    onToggleComplete(task.id, task.completed_at ? null : new Date().toISOString());
   };
 
   return (
     <View style={[styles.container]}>
       <Card mode="contained">
         <GestureDetector gesture={panGesture}>
-          <Animated.View
-            style={[
-              styles.animatedContainer,
-              animatedStyle,
-              { backgroundColor: theme.colors.surface },
-            ]}>
+          <Animated.View style={[styles.animatedContainer, animatedStyle]}>
             <View
               style={[
                 styles.cardContent,
                 { backgroundColor: theme.colors.surface },
-                task.is_completed
+                task.completed_at
                   ? { borderLeftColor: theme.colors.onSurfaceDisabled }
-                  : { borderLeftColor: theme.colors.primary },
+                  : { borderLeftColor: color },
               ]}>
               {/* Left side - Checkbox */}
               <CheckBox
-                checked={task.is_completed}
+                checked={!!task.completed_at}
                 onPress={handleToggleComplete}
                 size={20}
                 checkedIcon="check-circle"
                 uncheckedIcon="radio-button-unchecked"
                 iconType="material"
                 checkedColor={theme.colors.onSurfaceDisabled}
-                uncheckedColor={theme.colors.primary}
+                uncheckedColor={color}
                 containerStyle={styles.checkboxStyle}
               />
 
@@ -124,10 +120,9 @@ const TaskItem: React.FC<TaskItemProps> = ({ task, onToggleComplete, onPress, on
                   variant="titleMedium"
                   style={[
                     styles.title,
-                    { color: theme.colors.primary },
-                    task.is_completed && {
+                    { color: task.completed_at ? theme.colors.onSurfaceDisabled : color },
+                    task.completed_at && {
                       textDecorationLine: "line-through" as const,
-                      color: theme.colors.onSurfaceDisabled,
                     },
                   ]}
                   numberOfLines={2}>
@@ -167,7 +162,7 @@ const TaskItem: React.FC<TaskItemProps> = ({ task, onToggleComplete, onPress, on
                         style={[
                           styles.subtitle,
                           { color: theme.colors.onSurfaceVariant },
-                          !task.is_completed &&
+                          !task.completed_at &&
                             overdue && { color: theme.colors.error, fontWeight: "600" },
                         ]}>
                         {formatDateTime(task.event_time)}
@@ -203,7 +198,7 @@ const TaskItem: React.FC<TaskItemProps> = ({ task, onToggleComplete, onPress, on
         {/* Edit and Delete buttons revealed on swipe */}
         <View style={styles.actionsContainer}>
           <TouchableOpacity
-            onPress={() => onPress(task)}
+            onPress={() => onEdit(task)}
             style={[styles.actionButton, { backgroundColor: theme.colors.primary }]}>
             <Icon name="edit" size={20} color={theme.colors.onPrimary} />
           </TouchableOpacity>
@@ -234,7 +229,8 @@ const styles = StyleSheet.create({
   },
   cardContent: {
     borderLeftWidth: 2,
-    borderRadius: BORDER_RADIUS.md,
+    borderTopLeftRadius: BORDER_RADIUS.md,
+    borderBottomLeftRadius: BORDER_RADIUS.md,
     padding: SPACING.md,
     flexDirection: "row",
     elevation: 2,
@@ -284,6 +280,13 @@ const styles = StyleSheet.create({
     width: 160,
     flexDirection: "row",
     zIndex: 0,
+    elevation: 2,
+    shadowOffset: {
+      width: 0,
+      height: 1,
+    },
+    shadowOpacity: 0.1,
+    shadowRadius: 2,
   },
   actionButton: {
     width: 80,

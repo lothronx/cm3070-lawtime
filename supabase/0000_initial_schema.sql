@@ -70,7 +70,7 @@ CREATE TABLE public.tasks (
     event_time timestamp with time zone,
     location text,
     note text,
-    is_completed boolean NOT NULL DEFAULT false,
+    completed_at timestamp with time zone,
     source_type public.task_source_type NOT NULL,
     notification_sent boolean NOT NULL DEFAULT false,
     created_at timestamp with time zone DEFAULT now()
@@ -84,7 +84,7 @@ ALTER TABLE public.tasks
 ADD CONSTRAINT tasks_client_id_fkey FOREIGN KEY (client_id) REFERENCES public.clients(id) ON DELETE SET NULL;
 
 -- Create a composite index for efficient querying of tasks that need notifications.
-CREATE INDEX tasks_notification_query_idx ON public.tasks (notification_sent, is_completed, event_time);
+CREATE INDEX tasks_notification_query_idx ON public.tasks (notification_sent, completed_at, event_time);
 
 COMMENT ON TABLE public.tasks IS 'The central table for all scheduled and unscheduled events.';
 
