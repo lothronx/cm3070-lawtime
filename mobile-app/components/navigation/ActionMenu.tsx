@@ -17,7 +17,7 @@ import Animated, {
 } from "react-native-reanimated";
 import FullScreenOverlay from "@/components/navigation/FullScreenOverlay";
 import ListeningIndicator from "@/components/navigation/ListeningIndicator";
-import CameraOptionsModal from "@/components/navigation/CameraOptionsModal";
+import CameraOptionsMenu from "@/components/navigation/CameraOptionsMenu";
 
 const DURATION = 300;
 const TRANSLATE_Y = -80;
@@ -85,19 +85,16 @@ export default function ActionMenu({
 
   // Camera options handlers
   const handlePhotoLibrary = () => {
-    setCameraMenuVisible(false);
     toggleMenu();
     onPhotoLibrary();
   };
 
   const handleTakePhoto = () => {
-    setCameraMenuVisible(false);
     toggleMenu();
     onTakePhoto();
   };
 
   const handleChooseFile = () => {
-    setCameraMenuVisible(false);
     toggleMenu();
     onChooseFile();
   };
@@ -295,8 +292,8 @@ export default function ActionMenu({
         soundWave2={soundWave2}
       />
 
-      {/* Camera Options */}
-      <CameraOptionsModal
+      {/* Camera Options Menu */}
+      <CameraOptionsMenu
         visible={cameraMenuVisible && isOpenedShared.value > 0}
         onDismiss={() => setCameraMenuVisible(false)}
         onPhotoLibrary={handlePhotoLibrary}
@@ -327,7 +324,7 @@ export default function ActionMenu({
           <Feather name="type" size={26} color={theme.colors.onError} />
         </AnimatedPressable>
 
-        {/* Camera Buttons */}
+        {/* Camera Button */}
         <AnimatedPressable
           style={[styles.actionButton, rCameraAnimateStyles]}
           onPress={handleCameraPress}
