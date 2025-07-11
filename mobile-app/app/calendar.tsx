@@ -7,42 +7,13 @@ import Header from "@/components/Header";
 export default function Calendar() {
   const { theme } = useAppTheme();
 
-  const handlePhotoLibrary = () => {
-    console.log("Photo Library action pressed");
-  };
-
-  const handleTakePhoto = () => {
-    console.log("Take Photo action pressed");
-  };
-
-  const handleChooseFile = () => {
-    console.log("Choose File action pressed");
-  };
-
-  const handleMicrophonePressStart = () => {
-    console.log("Microphone action pressed");
-  };
-
-  const handleMicrophonePressEnd = () => {
-    console.log("Microphone action released");
-  };
-
-  const handleAddPress = () => {
-    console.log("Add action pressed");
-  };
+ 
 
   return (
     <View style={[styles.container, { backgroundColor: theme.colors.background }]}>
-      <Header title="Settings" variant="modal" />
+      <Header title="Calendar" variant="main" />
 
-      <ActionMenu
-        onPhotoLibrary={handlePhotoLibrary}
-        onTakePhoto={handleTakePhoto}
-        onChooseFile={handleChooseFile}
-        onAudioHoldStart={handleMicrophonePressStart}
-        onAudioHoldEnd={handleMicrophonePressEnd}
-        onManualPress={handleAddPress}
-      />
+      <ActionMenu />
     </View>
   );
 }
