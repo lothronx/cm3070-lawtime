@@ -1,26 +1,16 @@
-import React, { useState } from "react";
+import React from "react";
 import { Pressable, StyleSheet, View } from "react-native";
 import { useAppTheme } from "@/theme/ThemeProvider";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { FontAwesome, Ionicons, Feather } from "@expo/vector-icons";
 import { Snackbar } from "react-native-paper";
-import Animated, {
-  Easing,
-  interpolate,
-  useAnimatedStyle,
-  useSharedValue,
-  withDelay,
-  withSpring,
-  WithSpringConfig,
-  withTiming,
-} from "react-native-reanimated";
+import Animated from "react-native-reanimated";
 import FullScreenOverlay from "@/components/navigation/FullScreenOverlay";
 import ListeningIndicator from "@/components/navigation/ListeningIndicator";
 import CameraOptionsMenu from "@/components/navigation/CameraOptionsMenu";
 import { useActionMenu } from "@/components/navigation/hooks/useActionMenu";
+import { useActionMenuAnimation } from "@/components/navigation/hooks/useActionMenuAnimation";
 
-const DURATION = 300;
-const TRANSLATE_Y = -80;
 const AnimatedPressable = Animated.createAnimatedComponent(Pressable);
 
 interface ActionMenuProps {
@@ -41,69 +31,28 @@ export default function ActionMenu({ visible = true }: ActionMenuProps) {
     dismissTooShortWarning,
   } = useActionMenu();
 
-  const transYCamera = useSharedValue(0);
-  const transYManual = useSharedValue(0);
-  const transYAudio = useSharedValue(0);
-  const opacity = useSharedValue(1);
-
-  // action states
-  const menuState = useSharedValue(0);
-  const cameraState = useSharedValue(0);
-  const manualState = useSharedValue(0);
-  const audioState = useSharedValue(0);
-  const audioRecordingState = useSharedValue(0); // 0=idle, 1=recording
-
-  // Camera options menu state
-  const [cameraMenuVisible, setCameraMenuVisible] = useState(false);
-  // Menu open React state (synced with menuState shared value)
-  const [isMenuOpen, setIsMenuOpen] = useState(false);
-
-  const toggleMenu = React.useCallback(() => {
-    // Close camera menu if it's open
-    if (cameraMenuVisible) {
-      setCameraMenuVisible(false);
-    }
-
-    if (isMenuOpen) {
-      // Closing menu
-      setIsMenuOpen(false);
-      transYManual.value = withDelay(
-        DURATION / 4,
-        withTiming(0, { duration: DURATION, easing: Easing.bezierFn(0.36, 0, 0.66, -0.56) })
-      );
-      transYCamera.value = withDelay(
-        DURATION / 8,
-        withTiming(0, { duration: DURATION, easing: Easing.bezierFn(0.36, 0, 0.66, -0.56) })
-      );
-      transYAudio.value = withDelay(
-        0,
-        withTiming(0, { duration: DURATION, easing: Easing.bezierFn(0.36, 0, 0.66, -0.56) })
-      );
-      opacity.value = withTiming(1, {
-        duration: DURATION,
-      });
-
-      // Hide background overlay and set menu to closed
-      menuState.value = withTiming(0, { duration: DURATION });
-    } else {
-      // Opening menu
-      setIsMenuOpen(true);
-      const config: WithSpringConfig = { damping: 12 };
-      transYManual.value = withDelay(0, withSpring(TRANSLATE_Y, config));
-      transYCamera.value = withDelay(DURATION / 8, withSpring(TRANSLATE_Y, config));
-      transYAudio.value = withDelay(DURATION / 4, withSpring(TRANSLATE_Y, config));
-      opacity.value = withTiming(0, {
-        duration: DURATION,
-      });
-
-      // Show background overlay and set menu to open
-      menuState.value = withTiming(0.9, { duration: DURATION });
-    }
-  }, [cameraMenuVisible, isMenuOpen, transYManual, transYCamera, transYAudio, opacity, menuState]);
+  const {
+    cameraMenuVisible,
+    setCameraMenuVisible,
+    isMenuOpen,
+    menuState,
+    audioRecordingState,
+    toggleMenu,
+    animateAudioPressIn,
+    animateAudioPressOut,
+    animateManualPressIn,
+    animateManualPressOut,
+    animateCameraPressIn,
+    animateCameraPressOut,
+    rManualAnimateStyles,
+    rCameraAnimateStyles,
+    rAudioAnimateStyles,
+    rMenuAnimateStyles,
+    rMenuButtonStyles,
+  } = useActionMenuAnimation();
 
   const handleFullScreenOverlay = React.useCallback(() => {
     if (cameraMenuVisible) {
-      console.log("1");
       setCameraMenuVisible(false);
       // Close main menu when camera menu is dismissed by tapping overlay
       if (isMenuOpen) {
@@ -153,21 +102,12 @@ export default function ActionMenu({ visible = true }: ActionMenuProps) {
       setCameraMenuVisible(false);
     }
 
-    // Press feedback (immediate)
-    audioState.value = withTiming(1, { duration: 100 });
-
-    // Start recording - single state handles all functionality
-    audioRecordingState.value = withTiming(1, { duration: 200 });
-
+    animateAudioPressIn();
     onAudioHoldStart();
   };
 
   const handleAudioPressOut = () => {
-    // Release press feedback (immediate)
-    audioState.value = withTiming(0, { duration: 100 });
-
-    // Stop recording - single state handles all functionality
-    audioRecordingState.value = withTiming(0, { duration: 200 });
+    animateAudioPressOut();
 
     // Let parent handle validation and return success/failure
     const shouldCloseMenu = onAudioHoldEnd();
@@ -177,69 +117,6 @@ export default function ActionMenu({ visible = true }: ActionMenuProps) {
       toggleMenu();
     }
   };
-
-
-  const rManualAnimateStyles = useAnimatedStyle(() => {
-    const menuScale = interpolate(transYManual.value, [TRANSLATE_Y, 0], [1, 0]);
-    const pressScale = interpolate(manualState.value, [0, 1], [1, 0.9]);
-
-    return {
-      transform: [
-        { translateY: interpolate(transYManual.value, [TRANSLATE_Y, 0], [TRANSLATE_Y * 0.5, 0]) },
-        {
-          translateX: interpolate(transYManual.value, [TRANSLATE_Y, 0], [TRANSLATE_Y * 0.866, 0]),
-        },
-        { scale: menuScale * pressScale },
-      ],
-      backgroundColor:
-        audioRecordingState.value > 0.5 ? theme.colors.onSurfaceDisabled : theme.colors.error,
-      opacity: interpolate(manualState.value, [0, 1], [1, 0.6]),
-    };
-  }, [theme.colors.error]);
-
-  const rCameraAnimateStyles = useAnimatedStyle(() => {
-    const menuScale = interpolate(transYCamera.value, [TRANSLATE_Y, 0], [1, 0]);
-    const pressScale = interpolate(cameraState.value, [0, 1], [1, 0.9]);
-
-    return {
-      transform: [{ translateY: transYCamera.value }, { scale: menuScale * pressScale }],
-      backgroundColor:
-        audioRecordingState.value > 0.5 ? theme.colors.onSurfaceDisabled : theme.colors.error,
-      opacity: interpolate(cameraState.value, [0, 1], [1, 0.6]),
-    };
-  }, [theme.colors.error]);
-
-  const rAudioAnimateStyles = useAnimatedStyle(() => {
-    const baseScale = interpolate(transYAudio.value, [TRANSLATE_Y, 0], [1, 0]);
-    const recordingScale = interpolate(audioRecordingState.value, [0, 1], [1, 1.1]);
-    const pressScale = interpolate(audioState.value, [0, 1], [1, 0.9]);
-
-    return {
-      transform: [
-        { translateY: interpolate(transYAudio.value, [TRANSLATE_Y, 0], [TRANSLATE_Y * 0.5, 0]) },
-        {
-          translateX: interpolate(transYAudio.value, [TRANSLATE_Y, 0], [-TRANSLATE_Y * 0.866, 0]),
-        },
-        { scale: baseScale * recordingScale * pressScale },
-      ],
-      backgroundColor: theme.colors.error,
-      opacity: interpolate(audioState.value, [0, 1], [1, 0.6]), // Press feedback opacity
-    };
-  }, [theme.colors.error]);
-
-  const rMenuAnimateStyles = useAnimatedStyle(() => {
-    return {
-      transform: [{ rotateZ: `${interpolate(opacity.value, [0, 1], [45, 0])}deg` }],
-    };
-  }, []);
-
-  const rMenuButtonStyles = useAnimatedStyle(() => {
-    const pressScale = interpolate(menuState.value, [0, 0.1, 1], [1, 0.9, 1]); // Press feedback during transition
-    return {
-      backgroundColor: menuState.value > 0.1 ? theme.colors.primary : theme.colors.error,
-      transform: [{ scale: pressScale }],
-    };
-  }, [theme.colors.primary, theme.colors.error]);
 
   if (!visible) {
     return null;
@@ -285,12 +162,8 @@ export default function ActionMenu({ visible = true }: ActionMenuProps) {
         <AnimatedPressable
           style={[styles.actionButton, rManualAnimateStyles]}
           onPress={handleManualPress}
-          onPressIn={() => {
-            manualState.value = withTiming(1, { duration: 100 });
-          }}
-          onPressOut={() => {
-            manualState.value = withTiming(0, { duration: 100 });
-          }}>
+          onPressIn={animateManualPressIn}
+          onPressOut={animateManualPressOut}>
           <Feather name="type" size={26} color={theme.colors.onError} />
         </AnimatedPressable>
 
@@ -298,12 +171,8 @@ export default function ActionMenu({ visible = true }: ActionMenuProps) {
         <AnimatedPressable
           style={[styles.actionButton, rCameraAnimateStyles]}
           onPress={handleCameraPress}
-          onPressIn={() => {
-            cameraState.value = withTiming(1, { duration: 100 });
-          }}
-          onPressOut={() => {
-            cameraState.value = withTiming(0, { duration: 100 });
-          }}>
+          onPressIn={animateCameraPressIn}
+          onPressOut={animateCameraPressOut}>
           <FontAwesome name="camera" size={26} color={theme.colors.onError} />
         </AnimatedPressable>
 
