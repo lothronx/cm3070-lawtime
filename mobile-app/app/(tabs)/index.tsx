@@ -1,6 +1,6 @@
 import React from "react";
 import { View, StyleSheet } from "react-native";
-import { useAppTheme } from "../theme/ThemeProvider";
+import { useAppTheme } from "../../theme/ThemeProvider";
 import ActionMenu from "@/components/navigation/ActionMenu";
 import Header from "@/components/Header";
 
