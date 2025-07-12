@@ -1,7 +1,8 @@
 import React from "react";
 import { Tabs } from "expo-router";
 import { View, StyleSheet, Dimensions, TouchableOpacity } from "react-native";
-import { Icon } from "react-native-paper";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
+import Ionicons from "@expo/vector-icons/Ionicons";
 import Svg, { Path } from "react-native-svg";
 import { useAppTheme } from "@/theme/ThemeProvider";
 import ActionMenu from "@/components/navigation/ActionMenu";
@@ -10,19 +11,20 @@ const { width: screenWidth } = Dimensions.get("window");
 
 function CustomTabBar({ state, navigation }: any) {
   const { theme } = useAppTheme();
+  const insets = useSafeAreaInsets();
 
   return (
     <View style={[styles.container]}>
       {/* Tab buttons */}
-      <View style={styles.subContent}>
+      <View style={[styles.tabContainer, { paddingBottom: insets.bottom }]}>
         {/* Tasks button */}
         <TouchableOpacity
           style={[styles.tabButton, styles.leftTab]}
           onPress={() => navigation.navigate("tasks")}>
-          <Icon
-            source={state.index === 1 ? "format-list-bulleted" : "format-list-bulleted-variant"}
-            size={24}
-            color={state.index === 1 ? theme.colors.onPrimary : theme.colors.onSurfaceDisabled}
+          <Ionicons
+            name={state.index === 1 ? "list" : "list-outline"}
+            size={26}
+            color={state.index === 1 ? theme.colors.onPrimary : theme.colors.onSecondary}
           />
         </TouchableOpacity>
 
@@ -30,10 +32,10 @@ function CustomTabBar({ state, navigation }: any) {
         <TouchableOpacity
           style={[styles.tabButton, styles.rightTab]}
           onPress={() => navigation.navigate("index")}>
-          <Icon
-            source={state.index === 0 ? "calendar" : "calendar-outline"}
-            size={24}
-            color={state.index === 0 ? theme.colors.onPrimary : theme.colors.onSurfaceVariant}
+          <Ionicons
+            name={state.index === 0 ? "calendar-clear" : "calendar-clear-outline"}
+            size={26}
+            color={state.index === 0 ? theme.colors.onPrimary : theme.colors.onSecondary}
           />
         </TouchableOpacity>
       </View>
@@ -41,12 +43,21 @@ function CustomTabBar({ state, navigation }: any) {
       <ActionMenu />
 
       {/* Curved SVG background */}
-      <Svg width="100%" height="100" viewBox="0 0 1092 260" style={styles.svg}>
-        <Path
-          fill={theme.colors.primary}
-          d="M30,60h357.3c17.2,0,31,14.4,30,31.6c-0.2,2.7-0.3,5.5-0.3,8.2c0,71.2,58.1,129.6,129.4,130c72.1,0.3,130.6-58,130.6-130c0-2.7-0.1-5.4-0.2-8.1C675.7,74.5,689.5,60,706.7,60H1062c16.6,0,30,13.4,30,30v94c0,42-34,76-76,76H76c-42,0-76-34-76-76V90C0,73.4,13.4,60,30,60z"
+      <View style={[styles.svgContainer, { height: insets.bottom + 60 }]}>
+        <Svg viewBox="0 0 402 60" style={[styles.svg, { marginBottom: insets.bottom }]}>
+          <Path
+            fill={theme.colors.primary}
+            d="M 161 0 A 40 40 0 0 0 241 0 H 402 V 60 H 0 V 0 H 161 Z"
+          />
+        </Svg>
+
+        <View
+          style={[
+            styles.insetsBottom,
+            { height: insets.bottom + 2, backgroundColor: theme.colors.primary },
+          ]}
         />
-      </Svg>
+      </View>
     </View>
   );
 }
@@ -83,7 +94,7 @@ const styles = StyleSheet.create({
     top: 0,
     justifyContent: "flex-end",
   },
-  subContent: {
+  tabContainer: {
     flexDirection: "row",
     justifyContent: "space-between",
     paddingHorizontal: 40,
@@ -95,7 +106,6 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
     borderRadius: 999,
-    backgroundColor: "red",
   },
   leftTab: {
     marginRight: "auto",
@@ -103,11 +113,23 @@ const styles = StyleSheet.create({
   rightTab: {
     marginLeft: "auto",
   },
+  svgContainer: {
+    position: "absolute",
+    width: "100%",
+    zIndex: 1,
+    elevation: 6,
+    shadowOffset: { width: 0, height: -1 },
+    shadowOpacity: 0.25,
+    shadowRadius: 2,
+  },
   svg: {
     position: "absolute",
+    width: "100%",
+    height: 60,
+  },
+  insetsBottom: {
+    position: "absolute",
+    width: "100%",
     bottom: 0,
-    left: 0,
-    right: 0,
-    zIndex: 1,
   },
 });

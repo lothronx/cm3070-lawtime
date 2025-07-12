@@ -150,7 +150,7 @@ export default function ActionMenu({ visible = true }: ActionMenuProps) {
         onChooseFile={handleChooseFile}
       />
 
-      <View style={[styles.container, { bottom: insets.bottom + 40 }]}>
+      <View style={[styles.container, { bottom: insets.bottom + 23 }]}>
         {/* Main Action Button */}
         <AnimatedPressable style={[styles.menuButton, rMenuButtonStyles]} onPress={toggleMenu}>
           <Animated.View style={rMenuAnimateStyles}>
@@ -211,8 +211,8 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     alignItems: "center",
     elevation: 6,
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.2,
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.1,
     shadowRadius: 4,
     zIndex: 5,
   },
