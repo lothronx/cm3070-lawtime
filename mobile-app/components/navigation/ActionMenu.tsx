@@ -201,7 +201,7 @@ const styles = StyleSheet.create({
     left: 0,
     right: 0,
     bottom: 0,
-    zIndex: 15,
+    zIndex: 999,
     pointerEvents: "box-none",
   },
   menuButton: {
@@ -214,7 +214,7 @@ const styles = StyleSheet.create({
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.2,
     shadowRadius: 4,
-    zIndex: 4,
+    zIndex: 5,
   },
   actionButton: {
     bottom: 10,
@@ -228,6 +228,6 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.2,
     shadowRadius: 4,
     position: "absolute",
-    zIndex: 3,
+    zIndex: 4,
   },
 });

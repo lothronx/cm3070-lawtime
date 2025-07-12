@@ -87,8 +87,6 @@ export default function Tasks() {
         {/* Bottom spacing for action menu */}
         <View style={styles.bottomSpacing} />
       </ScrollView>
-
-      <ActionMenu />
     </View>
   );
 }

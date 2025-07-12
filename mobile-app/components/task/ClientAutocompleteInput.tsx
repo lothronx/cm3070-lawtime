@@ -170,7 +170,7 @@ export default ClientAutocompleteInput;
 const styles = StyleSheet.create({
   container: {
     marginBottom: SPACING.xs,
-    zIndex: 2000,
+    zIndex: 999,
   },
   dropdown: {
     position: "absolute",

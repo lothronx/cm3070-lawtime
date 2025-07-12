@@ -11,7 +11,7 @@ export default function Calendar() {
     <View style={[styles.container, { backgroundColor: theme.colors.background }]}>
       <Header title="Calendar" variant="main" />
 
-      <ActionMenu />
+     
     </View>
   );
 }
