@@ -1,13 +1,11 @@
 import React from "react";
 import { Tabs } from "expo-router";
-import { View, StyleSheet, Dimensions, TouchableOpacity } from "react-native";
+import { View, StyleSheet, TouchableOpacity } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import Ionicons from "@expo/vector-icons/Ionicons";
 import Svg, { Path } from "react-native-svg";
-import { useAppTheme } from "@/theme/ThemeProvider";
+import { useAppTheme, BORDER_RADIUS } from "@/theme/ThemeProvider";
 import ActionMenu from "@/components/navigation/ActionMenu";
-
-const { width: screenWidth } = Dimensions.get("window");
 
 function CustomTabBar({ state, navigation }: any) {
   const { theme } = useAppTheme();
@@ -23,8 +21,8 @@ function CustomTabBar({ state, navigation }: any) {
           onPress={() => navigation.navigate("tasks")}>
           <Ionicons
             name={state.index === 1 ? "list" : "list-outline"}
-            size={26}
-            color={state.index === 1 ? theme.colors.onPrimary : theme.colors.onSecondary}
+            size={32}
+            color={state.index === 1 ? theme.colors.onPrimary : theme.colors.outline}
           />
         </TouchableOpacity>
 
@@ -34,8 +32,8 @@ function CustomTabBar({ state, navigation }: any) {
           onPress={() => navigation.navigate("index")}>
           <Ionicons
             name={state.index === 0 ? "calendar-clear" : "calendar-clear-outline"}
-            size={26}
-            color={state.index === 0 ? theme.colors.onPrimary : theme.colors.onSecondary}
+            size={32}
+            color={state.index === 0 ? theme.colors.onPrimary : theme.colors.outline}
           />
         </TouchableOpacity>
       </View>
@@ -43,18 +41,18 @@ function CustomTabBar({ state, navigation }: any) {
       <ActionMenu />
 
       {/* Curved SVG background */}
-      <View style={[styles.svgContainer, { height: insets.bottom + 60 }]}>
-        <Svg viewBox="0 0 402 60" style={[styles.svg, { marginBottom: insets.bottom }]}>
+      <View style={[styles.svgContainer, { height: insets.bottom + 55 }]}>
+        <Svg viewBox="0 0 402 55" style={[styles.svg, { marginBottom: insets.bottom }]}>
           <Path
             fill={theme.colors.primary}
-            d="M 161 0 A 40 40 0 0 0 241 0 H 402 V 60 H 0 V 0 H 161 Z"
+            d="M 161 0 A 40 40 0 0 0 241 0 H 402 V 55 H 0 V 0 H 161 Z"
           />
         </Svg>
 
         <View
           style={[
             styles.insetsBottom,
-            { height: insets.bottom + 2, backgroundColor: theme.colors.primary },
+            { height: insets.bottom + 15, backgroundColor: theme.colors.primary },
           ]}
         />
       </View>
@@ -97,15 +95,14 @@ const styles = StyleSheet.create({
   tabContainer: {
     flexDirection: "row",
     justifyContent: "space-between",
-    paddingHorizontal: 40,
+    paddingHorizontal: 50,
     zIndex: 2,
   },
   tabButton: {
-    width: 60,
-    height: 60,
+    width: 50,
+    height: 50,
     alignItems: "center",
     justifyContent: "center",
-    borderRadius: 999,
   },
   leftTab: {
     marginRight: "auto",
@@ -125,7 +122,7 @@ const styles = StyleSheet.create({
   svg: {
     position: "absolute",
     width: "100%",
-    height: 60,
+    height: 55,
   },
   insetsBottom: {
     position: "absolute",

@@ -2,7 +2,7 @@ import React from "react";
 import { View, Text, Pressable, StyleSheet } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
-import { useAppTheme } from "@/theme/ThemeProvider";
+import { useAppTheme, SPACING } from "@/theme/ThemeProvider";
 import Animated, {
   useSharedValue,
   useAnimatedStyle,
@@ -58,7 +58,7 @@ const Header: React.FC<HeaderProps> = ({ title, variant, stackIndex, stackTotal 
       style={[
         styles.container,
         {
-          paddingTop: insets.top + 15,
+          paddingTop: insets.top + SPACING.sm,
           backgroundColor: theme.colors.surface,
           borderBottomColor: theme.colors.surfaceVariant,
         },
@@ -98,7 +98,7 @@ export default Header;
 const styles = StyleSheet.create({
   container: {
     paddingHorizontal: 20,
-    paddingBottom: 12,
+    paddingBottom: SPACING.sm,
     borderBottomWidth: StyleSheet.hairlineWidth,
     elevation: 6,
     shadowOffset: { width: 0, height: 1 },
