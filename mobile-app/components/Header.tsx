@@ -56,7 +56,7 @@ const Header: React.FC<HeaderProps> = ({ title, variant, stackIndex, stackTotal 
   return (
     <View
       style={[
-        styles.wrapper,
+        styles.container,
         {
           paddingTop: insets.top + 15,
           backgroundColor: theme.colors.surface,
@@ -96,10 +96,15 @@ const Header: React.FC<HeaderProps> = ({ title, variant, stackIndex, stackTotal 
 export default Header;
 
 const styles = StyleSheet.create({
-  wrapper: {
+  container: {
     paddingHorizontal: 20,
     paddingBottom: 12,
     borderBottomWidth: StyleSheet.hairlineWidth,
+    elevation: 6,
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.1,
+    shadowRadius: 2,
+    zIndex: 1,
   },
   row: {
     flexDirection: "row",
