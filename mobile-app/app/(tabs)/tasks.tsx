@@ -2,7 +2,6 @@ import React, { useState } from "react";
 import { View, StyleSheet, ScrollView } from "react-native";
 import { Text } from "react-native-paper";
 import { useAppTheme, SPACING } from "@/theme/ThemeProvider";
-import ActionMenu from "@/components/navigation/ActionMenu";
 import Header from "@/components/Header";
 import TaskSection from "@/components/tasks/TaskSection";
 import { mockTasks, TaskWithClient } from "@/mockData";
