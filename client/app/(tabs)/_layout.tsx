@@ -4,7 +4,7 @@ import { View, StyleSheet, TouchableOpacity } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import Ionicons from "@expo/vector-icons/Ionicons";
 import Svg, { Path } from "react-native-svg";
-import { useAppTheme, BORDER_RADIUS } from "@/theme/ThemeProvider";
+import { useAppTheme } from "@/theme/ThemeProvider";
 import ActionMenu from "@/components/navigation/ActionMenu";
 
 function CustomTabBar({ state, navigation }: any) {

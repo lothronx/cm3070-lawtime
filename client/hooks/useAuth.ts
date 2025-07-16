@@ -1,15 +1,23 @@
 import { useState, useEffect } from "react";
+import { useRouter } from "expo-router";
+import AuthService from "@/services/authService";
+import { useAuthSession } from "./useAuthSession";
 
 export default function useAuth() {
   const [mobileNumber, setMobileNumber] = useState("");
   const [smsCode, setSmsCode] = useState("");
   const [codeSent, setCodeSent] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+  const router = useRouter();
   const [agreedToTerms, setAgreedToTerms] = useState(false);
   const [phoneError, setPhoneError] = useState("");
   const [codeError, setCodeError] = useState("");
   const [generalError, setGeneralError] = useState("");
   const [countdown, setCountdown] = useState(0);
+
+  // Get auth session management
+  const { setSession } = useAuthSession();
+  const authService = AuthService.getInstance();
 
   // Countdown timer for resend
   useEffect(() => {
@@ -72,37 +80,32 @@ export default function useAuth() {
       return;
     }
 
+    if (!validatePhoneNumber(mobileNumber)) {
+      setPhoneError("Enter the correct phone number");
+      return;
+    }
+
     setIsLoading(true);
     setGeneralError("");
 
-    // Simulate SMS sending (replace with actual implementation)
     try {
-      // Simulate network delay
-      await new Promise((resolve) => setTimeout(resolve, 1500));
+      // Clean phone number and add country code if needed
+      const cleanPhone = mobileNumber.replace(/\D/g, "");
+      const formattedPhone = cleanPhone.startsWith("86") ? `+${cleanPhone}` : `+86${cleanPhone}`;
 
-      // For testing: randomly succeed or fail SMS sending
-      const shouldFail = Math.random() > 0.8; // 20% chance to fail
-
-      if (shouldFail) {
-        setGeneralError(
-          "Verification code sending failed. Please check your phone number and try again."
-        );
-        setIsLoading(false);
-        return;
-      }
-
+      await authService.sendOTP(formattedPhone);
+      
       setCodeSent(true);
       setCountdown(59);
       setIsLoading(false);
-    } catch {
-      setGeneralError(
-        "Verification code sending failed. Please check your phone number and try again."
-      );
+    } catch (error) {
+      const errorMessage = authService.getErrorMessage(error);
+      setGeneralError(errorMessage);
       setIsLoading(false);
     }
   };
 
-  const handleSignIn = () => {
+  const handleSignIn = async () => {
     if (!validateCode(smsCode)) {
       setCodeError("Enter the correct OTP");
       return;
@@ -111,17 +114,46 @@ export default function useAuth() {
     setIsLoading(true);
     setGeneralError("");
 
-    // For testing: always show invalid code error
-    setTimeout(() => {
-      setGeneralError("Invalid verification code. Please try again.");
+    try {
+      // Clean phone number and add country code if needed
+      const cleanPhone = mobileNumber.replace(/\D/g, "");
+      const formattedPhone = cleanPhone.startsWith("86") ? `+${cleanPhone}` : `+86${cleanPhone}`;
+
+      const response = await authService.verifyOTP(formattedPhone, smsCode);
+      
+      // Set session in global state
+      setSession(response.session);
+      
+      // Navigate to main app
+      router.replace("/(tabs)");
+      
       setIsLoading(false);
-    }, 1000);
+    } catch (error) {
+      const errorMessage = authService.getErrorMessage(error);
+      setGeneralError(errorMessage);
+      setIsLoading(false);
+    }
   };
 
-  const handleResend = () => {
-    setCountdown(59);
+  const handleResend = async () => {
+    if (countdown > 0) {
+      return; // Prevent resend during countdown
+    }
+
     setGeneralError("");
-    // TODO: Implement resend logic
+    
+    try {
+      // Clean phone number and add country code if needed
+      const cleanPhone = mobileNumber.replace(/\D/g, "");
+      const formattedPhone = cleanPhone.startsWith("86") ? `+${cleanPhone}` : `+86${cleanPhone}`;
+
+      await authService.sendOTP(formattedPhone);
+      
+      setCountdown(59);
+    } catch (error) {
+      const errorMessage = authService.getErrorMessage(error);
+      setGeneralError(errorMessage);
+    }
   };
 
   const handleChangePhoneNumber = () => {

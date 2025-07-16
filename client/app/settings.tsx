@@ -5,18 +5,29 @@ import Header from "@/components/Header";
 import AlertTimePicker from "@/components/settings/AlertTimePicker";
 import LogoutSection from "@/components/settings/LogoutSection";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { useAuthSession } from "@/hooks/useAuthSession";
+import { useRouter } from "expo-router";
 
 export default function Settings() {
   const { theme } = useAppTheme();
   const insets = useSafeAreaInsets();
   const [defaultAlertOffset, setDefaultAlertOffset] = useState(60);
+  const { logout } = useAuthSession();
+  const router = useRouter();
 
   const handleAlertTimeChange = (value: number) => {
     setDefaultAlertOffset(value);
   };
 
-  const handleLogout = () => {
-    console.log("Logout pressed");
+  const handleLogout = async () => {
+    try {
+      await logout();
+      router.replace("/auth");
+    } catch (error) {
+      console.error("Logout error:", error);
+      // Even if logout fails, redirect to auth screen
+      router.replace("/auth");
+    }
   };
 
   return (

@@ -1,5 +1,5 @@
-import { Stack } from "expo-router";
-import { PaperProvider } from "react-native-paper";
+import { Stack, useRouter } from "expo-router";
+import { PaperProvider, ActivityIndicator } from "react-native-paper";
 import { ThemeProvider, useAppTheme } from "../theme/ThemeProvider";
 import { SafeAreaProvider } from "react-native-safe-area-context";
 import { View, StatusBar, Platform, Text, TextInput } from "react-native";
@@ -7,6 +7,7 @@ import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { useFonts } from "expo-font";
 import * as SplashScreen from "expo-splash-screen";
 import { useEffect } from "react";
+import { useAuthSession } from "@/hooks/useAuthSession";
 
 // Keep the splash screen visible while we fetch resources
 SplashScreen.preventAutoHideAsync();
@@ -26,6 +27,8 @@ const fontFamily = "Avenir";
 
 function RootLayoutContent() {
   const { theme, isDark } = useAppTheme();
+  const { isLoading, isAuthenticated } = useAuthSession();
+  const router = useRouter();
 
   const [fontsLoaded] = useFonts({
     // For Android, using SpaceMono as fallback
@@ -40,8 +43,33 @@ function RootLayoutContent() {
     }
   }, [fontsLoaded]);
 
+  // Handle navigation based on auth state
+  useEffect(() => {
+    if (!isLoading && (fontsLoaded || Platform.OS === "ios")) {
+      if (isAuthenticated) {
+        router.replace("/(tabs)");
+      } else {
+        router.replace("/auth");
+      }
+    }
+  }, [isLoading, isAuthenticated, fontsLoaded, router]);
+
   if (!fontsLoaded && Platform.OS === "android") {
     return null;
+  }
+
+  // Show loading screen while checking authentication
+  if (isLoading) {
+    return (
+      <View style={{ 
+        flex: 1, 
+        justifyContent: 'center', 
+        alignItems: 'center',
+        backgroundColor: theme.colors.background 
+      }}>
+        <ActivityIndicator size="large" color={theme.colors.primary} />
+      </View>
+    );
   }
 
   return (

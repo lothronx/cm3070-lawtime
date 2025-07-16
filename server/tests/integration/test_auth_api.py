@@ -7,7 +7,7 @@ Real API Test Script for SMS OTP Authentication
     
 Purpose: Test actual SMS integration and demonstrate real functionality.
 Usage: python test_auth.py [phone_number]
-Note: Make sure Flask server is running on localhost:5000
+Note: Make sure Flask server is running on localhost:5001
 """
 
 import requests
@@ -15,7 +15,7 @@ import json
 import time
 import sys
 
-BASE_URL = "http://localhost:5000"
+BASE_URL = "http://localhost:5001"
 
 
 def test_send_otp(phone_number):
@@ -137,8 +137,8 @@ def main():
         test_phone = sys.argv[1]
     
     print(f"Using test phone number: {test_phone}")
-    print("Note: Make sure the Flask server is running on http://localhost:5000")
-    
+    print("Note: Make sure the Flask server is running on http://localhost:5001")
+
     # Test invalid inputs first
     test_invalid_inputs()
     

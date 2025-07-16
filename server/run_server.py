@@ -6,6 +6,7 @@ Run this script to start the development server.
 
 from app import create_app
 import logging
+import os
 
 # Configure logging
 logging.basicConfig(
@@ -24,7 +25,8 @@ if __name__ == "__main__":
         print("=" * 50)
         
         # Run Flask development server
-        app.run(debug=True, host='0.0.0.0', port=5000)
+        port = int(os.getenv('PORT', 5001))
+        app.run(debug=True, host='0.0.0.0', port=port)
         
     except Exception as e:
         print(f"❌ Server startup failed: {e}")
