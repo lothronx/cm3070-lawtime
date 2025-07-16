@@ -7,7 +7,7 @@ import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { useFonts } from "expo-font";
 import * as SplashScreen from "expo-splash-screen";
 import { useEffect } from "react";
-import { useAuthSession } from "@/hooks/useAuthSession";
+import { AuthProvider, useAuthContext } from "@/contexts/AuthContext";
 
 // Keep the splash screen visible while we fetch resources
 SplashScreen.preventAutoHideAsync();
@@ -27,7 +27,7 @@ const fontFamily = "Avenir";
 
 function RootLayoutContent() {
   const { theme, isDark } = useAppTheme();
-  const { isLoading, isAuthenticated } = useAuthSession();
+  const { isLoading, isAuthenticated } = useAuthContext();
   const router = useRouter();
 
   const [fontsLoaded] = useFonts({
@@ -92,7 +92,9 @@ export default function RootLayout() {
   return (
     <SafeAreaProvider>
       <ThemeProvider>
-        <RootLayoutContent />
+        <AuthProvider>
+          <RootLayoutContent />
+        </AuthProvider>
       </ThemeProvider>
     </SafeAreaProvider>
   );

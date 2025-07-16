@@ -5,14 +5,14 @@ import Header from "@/components/Header";
 import AlertTimePicker from "@/components/settings/AlertTimePicker";
 import LogoutSection from "@/components/settings/LogoutSection";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { useAuthSession } from "@/hooks/useAuthSession";
+import { useAuthContext } from "@/contexts/AuthContext";
 import { useRouter } from "expo-router";
 
 export default function Settings() {
   const { theme } = useAppTheme();
   const insets = useSafeAreaInsets();
   const [defaultAlertOffset, setDefaultAlertOffset] = useState(60);
-  const { logout } = useAuthSession();
+  const { logout } = useAuthContext();
   const router = useRouter();
 
   const handleAlertTimeChange = (value: number) => {
