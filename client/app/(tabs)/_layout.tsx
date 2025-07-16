@@ -5,7 +5,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import Ionicons from "@expo/vector-icons/Ionicons";
 import Svg, { Path } from "react-native-svg";
 import { useAppTheme } from "@/theme/ThemeProvider";
-import ActionMenu from "@/components/navigation/ActionMenu";
+import ActionMenu from "@/components/actionMenu/ActionMenu";
 
 function CustomTabBar({ state, navigation }: any) {
   const { theme } = useAppTheme();

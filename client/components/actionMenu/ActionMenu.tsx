@@ -5,9 +5,9 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { FontAwesome, Ionicons, Feather } from "@expo/vector-icons";
 import { Snackbar } from "react-native-paper";
 import Animated from "react-native-reanimated";
-import FullScreenOverlay from "@/components/navigation/FullScreenOverlay";
-import ListeningIndicator from "@/components/navigation/ListeningIndicator";
-import CameraOptionsMenu from "@/components/navigation/CameraOptionsMenu";
+import FullScreenOverlay from "@/components/actionMenu/FullScreenOverlay";
+import ListeningIndicator from "@/components/actionMenu/ListeningIndicator";
+import CameraOptionsMenu from "@/components/actionMenu/CameraOptionsMenu";
 import { useActionMenu } from "@/hooks/useActionMenu";
 import { useActionMenuAnimation } from "@/hooks/useActionMenuAnimation";
 
