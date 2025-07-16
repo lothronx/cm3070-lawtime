@@ -1,0 +1,1 @@
+# Integration tests - test API endpoints and real functionality

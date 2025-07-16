@@ -9,6 +9,3 @@
 .env.keys
 .env.local
 .env.*.local
-
-venv/
-__pycache__/
