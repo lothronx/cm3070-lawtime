@@ -49,5 +49,5 @@ clean:
 
 # Start development server
 server:
-	@echo "Starting development server on port 5001..."
+	@echo "Starting development server on port 5000..."
 	$(VENV) python run_server.py
