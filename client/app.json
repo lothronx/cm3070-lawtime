@@ -3,7 +3,6 @@
     "name": "lawtime",
     "slug": "lawtime",
     "version": "1.0.0",
-    "main": "expo-router/entry",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
     "scheme": "lawtime",
