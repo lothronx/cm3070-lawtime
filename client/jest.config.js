@@ -1,0 +1,25 @@
+module.exports = {
+  preset: 'jest-expo',
+  setupFilesAfterEnv: [
+    '<rootDir>/jest.setup.js',
+  ],
+  testEnvironment: 'node',
+  collectCoverageFrom: [
+    'services/**/*.{ts,tsx}',
+    '!**/__tests__/**',
+    '!**/node_modules/**',
+    '!**/*.d.ts',
+  ],
+  coverageReporters: ['html', 'text', 'text-summary'],
+  testMatch: [
+    '**/__tests__/**/*.(test|spec).(js|ts|tsx)',
+    '**/*.(test|spec).(js|ts|tsx)',
+  ],
+  moduleNameMapper: {
+    '^@/(.*)$': '<rootDir>/$1',
+    '^@env$': '<rootDir>/__mocks__/env.js',
+  },
+  globals: {
+    '__DEV__': true,
+  },
+};
