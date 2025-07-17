@@ -150,40 +150,26 @@ class AuthService {
     }
   }
 
+
   /**
    * Store authentication session in secure storage
    */
   private async storeSession(session: VerifyOTPResponse['session']): Promise<void> {
     try {
-      // Debug logging to understand the data types
-      console.log('🔍 Debugging session storage:');
-      console.log('access_token type:', typeof session.access_token, 'value:', session.access_token);
-      console.log('refresh_token type:', typeof session.refresh_token, 'value:', session.refresh_token);
-      console.log('expires_at type:', typeof session.expires_at, 'value:', session.expires_at);
-      console.log('user type:', typeof session.user, 'value:', session.user);
-
-      // Ensure all values are properly converted to strings
+      // Ensure all values are properly converted to strings for SecureStore
       const accessToken = String(session.access_token || '');
       const refreshToken = String(session.refresh_token || '');
       const expiresAt = String(session.expires_at || '');
-      const userData = JSON.stringify(session.user || {});
-
-      console.log('🔍 After conversion:');
-      console.log('accessToken type:', typeof accessToken, 'value:', accessToken);
-      console.log('refreshToken type:', typeof refreshToken, 'value:', refreshToken);
-      console.log('expiresAt type:', typeof expiresAt, 'value:', expiresAt);
-      console.log('userData type:', typeof userData, 'value:', userData);
+      const userDataString = JSON.stringify(session.user || {});
 
       await Promise.all([
         SecureStore.setItemAsync('access_token', accessToken),
         SecureStore.setItemAsync('refresh_token', refreshToken),
         SecureStore.setItemAsync('expires_at', expiresAt),
-        SecureStore.setItemAsync('user_data', userData),
+        SecureStore.setItemAsync('user_data', userDataString),
       ]);
-
-      console.log('✅ Session stored successfully');
     } catch (error) {
-      console.error('❌ Failed to store session:', error);
+      console.error('Failed to store session:', error);
       throw new AuthServiceError('Failed to save authentication data', 0);
     }
   }
@@ -204,11 +190,19 @@ class AuthService {
         return null;
       }
 
+      let parsedUser;
+      try {
+        parsedUser = JSON.parse(userData);
+      } catch (parseError) {
+        console.error('Failed to parse user data:', parseError);
+        return null;
+      }
+
       return {
         access_token: accessToken,
         refresh_token: refreshToken,
         expires_at: parseInt(expiresAt, 10),
-        user: JSON.parse(userData),
+        user: parsedUser,
       };
     } catch (error) {
       console.error('Failed to retrieve session:', error);
@@ -230,6 +224,99 @@ class AuthService {
     const expiresAt = session.expires_at;
     
     return expiresAt > now + 300; // 5 minute buffer
+  }
+
+  /**
+   * Refresh the access token using the stored refresh token
+   * @returns Promise with new session data or null if refresh failed
+   */
+  async refreshToken(): Promise<VerifyOTPResponse['session'] | null> {
+    try {
+      const session = await this.getStoredSession();
+      if (!session?.refresh_token) {
+        throw new AuthServiceError('No refresh token available', 401);
+      }
+
+      const response = await fetch(`${API_BASE_URL}/auth/refresh-token`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          refresh_token: session.refresh_token,
+        }),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        const errorData = data as APIError;
+        throw new AuthServiceError(
+          errorData.error || 'Failed to refresh token',
+          response.status,
+          errorData.details
+        );
+      }
+
+      const refreshResponse = data as VerifyOTPResponse;
+      
+      // Store the new tokens
+      await this.storeSession(refreshResponse.session);
+      
+      return refreshResponse.session;
+    } catch (error) {
+      if (error instanceof AuthServiceError) {
+        // If refresh fails due to invalid/expired refresh token, clear session
+        if (error.statusCode === 401 || error.statusCode === 403) {
+          await this.clearSession();
+        }
+        throw error;
+      }
+
+      // Network or other errors
+      if (error instanceof TypeError && error.message.includes('fetch')) {
+        throw new AuthServiceError(
+          'No internet connection. Please check your network and try again.',
+          0
+        );
+      }
+
+      throw new AuthServiceError(
+        'Failed to refresh authentication. Please log in again.',
+        0
+      );
+    }
+  }
+
+  /**
+   * Get valid session with automatic token refresh if needed
+   * @returns Promise with valid session or null if authentication failed
+   */
+  async getValidSession(): Promise<VerifyOTPResponse['session'] | null> {
+    try {
+      const session = await this.getStoredSession();
+      if (!session) {
+        return null;
+      }
+
+      // Check if token is still valid
+      if (await this.isSessionValid()) {
+        return session;
+      }
+
+      // Token is expired, try to refresh
+      try {
+        const refreshedSession = await this.refreshToken();
+        return refreshedSession;
+      } catch (refreshError) {
+        // Refresh failed, session is invalid
+        console.log('Token refresh failed:', refreshError);
+        return null;
+      }
+    } catch (error) {
+      console.error('Failed to get valid session:', error);
+      return null;
+    }
   }
 
   /**

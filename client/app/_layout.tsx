@@ -1,5 +1,5 @@
 import { Stack, useRouter } from "expo-router";
-import { PaperProvider, ActivityIndicator } from "react-native-paper";
+import { PaperProvider } from "react-native-paper";
 import { ThemeProvider, useAppTheme } from "../theme/ThemeProvider";
 import { SafeAreaProvider } from "react-native-safe-area-context";
 import { View, StatusBar, Platform, Text, TextInput } from "react-native";
@@ -7,7 +7,8 @@ import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { useFonts } from "expo-font";
 import * as SplashScreen from "expo-splash-screen";
 import { useEffect } from "react";
-import { AuthProvider, useAuthContext } from "@/contexts/AuthContext";
+import { useAuthStore } from "@/stores/useAuthStore";
+import LoadingComponent from "@/components/LoadingComponent";
 
 // Keep the splash screen visible while we fetch resources
 SplashScreen.preventAutoHideAsync();
@@ -27,7 +28,7 @@ const fontFamily = "Avenir";
 
 function RootLayoutContent() {
   const { theme, isDark } = useAppTheme();
-  const { isLoading, isAuthenticated } = useAuthContext();
+  const { isLoading, isAuthenticated, checkSession } = useAuthStore();
   const router = useRouter();
 
   const [fontsLoaded] = useFonts({
@@ -42,6 +43,13 @@ function RootLayoutContent() {
       SplashScreen.hideAsync();
     }
   }, [fontsLoaded]);
+
+  // Check auth session on mount
+  useEffect(() => {
+    if (fontsLoaded || Platform.OS === "ios") {
+      checkSession();
+    }
+  }, [fontsLoaded, checkSession]);
 
   // Handle navigation based on auth state
   useEffect(() => {
@@ -61,14 +69,10 @@ function RootLayoutContent() {
   // Show loading screen while checking authentication
   if (isLoading) {
     return (
-      <View style={{ 
-        flex: 1, 
-        justifyContent: 'center', 
-        alignItems: 'center',
-        backgroundColor: theme.colors.background 
-      }}>
-        <ActivityIndicator size="large" color={theme.colors.primary} />
-      </View>
+      <LoadingComponent 
+        variant="authentication"
+        backgroundColor={theme.colors.background}
+      />
     );
   }
 
@@ -92,9 +96,7 @@ export default function RootLayout() {
   return (
     <SafeAreaProvider>
       <ThemeProvider>
-        <AuthProvider>
-          <RootLayoutContent />
-        </AuthProvider>
+        <RootLayoutContent />
       </ThemeProvider>
     </SafeAreaProvider>
   );

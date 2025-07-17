@@ -2,6 +2,7 @@ import React, { useState, useRef } from "react";
 import { View, ScrollView, StyleSheet } from "react-native";
 import { Snackbar, Text } from "react-native-paper";
 import { useForm } from "react-hook-form";
+import { useRouter } from "expo-router";
 import Header from "@/components/Header";
 import TitleInput from "@/components/task/TitleInput";
 import ClientAutocompleteInput from "@/components/task/ClientAutocompleteInput";
@@ -18,6 +19,7 @@ import { TaskFormData } from "@/types/taskForm";
 
 export default function Task() {
   const { theme } = useAppTheme();
+  const router = useRouter();
   const [snackbarVisible, setSnackbarVisible] = useState(false);
   const [snackbarMessage, setSnackbarMessage] = useState("");
 
@@ -94,11 +96,14 @@ export default function Task() {
       } else {
         setSnackbarMessage("All tasks saved successfully!");
         setIsAIFlow(false);
-        // TODO: Navigate back to previous screen
+        router.back();
       }
     } else {
       setSnackbarMessage("Task saved successfully!");
-      // TODO: Navigate back to previous screen
+      // Navigate back after a brief delay to show success message
+      setTimeout(() => {
+        router.back();
+      }, 1000);
     }
 
     setSnackbarVisible(true);
@@ -121,12 +126,12 @@ export default function Task() {
       } else {
         setSnackbarMessage("AI flow completed!");
         setIsAIFlow(false);
-        // TODO: Navigate back to previous screen
+        router.back();
       }
     } else {
       // Manual entry: just go back
       setSnackbarMessage("Changes discarded");
-      // TODO: Navigate back to previous screen
+      router.back();
     }
 
     setSnackbarVisible(true);
@@ -137,7 +142,9 @@ export default function Task() {
     setSnackbarMessage("Task deleted successfully");
     setSnackbarVisible(true);
     // TODO: Add delete logic here (API call to delete task)
-    // TODO: Navigate back to previous screen after deletion
+    setTimeout(() => {
+      router.back();
+    }, 1000);
   };
 
   const handleNoteInputFocus = () => {

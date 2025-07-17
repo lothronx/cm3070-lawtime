@@ -3,6 +3,7 @@ import { View, Text, Pressable, StyleSheet } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import { useAppTheme, SPACING } from "@/theme/ThemeProvider";
+import { useRouter } from "expo-router";
 import Animated, {
   useSharedValue,
   useAnimatedStyle,
@@ -28,6 +29,7 @@ interface HeaderProps {
 const Header: React.FC<HeaderProps> = ({ title, variant, stackIndex, stackTotal }) => {
   const insets = useSafeAreaInsets();
   const { theme } = useAppTheme();
+  const router = useRouter();
 
   const showStack =
     typeof stackIndex === "number" &&
@@ -41,7 +43,16 @@ const Header: React.FC<HeaderProps> = ({ title, variant, stackIndex, stackTotal 
   const rightIconSize = isSettingsVariant ? 26 : 32;
 
   const handlePress = () => {
-    console.log(`${rightIconName} pressed`);
+    if (isSettingsVariant) {
+      router.push("/settings");
+    } else {
+      // Default behavior: go back
+      if (router.canGoBack()) {
+        router.back();
+      } else {
+        router.replace("/(tabs)");
+      }
+    }
   };
 
   // Animated press state for right button

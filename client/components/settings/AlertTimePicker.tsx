@@ -26,22 +26,36 @@ const alertTimeOptions: AlertTimeOption[] = [
 interface AlertTimePickerProps {
   selectedValue: number;
   onValueChange: (value: number) => void;
+  disabled?: boolean;
 }
 
-const AlertTimePicker: React.FC<AlertTimePickerProps> = ({ selectedValue, onValueChange }) => {
+const AlertTimePicker: React.FC<AlertTimePickerProps> = ({
+  selectedValue,
+  onValueChange,
+  disabled = false,
+}) => {
   const { theme } = useAppTheme();
   const [showAlertPicker, setShowAlertPicker] = React.useState(false);
 
-  const selectedAlertOption = 
+  const selectedAlertOption =
     alertTimeOptions.find((option) => option.value === selectedValue) || alertTimeOptions[2];
 
   const handleOptionPress = (value: number) => {
+    if (disabled) return;
     onValueChange(value);
     setShowAlertPicker(false);
   };
 
   return (
-    <Surface style={[styles.section, { backgroundColor: theme.colors.surface }]} elevation={1}>
+    <Surface
+      style={[
+        styles.section,
+        {
+          backgroundColor: theme.colors.surface,
+          opacity: disabled ? 0.6 : 1,
+        },
+      ]}
+      elevation={1}>
       <Text style={[styles.sectionTitle, { color: theme.colors.onSurface }]}>
         Notification Preferences
       </Text>
@@ -49,11 +63,11 @@ const AlertTimePicker: React.FC<AlertTimePickerProps> = ({ selectedValue, onValu
       <View style={styles.pickerContainer}>
         <List.Accordion
           title="Default Alert Time"
-          description={selectedAlertOption.label}
+          description={disabled ? "Saving..." : selectedAlertOption.label}
           expanded={showAlertPicker}
-          onPress={() => setShowAlertPicker(!showAlertPicker)}
+          onPress={disabled ? undefined : () => setShowAlertPicker(!showAlertPicker)}
           style={[styles.accordion, { backgroundColor: theme.colors.surfaceVariant }]}>
-          <ScrollView 
+          <ScrollView
             style={styles.optionsScrollView}
             showsVerticalScrollIndicator={true}
             nestedScrollEnabled={true}>

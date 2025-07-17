@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { useRouter } from "expo-router";
 import AuthService from "@/services/authService";
-import { useAuthSession } from "./useAuthSession";
+import { useAuthStore } from "@/stores/useAuthStore";
 
 export default function useAuth() {
   const [mobileNumber, setMobileNumber] = useState("");
@@ -15,8 +15,8 @@ export default function useAuth() {
   const [generalError, setGeneralError] = useState("");
   const [countdown, setCountdown] = useState(0);
 
-  // Get auth session management
-  const { setSession } = useAuthSession();
+  // Get auth session management from store
+  const { setSession } = useAuthStore();
   const authService = AuthService.getInstance();
 
   // Countdown timer for resend
