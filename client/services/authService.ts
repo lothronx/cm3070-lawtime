@@ -1,43 +1,12 @@
 import * as SecureStore from 'expo-secure-store';
 // eslint-disable-next-line import/no-unresolved
 import { API_BASE_URL } from "@env";
-
-// Types for API responses
-interface SendOTPResponse {
-  message: string;
-}
-
-interface VerifyOTPResponse {
-  message: string;
-  session: {
-    access_token: string;
-    refresh_token: string;
-    expires_at: number;
-    user: {
-      id: string;
-      phone: string;
-      created_at: string;
-    };
-  };
-}
-
-interface APIError {
-  error: string;
-  details?: any;
-}
-
-// Custom error class for API errors
-class AuthServiceError extends Error {
-  public statusCode: number;
-  public details?: any;
-
-  constructor(message: string, statusCode: number, details?: any) {
-    super(message);
-    this.name = 'AuthServiceError';
-    this.statusCode = statusCode;
-    this.details = details;
-  }
-}
+import {
+  SendOTPResponse,
+  VerifyOTPResponse,
+  APIError,
+  AuthServiceError
+} from '@/types/auth';
 
 class AuthService {
   private static instance: AuthService;

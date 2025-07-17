@@ -1,6 +1,11 @@
 import { create } from 'zustand';
 import AuthService from '@/services/authService';
-import ProfileService, { UserProfile, UpdateProfileData } from '@/services/profileService';
+import ProfileService from '@/services/profileService';
+import {
+  AuthSession,
+  AuthStore,
+  UpdateProfileData
+} from '@/types/auth';
 
 /**
  * Consolidated authentication and profile store
@@ -14,45 +19,6 @@ import ProfileService, { UserProfile, UpdateProfileData } from '@/services/profi
  * - const { profile, loadProfile, updateProfile } = useAuthStore();
  * - const login = useAuthStore(state => state.login); // Selective subscription
  */
-
-interface User {
-  id: string;
-  phone: string;
-  created_at: string;
-}
-
-interface AuthSession {
-  access_token: string;
-  refresh_token: string;
-  expires_at: number;
-  user: User;
-}
-
-interface AuthStore {
-  // Auth Domain State
-  session: AuthSession | null;
-  user: User | null;
-  isAuthenticated: boolean;
-  isLoading: boolean;
-  authError: string | null;
-  
-  // Profile Domain State (coupled with auth)
-  profile: UserProfile | null;
-  profileLoading: boolean;
-  profileError: string | null;
-  
-  // Auth Domain Actions
-  setSession: (session: AuthSession) => void;
-  logout: () => Promise<void>;
-  checkSession: () => Promise<void>;
-  clearAuthError: () => void;
-  
-  // Profile Domain Actions
-  loadProfile: () => Promise<void>;
-  updateProfile: (updates: UpdateProfileData) => Promise<void>;
-  clearProfile: () => void;
-  clearProfileError: () => void;
-}
 
 // Single service instances for the entire store
 const authService = AuthService.getInstance();

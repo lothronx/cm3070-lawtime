@@ -2,18 +2,7 @@ import { createClient } from '@supabase/supabase-js';
 // eslint-disable-next-line import/no-unresolved
 import { SUPABASE_URL, SUPABASE_ANON_KEY } from '@env';
 import AuthService from './authService';
-
-export interface UserProfile {
-  id: string;
-  status: 'active' | 'deleted';
-  default_alert_offset_minutes: number;
-  updated_at: string;
-}
-
-export interface UpdateProfileData {
-  default_alert_offset_minutes?: number;
-  status?: 'active' | 'deleted';
-}
+import { UserProfile, UpdateProfileData } from '@/types/auth';
 
 class ProfileService {
   private static instance: ProfileService;
