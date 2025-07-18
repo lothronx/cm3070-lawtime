@@ -4,7 +4,6 @@ import { API_BASE_URL } from "@env";
 import {
   SendOTPResponse,
   VerifyOTPResponse,
-  APIError,
   AuthServiceError
 } from '@/types/auth';
 
@@ -23,7 +22,9 @@ class AuthService {
    */
   async sendOTP(phoneNumber: string): Promise<SendOTPResponse> {
     try {
-      const response = await fetch(`${API_BASE_URL}/auth/send-otp`, {
+      const fullUrl = `${API_BASE_URL}/auth/send-otp`;
+      
+      const response = await fetch(fullUrl, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -32,21 +33,27 @@ class AuthService {
           phone_number: phoneNumber,
         }),
       });
-
+      
       const data = await response.json();
-  
 
       if (!response.ok) {
-        const errorData = data as APIError;
+        // Server returns {status: "error", message: "..."} format
+        const errorData = data as {status: string; message: string};
         throw new AuthServiceError(
-          errorData.error || 'Failed to send OTP',
-          response.status,
-          errorData.details
+          errorData.message || 'Failed to send OTP',
+          response.status
         );
       }
 
-      return data as SendOTPResponse;
+      // Server returns {status: "success", message: "...", expires_in_minutes: 5}
+      // Convert to expected SendOTPResponse format
+      return {
+        message: data.message || 'OTP sent successfully'
+      } as SendOTPResponse;
     } catch (error) {
+      if (error instanceof Error) {
+      }
+      
       if (error instanceof AuthServiceError) {
         throw error;
       }
@@ -60,7 +67,7 @@ class AuthService {
       }
 
       throw new AuthServiceError(
-        '1 Unexpected error occurred. Please try again.',
+        'Unexpected error occurred. Please try again.',
         0
       );
     }
@@ -85,15 +92,20 @@ class AuthService {
       const data = await response.json();
 
       if (!response.ok) {
-        const errorData = data as APIError;
+        // Server returns {status: "error", message: "..."} format
+        const errorData = data as {status: string; message: string};
         throw new AuthServiceError(
-          errorData.error || 'Failed to verify OTP',
-          response.status,
-          errorData.details
+          errorData.message || 'Failed to verify OTP',
+          response.status
         );
       }
 
-      const verifyResponse = data as VerifyOTPResponse;
+      // Server returns {status: "success", message: "...", session: {...}}
+      // Convert to expected VerifyOTPResponse format
+      const verifyResponse: VerifyOTPResponse = {
+        message: data.message || 'Authentication successful',
+        session: data.session
+      };
       
       // Store tokens securely
       await this.storeSession(verifyResponse.session);
@@ -219,15 +231,20 @@ class AuthService {
       const data = await response.json();
 
       if (!response.ok) {
-        const errorData = data as APIError;
+        // Server returns {status: "error", message: "..."} format
+        const errorData = data as {status: string; message: string};
         throw new AuthServiceError(
-          errorData.error || 'Failed to refresh token',
-          response.status,
-          errorData.details
+          errorData.message || 'Failed to refresh token',
+          response.status
         );
       }
 
-      const refreshResponse = data as VerifyOTPResponse;
+      // Server returns {status: "success", message: "...", session: {...}}
+      // Convert to expected VerifyOTPResponse format
+      const refreshResponse: VerifyOTPResponse = {
+        message: data.message || 'Token refreshed successfully',
+        session: data.session
+      };
       
       // Store the new tokens
       await this.storeSession(refreshResponse.session);
