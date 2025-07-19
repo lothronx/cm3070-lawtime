@@ -54,18 +54,6 @@ export interface APIError {
 // Use Supabase-generated types as single source of truth
 export type UserProfile = Tables<'profiles'>;
 export type UpdateProfileData = TablesUpdate<'profiles'>;
-export type InsertProfileData = TablesInsert<'profiles'>;
-
-// Convenience types for database enums
-export type ProfileStatus = Database['public']['Enums']['profile_status'];
-export type TaskSourceType = Database['public']['Enums']['task_source_type'];
-export type TaskFileRole = Database['public']['Enums']['task_file_role'];
-
-// Future task and client types (for when implement TanStack Query)
-export type Task = Tables<'tasks'>;
-export type Client = Tables<'clients'>;
-export type TaskFile = Tables<'task_files'>;
-export type UserDevice = Tables<'user_devices'>;
 
 // ============================================================================
 // Store State Types
