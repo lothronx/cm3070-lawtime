@@ -150,7 +150,7 @@ export default function ActionMenu({ visible = true }: ActionMenuProps) {
         onChooseFile={handleChooseFile}
       />
 
-      <View style={[styles.container, { bottom: insets.bottom + 18 }]}>
+      <View style={[styles.container, { bottom: insets.bottom + 16 }]}>
         {/* Main Action Button */}
         <AnimatedPressable style={[styles.menuButton, rMenuButtonStyles]} onPress={toggleMenu}>
           <Animated.View style={rMenuAnimateStyles}>

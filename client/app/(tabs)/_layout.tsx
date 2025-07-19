@@ -45,14 +45,14 @@ function CustomTabBar({ state, navigation }: any) {
         <Svg viewBox="0 0 402 55" style={[styles.svg, { marginBottom: insets.bottom }]}>
           <Path
             fill={theme.colors.primary}
-            d="M 161 0 A 40 40 0 0 0 241 0 H 402 V 55 H 0 V 0 H 161 Z"
+            d="M 156 0 Q163,0 163,5 C163,55 239,55 239,5 Q239,0 246,0 H 402 V 55 H 0 V 0 H 156 Z"
           />
         </Svg>
 
         <View
           style={[
             styles.insetsBottom,
-            { height: insets.bottom + 15, backgroundColor: theme.colors.primary },
+            { height: insets.bottom + 10, backgroundColor: theme.colors.primary },
           ]}
         />
       </View>
