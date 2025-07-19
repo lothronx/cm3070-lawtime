@@ -1,80 +1,26 @@
-import { Stack, useRouter } from "expo-router";
+import { Stack } from "expo-router";
 import { PaperProvider } from "react-native-paper";
 import { ThemeProvider, useAppTheme } from "../theme/ThemeProvider";
 import { SafeAreaProvider } from "react-native-safe-area-context";
-import { View, StatusBar, Platform, Text, TextInput } from "react-native";
+import { View, StatusBar } from "react-native";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
-import { useFonts } from "expo-font";
 import * as SplashScreen from "expo-splash-screen";
 import { useEffect } from "react";
-import { useAuthStore } from "@/stores/useAuthStore";
-import LoadingComponent from "@/components/LoadingComponent";
 
 // Keep the splash screen visible while we fetch resources
 SplashScreen.preventAutoHideAsync();
 
-// Set default font family for all Text and TextInput components globally
-const fontFamily = "Avenir";
-
-// Override default props for Text and TextInput components using type assertions
-(Text as any).defaultProps = (Text as any).defaultProps || {};
-(Text as any).defaultProps.style = { fontFamily, ...((Text as any).defaultProps.style || {}) };
-
-(TextInput as any).defaultProps = (TextInput as any).defaultProps || {};
-(TextInput as any).defaultProps.style = {
-  fontFamily,
-  ...((TextInput as any).defaultProps.style || {}),
-};
-
+/**
+ * Inner layout component that handles the app shell structure
+ * and provides access to the theme context
+ */
 function RootLayoutContent() {
   const { theme, isDark } = useAppTheme();
-  const { isLoading, isAuthenticated, checkSession } = useAuthStore();
-  const router = useRouter();
-
-  const [fontsLoaded] = useFonts({
-    // For Android, using SpaceMono as fallback
-    ...(Platform.OS === "android" && {
-      Avenir: require("../assets/fonts/SpaceMono-Regular.ttf"),
-    }),
-  });
 
   useEffect(() => {
-    if (fontsLoaded || Platform.OS === "ios") {
-      SplashScreen.hideAsync();
-    }
-  }, [fontsLoaded]);
-
-  // Check auth session on mount
-  useEffect(() => {
-    if (fontsLoaded || Platform.OS === "ios") {
-      checkSession();
-    }
-  }, [fontsLoaded, checkSession]);
-
-  // Handle navigation based on auth state
-  useEffect(() => {
-    if (!isLoading && (fontsLoaded || Platform.OS === "ios")) {
-      if (isAuthenticated) {
-        router.replace("/(tabs)");
-      } else {
-        router.replace("/auth");
-      }
-    }
-  }, [isLoading, isAuthenticated, fontsLoaded, router]);
-
-  if (!fontsLoaded && Platform.OS === "android") {
-    return null;
-  }
-
-  // Show loading screen while checking authentication
-  if (isLoading) {
-    return (
-      <LoadingComponent 
-        variant="authentication"
-        backgroundColor={theme.colors.background}
-      />
-    );
-  }
+    // Hide splash screen immediately since we're using system fonts
+    SplashScreen.hideAsync();
+  }, []);
 
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>
