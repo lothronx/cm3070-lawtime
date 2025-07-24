@@ -1,4 +1,5 @@
 import { useCallback, useState } from 'react';
+import { useRouter } from 'expo-router';
 
 export interface ActionMenuHandlers {
   onPhotoLibrary: () => void;
@@ -16,6 +17,8 @@ export interface ActionMenuHandlers {
  * Hook to handle ActionMenu business logic
  */
 export function useActionMenu(): ActionMenuHandlers {
+  const router = useRouter();
+
   const [recordingStartTime, setRecordingStartTime] = useState<number>(0);
   const [showTooShortWarning, setShowTooShortWarning] = useState(false);
   const onPhotoLibrary = useCallback(() => {
@@ -60,8 +63,8 @@ export function useActionMenu(): ActionMenuHandlers {
 
   const onManualPress = useCallback(() => {
     console.log('Manual entry selected');
-    // TODO: Implement manual task creation navigation
-  }, []);
+    router.push('/task?mode=create');
+  }, [router]);
 
   return {
     onPhotoLibrary,
