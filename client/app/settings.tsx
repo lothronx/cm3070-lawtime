@@ -9,20 +9,22 @@ import LoadingComponent from "@/components/LoadingComponent";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useRouter } from "expo-router";
 import { useAuthStore } from "@/stores/useAuthStore";
+import { supabase } from "@/utils/supabase";
+
+// Profile type based on database schema
+interface UserProfile {
+  id: string;
+  status: string;
+  default_alert_offset_minutes: number;
+  updated_at: string;
+}
 
 export default function Settings() {
   const { theme } = useAppTheme();
   const insets = useSafeAreaInsets();
-  // Use consolidated auth store for profile management
-  const { 
-    profile, 
-    profileLoading, 
-    profileError, 
-    loadProfile, 
-    updateProfile, 
-    clearProfileError,
-    logout 
-  } = useAuthStore();
+  const { logout } = useAuthStore();
+  const [profile, setProfile] = useState<UserProfile | null>(null);
+  const [profileLoading, setProfileLoading] = useState(true);
   const [snackbarVisible, setSnackbarVisible] = useState(false);
   const [snackbarMessage, setSnackbarMessage] = useState("");
   const router = useRouter();
@@ -30,34 +32,64 @@ export default function Settings() {
   // Load profile on mount
   useEffect(() => {
     loadProfile();
-  }, [loadProfile]);
+  }, []);
 
-  // Handle error state changes
-  useEffect(() => {
-    if (profileError) {
-      setSnackbarMessage(profileError);
+  const loadProfile = async () => {
+    try {
+      setProfileLoading(true);
+      // Use the exact API specification format
+      const { data, error } = await supabase
+        .from('profiles')
+        .select('*')
+        .single();
+
+      if (error) {
+        console.error('Profile load error:', error);
+        setSnackbarMessage(`Failed to load settings: ${error.message}`);
+        setSnackbarVisible(true);
+      } else {
+        setProfile(data);
+      }
+    } catch (err) {
+      console.error('Profile load exception:', err);
+      setSnackbarMessage('Failed to load settings');
       setSnackbarVisible(true);
-      clearProfileError(); // Clear error after showing snackbar
+    } finally {
+      setProfileLoading(false);
     }
-  }, [profileError, clearProfileError]);
+  };
 
   const handleAlertTimeChange = async (value: number) => {
     if (!profile) return;
 
-    await updateProfile({
-      default_alert_offset_minutes: value,
-    });
+    try {
+      // Follow API specification format exactly
+      const { data, error } = await supabase
+        .from('profiles')
+        .update({ default_alert_offset_minutes: value })
+        .eq('id', profile.id)
+        .select()
+        .single();
 
-    // Show success message if no error occurred
-    if (!useAuthStore.getState().profileError) {
-      setSnackbarMessage("Settings saved successfully");
+      if (error) {
+        console.error('Settings update error:', error);
+        setSnackbarMessage(`Failed to save settings: ${error.message}`);
+        setSnackbarVisible(true);
+      } else {
+        setProfile(data);
+        setSnackbarMessage("Settings saved successfully");
+        setSnackbarVisible(true);
+      }
+    } catch (err) {
+      console.error('Settings update exception:', err);
+      setSnackbarMessage('Failed to save settings');
       setSnackbarVisible(true);
     }
   };
 
   const handleLogout = async () => {
     try {
-      await logout(); // Consolidated logout clears both auth and profile
+      await logout();
       router.replace("/auth");
     } catch (error) {
       console.error("Logout error:", error);
