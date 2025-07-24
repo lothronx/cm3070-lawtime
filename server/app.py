@@ -269,7 +269,7 @@ def create_app(test_config=None):
 
                     if auth_response.user:
                         logger.info(f"Existing user signed in: {auth_response.user.id}")
-                        # Return minimal session format - only essential auth fields
+                        # Return full Supabase session format for proper RLS support
                         return (
                             jsonify(
                                 {
@@ -280,6 +280,12 @@ def create_app(test_config=None):
                                         "refresh_token": auth_response.session.refresh_token,
                                         "expires_at": auth_response.session.expires_at,
                                         "token_type": auth_response.session.token_type,
+                                        "user": {
+                                            "id": auth_response.user.id,
+                                            "email": auth_response.user.email or "",
+                                            "phone": auth_response.user.phone or "",
+                                            "created_at": auth_response.user.created_at,
+                                        },
                                     },
                                 }
                             ),
@@ -299,7 +305,7 @@ def create_app(test_config=None):
 
                         if auth_response.user:
                             logger.info(f"New user created: {auth_response.user.id}")
-                            # Return minimal session format for new user
+                            # Return full Supabase session format for new user
                             return (
                                 jsonify(
                                     {
@@ -310,6 +316,12 @@ def create_app(test_config=None):
                                             "refresh_token": auth_response.session.refresh_token,
                                             "expires_at": auth_response.session.expires_at,
                                             "token_type": auth_response.session.token_type,
+                                            "user": {
+                                                "id": auth_response.user.id,
+                                                "email": auth_response.user.email or "",
+                                                "phone": auth_response.user.phone or "",
+                                                "created_at": auth_response.user.created_at,
+                                            },
                                         },
                                     }
                                 ),
