@@ -269,6 +269,7 @@ def create_app(test_config=None):
 
                     if auth_response.user:
                         logger.info(f"Existing user signed in: {auth_response.user.id}")
+                        # Return minimal session format - only essential auth fields
                         return (
                             jsonify(
                                 {
@@ -279,11 +280,6 @@ def create_app(test_config=None):
                                         "refresh_token": auth_response.session.refresh_token,
                                         "expires_at": auth_response.session.expires_at,
                                         "token_type": auth_response.session.token_type,
-                                        "user": {
-                                            "id": auth_response.user.id,
-                                            "phone": phone_number,
-                                            "created_at": auth_response.user.created_at,
-                                        }
                                     },
                                 }
                             ),
@@ -303,6 +299,7 @@ def create_app(test_config=None):
 
                         if auth_response.user:
                             logger.info(f"New user created: {auth_response.user.id}")
+                            # Return minimal session format for new user
                             return (
                                 jsonify(
                                     {
@@ -313,12 +310,6 @@ def create_app(test_config=None):
                                             "refresh_token": auth_response.session.refresh_token,
                                             "expires_at": auth_response.session.expires_at,
                                             "token_type": auth_response.session.token_type,
-                                            "user": {
-                                                "id": auth_response.user.id,
-                                                "phone": phone_number,
-                                                "created_at": auth_response.user.created_at,
-                                                "is_new_user": True,
-                                            }
                                         },
                                     }
                                 ),
@@ -358,80 +349,6 @@ def create_app(test_config=None):
 
         except Exception as e:
             logger.error(f"Verify OTP error: {str(e)}")
-            return jsonify({"status": "error", "message": "Internal server error"}), 500
-
-    @app.route("/auth/refresh-token", methods=["POST"])
-    def refresh_token():
-        """Refresh JWT access token using refresh token."""
-        try:
-            # Validate request body
-            if not request.is_json:
-                return (
-                    jsonify(
-                        {
-                            "status": "error",
-                            "message": "Content-Type must be application/json",
-                        }
-                    ),
-                    400,
-                )
-
-            data = request.get_json()
-            refresh_token = data.get("refresh_token")
-
-            if not refresh_token:
-                return (
-                    jsonify({"status": "error", "message": "refresh_token is required"}),
-                    400,
-                )
-
-            refresh_token = refresh_token.strip()
-
-            # Refresh session with Supabase
-            try:
-                auth_response = supabase.auth.refresh_session(refresh_token)
-
-                if auth_response.user and auth_response.session:
-                    logger.info(f"Token refreshed for user: {auth_response.user.id}")
-                    return (
-                        jsonify(
-                            {
-                                "status": "success",
-                                "message": "Token refreshed successfully",
-                                "session": {
-                                    "access_token": auth_response.session.access_token,
-                                    "refresh_token": auth_response.session.refresh_token,
-                                    "expires_at": auth_response.session.expires_at,
-                                    "token_type": auth_response.session.token_type,
-                                    "user": {
-                                        "id": auth_response.user.id,
-                                        "phone": auth_response.user.user_metadata.get("phone", ""),
-                                        "created_at": auth_response.user.created_at,
-                                    }
-                                },
-                            }
-                        ),
-                        200,
-                    )
-                else:
-                    return (
-                        jsonify(
-                            {"status": "error", "message": "Failed to refresh token"}
-                        ),
-                        401,
-                    )
-
-            except Exception as refresh_error:
-                logger.error(f"Token refresh error: {str(refresh_error)}")
-                return (
-                    jsonify(
-                        {"status": "error", "message": "Invalid or expired refresh token"}
-                    ),
-                    401,
-                )
-
-        except Exception as e:
-            logger.error(f"Refresh token error: {str(e)}")
             return jsonify({"status": "error", "message": "Internal server error"}), 500
 
     return app

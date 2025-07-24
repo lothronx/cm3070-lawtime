@@ -1,179 +1,98 @@
 import { create } from 'zustand';
-import AuthService from '@/services/authService';
-import ProfileService from '@/services/profileService';
-import {
-  AuthSession,
-  AuthStore,
-  UpdateProfileData
-} from '@/types/auth';
+import { Session } from '@supabase/supabase-js';
+import { supabase } from '@/utils/supabase';
 
 /**
- * Consolidated authentication and profile store
+ * Minimal Authentication Store
  * 
- * Domain boundaries:
- * - Auth Domain: session management, login/logout
- * - Profile Domain: user profile data (coupled with auth)
- * 
- * Usage examples:
- * - const { isAuthenticated, session, login, logout } = useAuthStore();
- * - const { profile, loadProfile, updateProfile } = useAuthStore();
- * - const login = useAuthStore(state => state.login); // Selective subscription
+ * Stores only essential auth data:
+ * - session: JWT tokens + minimal metadata
+ * - isAuthenticated: computed from session existence
+ * - isLoading: for UI loading states
  */
 
-// Single service instances for the entire store
-const authService = AuthService.getInstance();
-const profileService = ProfileService.getInstance();
+interface AuthStore {
+  // Minimal State
+  session: Session | null;
+  isAuthenticated: boolean;
+  isLoading: boolean;
 
-export const useAuthStore = create<AuthStore>((set, get) => ({
-  // Initial Auth State
+  // Actions
+  setSession: (session: Session) => void;
+  clearSession: () => void;
+  checkSession: () => Promise<void>;
+  logout: () => Promise<void>;
+}
+
+export const useAuthStore = create<AuthStore>((set) => ({
+  // Initial State
   session: null,
-  user: null,
   isAuthenticated: false,
   isLoading: true,
-  authError: null,
-  
-  // Initial Profile State
-  profile: null,
-  profileLoading: false,
-  profileError: null,
 
-  // Auth Actions
-  setSession: (session: AuthSession) => {
+  // Set session from server response
+  setSession: (session: Session) => {
     set({
       session,
-      user: session.user,
       isAuthenticated: true,
       isLoading: false,
-      authError: null,
     });
   },
 
+  // Clear session data
+  clearSession: () => {
+    set({
+      session: null,
+      isAuthenticated: false,
+      isLoading: false,
+    });
+  },
+
+  // Check if session exists - getSession() handles token refresh automatically
   checkSession: async () => {
-    set({ isLoading: true, authError: null });
+    set({ isLoading: true });
     
     try {
-      // Use getValidSession which automatically handles token refresh
-      const validSession = await authService.getValidSession();
+      const { data: { session }, error } = await supabase.auth.getSession();
 
-      if (validSession) {
-        set({
-          session: validSession,
-          user: validSession.user,
-          isAuthenticated: true,
-          isLoading: false,
-          authError: null,
-        });
-      } else {
+      if (error || !session) {
         set({
           session: null,
-          user: null,
           isAuthenticated: false,
           isLoading: false,
-          authError: null,
         });
+        return;
       }
+
+      set({
+        session,
+        isAuthenticated: true,
+        isLoading: false,
+      });
     } catch (error) {
-      console.error('Error checking session:', error);
+      console.error('Session check failed:', error);
       set({
         session: null,
-        user: null,
         isAuthenticated: false,
         isLoading: false,
-        authError: null,
       });
     }
   },
 
+  // Logout and clear session
   logout: async () => {
     set({ isLoading: true });
     
     try {
-      await authService.clearSession();
+      await supabase.auth.signOut();
     } catch (error) {
-      console.error('Error during logout:', error);
+      console.error('Logout failed:', error);
     } finally {
       set({
-        // Clear auth state
         session: null,
-        user: null,
         isAuthenticated: false,
         isLoading: false,
-        authError: null,
-        // Clear profile state
-        profile: null,
-        profileLoading: false,
-        profileError: null,
       });
     }
-  },
-
-  clearAuthError: () => {
-    set({ authError: null });
-  },
-
-  // Profile Actions
-  loadProfile: async () => {
-    const { profileLoading, isAuthenticated } = get();
-    if (profileLoading || !isAuthenticated) return; // Prevent concurrent loads or unauthenticated calls
-    
-    set({ profileLoading: true, profileError: null });
-    
-    try {
-      const { data, error } = await profileService.getOrCreateProfile();
-      
-      if (error) {
-        set({ profileError: error, profileLoading: false });
-      } else {
-        set({ profile: data, profileLoading: false, profileError: null });
-      }
-    } catch (exception) {
-      const errorMessage = exception instanceof Error ? exception.message : String(exception);
-      set({ 
-        profileError: `Unexpected error: ${errorMessage}`, 
-        profileLoading: false 
-      });
-    }
-  },
-
-  updateProfile: async (updates: UpdateProfileData) => {
-    const { profile, isAuthenticated } = get();
-    if (!profile || !isAuthenticated) {
-      set({ profileError: 'No profile loaded or user not authenticated' });
-      return;
-    }
-
-    set({ profileLoading: true, profileError: null });
-
-    try {
-      const { data, error } = await profileService.updateProfile(updates);
-
-      if (error) {
-        set({ profileError: `Failed to save: ${error}`, profileLoading: false });
-      } else {
-        set({ 
-          profile: data, 
-          profileLoading: false, 
-          profileError: null 
-        });
-      }
-    } catch (exception) {
-      const errorMessage = exception instanceof Error ? exception.message : String(exception);
-      set({ 
-        profileError: `Unexpected error: ${errorMessage}`, 
-        profileLoading: false 
-      });
-    }
-  },
-
-  clearProfile: () => {
-    set({ 
-      profile: null, 
-      profileLoading: false, 
-      profileError: null 
-    });
-  },
-
-  clearProfileError: () => {
-    set({ profileError: null });
   },
 }));
