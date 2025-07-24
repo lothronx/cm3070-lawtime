@@ -1,7 +1,7 @@
 import React from "react";
 import { StyleSheet, Keyboard } from "react-native";
 import { Button } from "react-native-paper";
-import { SPACING, BORDER_RADIUS } from "@/theme/ThemeProvider";
+import { BORDER_RADIUS } from "@/theme/ThemeProvider";
 
 interface DiscardButtonProps {
   onPress: () => void;

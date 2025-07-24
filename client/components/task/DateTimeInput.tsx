@@ -11,11 +11,11 @@ import {
   formatTimeForDisplay,
 } from "@/utils/timeUtils";
 import { combineDateTime } from "@/utils/dateTimeUtils";
-import { TaskFormData } from "@/types/taskForm";
+import { TaskFormData } from "@/types/queries";
 
 interface DateTimeInputProps {
   control: Control<TaskFormData>;
-  name: "datetime";
+  name: "eventTime";
   error?: FieldError;
 }
 
@@ -24,8 +24,7 @@ const DateTimeInput: React.FC<DateTimeInputProps> = ({ control, name, error }) =
   const [dateDisplayValue, setDateDisplayValue] = useState("");
   const [timeDisplayValue, setTimeDisplayValue] = useState("");
 
-  // Internal refs for date and time fields
-  const dateInputRef = useRef<any>(null);
+  // Internal ref for time field navigation
   const timeInputRef = useRef<any>(null);
 
   // Memoize validation function to prevent re-creation on every render

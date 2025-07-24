@@ -4,7 +4,7 @@ import { TextInput, Text } from "react-native-paper";
 import { Control, useController, FieldError } from "react-hook-form";
 import { useAppTheme, SPACING } from "@/theme/ThemeProvider";
 import { sanitizeInput, validateTextLength } from "@/utils/inputUtils";
-import { TaskFormData } from "@/types/taskForm";
+import { TaskFormData } from "@/types/queries";
 
 interface LocationInputProps {
   control: Control<TaskFormData>;
@@ -13,60 +13,60 @@ interface LocationInputProps {
 }
 
 const LocationInput: React.FC<LocationInputProps> = ({ control, name, error }) => {
-    const { theme } = useAppTheme();
+  const { theme } = useAppTheme();
 
-    // Memoized validation function
-    const validateLocation = useCallback((value: string | null) => {
-      return validateTextLength(value, 1, 200, "Location", false);
-    }, []);
+  // Memoized validation function
+  const validateLocation = useCallback((value: string | null) => {
+    return validateTextLength(value, 1, 200, "Location", false);
+  }, []);
 
-    const {
-      field: { onChange, onBlur, value },
-    } = useController({
-      control,
-      name,
-      rules: {
-        validate: validateLocation,
-      },
-    });
+  const {
+    field: { onChange, onBlur, value },
+  } = useController({
+    control,
+    name,
+    rules: {
+      validate: validateLocation,
+    },
+  });
 
-    // Memoized blur handler
-    const handleBlur = useCallback(() => {
-      try {
-        const sanitized = value?.trim() ? sanitizeInput(value) : null;
-        onChange(sanitized);
-      } catch (error) {
-        console.warn("LocationInput: Error processing blur", error);
-      } finally {
-        onBlur();
-      }
-    }, [value, onChange, onBlur]);
+  // Memoized blur handler
+  const handleBlur = useCallback(() => {
+    try {
+      const sanitized = value?.trim() ? sanitizeInput(value) : null;
+      onChange(sanitized);
+    } catch (error) {
+      console.warn("LocationInput: Error processing blur", error);
+    } finally {
+      onBlur();
+    }
+  }, [value, onChange, onBlur]);
 
-    const hasError = Boolean(error);
+  const hasError = Boolean(error);
 
-    return (
-      <View style={styles.container}>
-        <TextInput
-          label="Location"
-          value={value || ""}
-          onChangeText={onChange}
-          onBlur={handleBlur}
-          mode="outlined"
-          error={hasError}
-          multiline={false}
-          maxLength={200}
-          autoCapitalize="words"
-          returnKeyType="done"
-          style={{ backgroundColor: theme.colors.surface }}
-          accessibilityLabel="Location input field"
-          accessibilityHint="Enter a location for this task, optional field"
-        />
-        {hasError && error?.message && (
-          <Text style={[styles.errorText, { color: theme.colors.error }]}>{error.message}</Text>
-        )}
-      </View>
-    );
-  };
+  return (
+    <View style={styles.container}>
+      <TextInput
+        label="Location"
+        value={value || ""}
+        onChangeText={onChange}
+        onBlur={handleBlur}
+        mode="outlined"
+        error={hasError}
+        multiline={false}
+        maxLength={200}
+        autoCapitalize="words"
+        returnKeyType="done"
+        style={{ backgroundColor: theme.colors.surface }}
+        accessibilityLabel="Location input field"
+        accessibilityHint="Enter a location for this task, optional field"
+      />
+      {hasError && error?.message && (
+        <Text style={[styles.errorText, { color: theme.colors.error }]}>{error.message}</Text>
+      )}
+    </View>
+  );
+};
 
 LocationInput.displayName = "LocationInput";
 

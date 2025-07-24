@@ -4,7 +4,7 @@ import { TextInput, Text } from "react-native-paper";
 import { Control, useController, FieldError } from "react-hook-form";
 import { useAppTheme, SPACING } from "@/theme/ThemeProvider";
 import { sanitizeInput, validateTextLength } from "@/utils/inputUtils";
-import { TaskFormData } from "@/types/taskForm";
+import { TaskFormData } from "@/types/queries";
 
 interface NoteInputProps {
   control: Control<TaskFormData>;
