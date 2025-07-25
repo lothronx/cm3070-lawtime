@@ -2,7 +2,7 @@ import React, { useState, useRef } from "react";
 import { View, ScrollView, StyleSheet } from "react-native";
 import { Snackbar, Text } from "react-native-paper";
 import { useForm } from "react-hook-form";
-import { useRouter } from "expo-router";
+import { useRouter, useLocalSearchParams } from "expo-router";
 import Header from "@/components/Header";
 import TitleInput from "@/components/task/TitleInput";
 import ClientAutocompleteInput from "@/components/task/ClientAutocompleteInput";
@@ -20,51 +20,64 @@ import { TaskService } from "@/services/taskService";
 export default function Task() {
   const { theme } = useAppTheme();
   const router = useRouter();
+  const { mode, taskId, stackIndex, stackTotal } = useLocalSearchParams<{
+    mode?: string;
+    taskId?: string;
+    stackIndex?: string;
+    stackTotal?: string;
+  }>();
   const [snackbarVisible, setSnackbarVisible] = useState(false);
   const [snackbarMessage, setSnackbarMessage] = useState("");
 
   // Refs for scroll control
   const scrollViewRef = useRef<ScrollView>(null);
 
-  // Screen mode state - for demo purposes
-  const [isAIFlow, setIsAIFlow] = useState(false); // Set to false to test Edit mode
-  const [isEditMode, setIsEditMode] = useState(true); // Set to true to show Delete button
-  const [currentTaskIndex, setCurrentTaskIndex] = useState(1);
-  const [totalTasks, setTotalTasks] = useState(3);
+  // Determine screen mode based on URL parameters
+  const isCreateMode = mode === 'create';
+  const isEditMode = !!taskId; // Edit mode if taskId is provided
+  const isAIFlow = !!(stackIndex && stackTotal); // AI flow if stack parameters provided
+  const [currentTaskIndex, setCurrentTaskIndex] = useState(
+    stackIndex ? parseInt(stackIndex, 10) : 1
+  );
+  const [totalTasks, setTotalTasks] = useState(
+    stackTotal ? parseInt(stackTotal, 10) : 1
+  );
 
-  // Mock attachment data
-  const [attachments, setAttachments] = useState<TaskFile[]>([
-    {
-      id: 301,
-      task_id: 5001,
-      user_id: "123e4567-e89b-12d3-a456-426614174000",
-      file_name: "court-notice-p1.jpg",
-      mime_type: "image/jpeg",
-      role: "source",
-      storage_path: "user-id/5001/uuid1.jpg",
-      created_at: "2025-08-17T11:01:00+08:00",
-    },
-    {
-      id: 302,
-      task_id: 5001,
-      user_id: "123e4567-e89b-12d3-a456-426614174000",
-      file_name: "related-exhibit.pdf",
-      mime_type: "application/pdf",
-      role: "attachment",
-      storage_path: "user-id/5001/uuid2.pdf",
-      created_at: "2025-08-18T14:20:00+08:00",
-    },
-    {
-      id: 303,
-      task_id: 5001,
-      user_id: "123e4567-e89b-12d3-a456-426614174000",
-      file_name: "Client-Email.eml",
-      mime_type: "message/rfc822",
-      role: "attachment",
-      storage_path: "user-id/5001/uuid3.eml",
-      created_at: "2025-08-18T16:05:00+08:00",
-    },
-  ]);
+  // Mock attachment data - only for edit mode
+  const [attachments, setAttachments] = useState<TaskFile[]>(
+    isEditMode ? [
+      {
+        id: 301,
+        task_id: 5001,
+        user_id: "123e4567-e89b-12d3-a456-426614174000",
+        file_name: "court-notice-p1.jpg",
+        mime_type: "image/jpeg",
+        role: "source",
+        storage_path: "user-id/5001/uuid1.jpg",
+        created_at: "2025-08-17T11:01:00+08:00",
+      },
+      {
+        id: 302,
+        task_id: 5001,
+        user_id: "123e4567-e89b-12d3-a456-426614174000",
+        file_name: "related-exhibit.pdf",
+        mime_type: "application/pdf",
+        role: "attachment",
+        storage_path: "user-id/5001/uuid2.pdf",
+        created_at: "2025-08-18T14:20:00+08:00",
+      },
+      {
+        id: 303,
+        task_id: 5001,
+        user_id: "123e4567-e89b-12d3-a456-426614174000",
+        file_name: "Client-Email.eml",
+        mime_type: "message/rfc822",
+        role: "attachment",
+        storage_path: "user-id/5001/uuid3.eml",
+        created_at: "2025-08-18T16:05:00+08:00",
+      },
+    ] : []
+  );
 
   const {
     control,
@@ -107,7 +120,6 @@ export default function Task() {
           // TODO: Load next AI-proposed task data
         } else {
           setSnackbarMessage("All tasks saved successfully!");
-          setIsAIFlow(false);
           router.back();
         }
       } else {
@@ -142,7 +154,6 @@ export default function Task() {
         // TODO: Load next AI-proposed task data
       } else {
         setSnackbarMessage("AI flow completed!");
-        setIsAIFlow(false);
         router.back();
       }
     } else {
