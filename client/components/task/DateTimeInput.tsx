@@ -3,15 +3,8 @@ import { View, StyleSheet } from "react-native";
 import { TextInput, Text } from "react-native-paper";
 import { Control, useController, FieldError } from "react-hook-form";
 import { useAppTheme, SPACING } from "@/theme/ThemeProvider";
-import { formatDateInput, parseDate, formatDateFromObject } from "@/utils/dateUtils";
-import {
-  formatTimeInput,
-  parseTime,
-  formatTimeFromObject,
-  formatTimeForDisplay,
-} from "@/utils/timeUtils";
-import { combineDateTime } from "@/utils/dateTimeUtils";
-import { TaskFormData } from "@/types/queries";
+import { DateTimeUtils } from "@/utils/dateTimeUtils";
+import { TaskFormData } from "@/types/taskForm";
 
 interface DateTimeInputProps {
   control: Control<TaskFormData>;
@@ -29,18 +22,23 @@ const DateTimeInput: React.FC<DateTimeInputProps> = ({ control, name, error }) =
 
   // Memoize validation function to prevent re-creation on every render
   const validateDateTime = useCallback(
-    (value: Date | null) => {
+    (value: string | null) => {
       // Allow empty input for both date and time
       if (!dateDisplayValue && !timeDisplayValue) return true;
 
-      // If there's date input but no valid date object, it's invalid
-      if (dateDisplayValue && (!value || !(value instanceof Date) || isNaN(value.getTime()))) {
+      // If there's date input, validate it can be parsed
+      if (dateDisplayValue && !DateTimeUtils.parseDate(dateDisplayValue)) {
         return "Please enter a valid date (e.g., 20250101)";
       }
 
       // If there's time input, validate it
-      if (timeDisplayValue && !parseTime(timeDisplayValue)) {
+      if (timeDisplayValue && !DateTimeUtils.parseTime(timeDisplayValue)) {
         return "Please enter a valid time (e.g., 0900 or 1400)";
+      }
+
+      // If we have a value, validate it's a proper ISO string
+      if (value && !DateTimeUtils.isValidISOString(value)) {
+        return "Invalid date format";
       }
 
       // Date without time is valid - database accepts null timestamps
@@ -63,19 +61,16 @@ const DateTimeInput: React.FC<DateTimeInputProps> = ({ control, name, error }) =
   const handleFieldBlur = useCallback(
     (field: "date" | "time") => {
       try {
-        const combinedDateTime = combineDateTime(dateDisplayValue, timeDisplayValue);
-        onChange(combinedDateTime);
-
         // Normalize display format
         if (field === "date" && dateDisplayValue) {
-          const dateObj = parseDate(dateDisplayValue);
-          if (dateObj) {
-            setDateDisplayValue(formatDateFromObject(dateObj));
+          const dateStr = DateTimeUtils.parseDate(dateDisplayValue);
+          if (dateStr) {
+            setDateDisplayValue(dateStr);
           }
         } else if (field === "time" && timeDisplayValue) {
-          const timeObj = parseTime(timeDisplayValue);
-          if (timeObj) {
-            setTimeDisplayValue(formatTimeForDisplay(timeObj));
+          const timeStr = DateTimeUtils.parseTime(timeDisplayValue);
+          if (timeStr) {
+            setTimeDisplayValue(timeStr);
           }
         }
       } catch (error) {
@@ -90,12 +85,12 @@ const DateTimeInput: React.FC<DateTimeInputProps> = ({ control, name, error }) =
 
   const hasError = Boolean(error);
 
-  // Initialize display values from form value
+  // Initialize display values from form value (ISO string)
   useEffect(() => {
-    if (value instanceof Date && !isNaN(value.getTime())) {
+    if (value && DateTimeUtils.isValidISOString(value)) {
       // Only set display values if they're empty (initial load)
-      setDateDisplayValue((prev) => prev || formatDateFromObject(value));
-      setTimeDisplayValue((prev) => prev || formatTimeFromObject(value));
+      setDateDisplayValue((prev) => prev || DateTimeUtils.extractDateFromISO(value));
+      setTimeDisplayValue((prev) => prev || DateTimeUtils.extractTimeFromISO(value));
     } else if (value === null) {
       // If form value is explicitly null, clear both display values
       setDateDisplayValue("");
@@ -113,7 +108,7 @@ const DateTimeInput: React.FC<DateTimeInputProps> = ({ control, name, error }) =
             placeholderTextColor={theme.colors.backdrop}
             value={dateDisplayValue}
             onChangeText={(text) => {
-              const formatted = formatDateInput(text);
+              const formatted = DateTimeUtils.formatDateInput(text);
               setDateDisplayValue(formatted);
             }}
             onBlur={() => handleFieldBlur("date")}
@@ -132,12 +127,13 @@ const DateTimeInput: React.FC<DateTimeInputProps> = ({ control, name, error }) =
         </View>
         <View style={styles.timeContainer}>
           <TextInput
+            ref={timeInputRef}
             label="Time"
             placeholder="1400"
             placeholderTextColor={theme.colors.backdrop}
             value={timeDisplayValue}
             onChangeText={(text) => {
-              const formatted = formatTimeInput(text);
+              const formatted = DateTimeUtils.formatTimeInput(text);
               setTimeDisplayValue(formatted);
             }}
             onBlur={() => handleFieldBlur("time")}
