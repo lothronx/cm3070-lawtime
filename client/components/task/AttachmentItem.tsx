@@ -2,13 +2,14 @@ import React from "react";
 import { View, StyleSheet, TouchableOpacity } from "react-native";
 import { Text, IconButton } from "react-native-paper";
 import { useAppTheme, BORDER_RADIUS, SPACING } from "@/theme/ThemeProvider";
+import { TaskFile } from "@/types";
 
 interface AttachmentItemProps {
-  id: string | number;
-  file_name: string;
-  mime_type: string | null;
-  onDelete: (id: string | number) => void;
-  onPreview?: (id: string | number) => void;
+  id: TaskFile['id'];
+  file_name: TaskFile['file_name'];
+  mime_type: TaskFile['mime_type'];
+  onDelete: (id: TaskFile['id']) => void;
+  onPreview?: (id: TaskFile['id']) => void;
 }
 
 const getFileIcon = (mimeType: string | null): string => {

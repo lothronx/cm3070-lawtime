@@ -4,11 +4,11 @@ import { TextInput, Text, Card } from "react-native-paper";
 import { Control, useController, FieldError } from "react-hook-form";
 import { useAppTheme, SPACING, BORDER_RADIUS } from "@/theme/ThemeProvider";
 import { sanitizeInput } from "@/utils/inputUtils";
-import { Client, filterClients, debounce } from "@/utils/clientUtils";
-import { TaskFormData } from "@/types/queries";
+import { filterClients, debounce } from "@/utils/clientUtils";
+import { TaskWithClient, DbClient } from "@/types";
 
 // Mock data for testing
-const MOCK_CLIENTS: Client[] = [
+const MOCK_CLIENTS: DbClient[] = [
   {
     id: 101,
     user_id: "123e4567-e89b-12d3-a456-426614174000",
@@ -42,10 +42,10 @@ const MOCK_CLIENTS: Client[] = [
 ];
 
 interface ClientAutocompleteInputProps {
-  control: Control<TaskFormData>;
-  name: "clientName";
+  control: Control<TaskWithClient>;
+  name: "client_name";
   error?: FieldError;
-  clients?: Client[];
+  clients?: DbClient[];
 }
 
 const ClientAutocompleteInput: React.FC<ClientAutocompleteInputProps> = ({

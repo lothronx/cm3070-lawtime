@@ -4,11 +4,11 @@ import { TextInput, Text } from "react-native-paper";
 import { Control, useController, FieldError } from "react-hook-form";
 import { useAppTheme, SPACING } from "@/theme/ThemeProvider";
 import { DateTimeUtils } from "@/utils/dateTimeUtils";
-import { TaskFormData } from "@/types/taskForm";
+import { TaskWithClient } from "@/types";
 
 interface DateTimeInputProps {
-  control: Control<TaskFormData>;
-  name: "eventTime";
+  control: Control<TaskWithClient>;
+  name: "event_time";
   error?: FieldError;
 }
 

@@ -9,13 +9,12 @@ import ClientAutocompleteInput from "@/components/task/ClientAutocompleteInput";
 import LocationInput from "@/components/task/LocationInput";
 import NoteInput from "@/components/task/NoteInput";
 import AttachmentsSection from "@/components/task/AttachmentsSection";
-import { AttachmentFile } from "@/components/task/AttachmentList";
 import DateTimeInput from "@/components/task/DateTimeInput";
 import SaveButton from "@/components/task/SaveButton";
 import DiscardButton from "@/components/task/DiscardButton";
 import DeleteButton from "@/components/task/DeleteButton";
 import { useAppTheme, SPACING } from "@/theme/ThemeProvider";
-import { TaskFormData } from "@/types/taskForm";
+import { TaskWithClient, TaskFile } from "@/types";
 
 export default function Task() {
   const { theme } = useAppTheme();
@@ -33,7 +32,7 @@ export default function Task() {
   const [totalTasks, setTotalTasks] = useState(3);
 
   // Mock attachment data
-  const [attachments, setAttachments] = useState<AttachmentFile[]>([
+  const [attachments, setAttachments] = useState<TaskFile[]>([
     {
       id: 301,
       task_id: 5001,
@@ -71,18 +70,18 @@ export default function Task() {
     handleSubmit,
     formState: { errors, isSubmitting },
     trigger,
-  } = useForm<TaskFormData>({
+  } = useForm<TaskWithClient>({
     defaultValues: {
       title: "",
-      client: null,
-      datetime: null,
+      client_name: "",
+      event_time: null,
       location: null,
       note: null,
     },
     mode: "onBlur", // Only validate after user leaves field
   });
 
-  const onSubmit = async (data: TaskFormData) => {
+  const onSubmit = async (data: TaskWithClient) => {
     console.log("Form submitted:", data);
 
     if (isAIFlow) {
@@ -218,7 +217,7 @@ export default function Task() {
           </Text>
 
           <TitleInput control={control} name="title" error={errors.title} />
-          <ClientAutocompleteInput control={control} name="client" error={errors.client} />
+          <ClientAutocompleteInput control={control} name="client_name" error={errors.client_name} />
         </View>
 
         {/* Schedule Section */}
@@ -227,7 +226,7 @@ export default function Task() {
             Time & Location
           </Text>
 
-          <DateTimeInput control={control} name="datetime" error={errors.datetime} />
+          <DateTimeInput control={control} name="event_time" error={errors.event_time} />
 
           <LocationInput control={control} name="location" error={errors.location} />
         </View>

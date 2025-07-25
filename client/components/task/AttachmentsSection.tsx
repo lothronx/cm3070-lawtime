@@ -1,14 +1,15 @@
 import React from "react";
 import { View, StyleSheet } from "react-native";
-import { Text, Button, IconButton } from "react-native-paper";
+import { Text, Button } from "react-native-paper";
 import { useAppTheme, SPACING, BORDER_RADIUS } from "@/theme/ThemeProvider";
-import AttachmentList, { AttachmentFile } from "./AttachmentList";
+import AttachmentList from "./AttachmentList";
+import { TaskFile } from "@/types";
 
 interface AttachmentsSectionProps {
-  attachments: AttachmentFile[];
-  onDeleteAttachment: (id: string | number) => void;
+  attachments: TaskFile[];
+  onDeleteAttachment: (id: TaskFile['id']) => void;
   onAddAttachment: () => void;
-  onPreviewAttachment?: (id: string | number) => void;
+  onPreviewAttachment?: (id: TaskFile['id']) => void;
   loading?: boolean;
 }
 

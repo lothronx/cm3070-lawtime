@@ -3,14 +3,12 @@ import { View, StyleSheet } from "react-native";
 import { Text } from "react-native-paper";
 import { useAppTheme, SPACING } from "@/theme/ThemeProvider";
 import AttachmentItem from "./AttachmentItem";
-import { Database } from "@/types/supabase";
-
-export type AttachmentFile = Database["public"]["Tables"]["task_files"]["Row"];
+import { TaskFile } from "@/types";
 
 interface AttachmentListProps {
-  attachments: AttachmentFile[];
-  onDeleteAttachment: (id: string | number) => void;
-  onPreviewAttachment?: (id: string | number) => void;
+  attachments: TaskFile[];
+  onDeleteAttachment: (id: TaskFile['id']) => void;
+  onPreviewAttachment?: (id: TaskFile['id']) => void;
 }
 
 export default function AttachmentList({

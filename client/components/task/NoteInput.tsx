@@ -4,10 +4,10 @@ import { TextInput, Text } from "react-native-paper";
 import { Control, useController, FieldError } from "react-hook-form";
 import { useAppTheme, SPACING } from "@/theme/ThemeProvider";
 import { sanitizeInput, validateTextLength } from "@/utils/inputUtils";
-import { TaskFormData } from "@/types/queries";
+import { TaskWithClient } from "@/types";
 
 interface NoteInputProps {
-  control: Control<TaskFormData>;
+  control: Control<TaskWithClient>;
   name: "note";
   error?: FieldError;
   onSubmitEditing?: () => void;
