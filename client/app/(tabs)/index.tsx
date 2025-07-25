@@ -2,7 +2,7 @@ import React, { useState, useMemo } from "react";
 import { View, StyleSheet, ScrollView } from "react-native";
 import { Text } from "react-native-paper";
 import { ExpandableCalendar, CalendarProvider } from "react-native-calendars";
-import { useAppTheme, SPACING, BORDER_RADIUS } from "@/theme/ThemeProvider";
+import { useAppTheme, SPACING } from "@/theme/ThemeProvider";
 import Header from "@/components/Header";
 import { mockTasks, TaskWithClient } from "@/mockData";
 import TaskItem from "@/components/tasks/TaskItem";

@@ -15,6 +15,7 @@ import DiscardButton from "@/components/task/DiscardButton";
 import DeleteButton from "@/components/task/DeleteButton";
 import { useAppTheme, SPACING } from "@/theme/ThemeProvider";
 import { TaskWithClient, TaskFile } from "@/types";
+import { TaskService } from "@/services/taskService";
 
 export default function Task() {
   const { theme } = useAppTheme();
@@ -84,29 +85,46 @@ export default function Task() {
   const onSubmit = async (data: TaskWithClient) => {
     console.log("Form submitted:", data);
 
-    if (isAIFlow) {
-      // AI flow: move to next task or finish
-      if (currentTaskIndex < totalTasks) {
-        setCurrentTaskIndex(currentTaskIndex + 1);
-        setSnackbarMessage(
-          `Task ${currentTaskIndex} saved! Showing task ${currentTaskIndex + 1} of ${totalTasks}`
-        );
-        // TODO: Load next AI-proposed task data
-      } else {
-        setSnackbarMessage("All tasks saved successfully!");
-        setIsAIFlow(false);
-        router.back();
-      }
-    } else {
-      setSnackbarMessage("Task saved successfully!");
-      // Navigate back after a brief delay to show success message
-      setTimeout(() => {
-        router.back();
-      }, 1000);
-    }
+    try {
+      // Call the task service to create the task
+      const result = await TaskService.createTask(data);
 
-    setSnackbarVisible(true);
-    // TODO: Add task creation logic here
+      if (!result.success) {
+        // Show error message
+        setSnackbarMessage(result.error || "Failed to save task");
+        setSnackbarVisible(true);
+        return;
+      }
+
+      // Success - handle different flow types
+      if (isAIFlow) {
+        // AI flow: move to next task or finish
+        if (currentTaskIndex < totalTasks) {
+          setCurrentTaskIndex(currentTaskIndex + 1);
+          setSnackbarMessage(
+            `Task ${currentTaskIndex} saved! Showing task ${currentTaskIndex + 1} of ${totalTasks}`
+          );
+          // TODO: Load next AI-proposed task data
+        } else {
+          setSnackbarMessage("All tasks saved successfully!");
+          setIsAIFlow(false);
+          router.back();
+        }
+      } else {
+        setSnackbarMessage("Task saved successfully!");
+        // Navigate back after a brief delay to show success message
+        setTimeout(() => {
+          router.back();
+        }, 1000);
+      }
+
+      setSnackbarVisible(true);
+      
+    } catch (error) {
+      console.error("Unexpected error in onSubmit:", error);
+      setSnackbarMessage("An unexpected error occurred. Please try again.");
+      setSnackbarVisible(true);
+    }
   };
 
   const handleDiscardPress = () => {
