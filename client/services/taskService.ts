@@ -1,176 +1,253 @@
-import { supabase } from '@/utils/supabase';
-import { TaskWithClient, TaskInsert, ClientInsert } from '@/types';
-
 /**
- * Task Service - Basic CRUD operations
- * 
- * Provides simple task and client management without complex caching.
- * Uses the flattened TaskWithClient type from forms directly.
+ * Task service layer for Supabase operations
+ * Handles all task-related database operations
+ * Uses RLS policies for automatic user filtering
  */
 
-interface TaskServiceResult {
-  success: boolean;
-  task?: TaskWithClient;
-  error?: string;
-}
+import { supabase } from '@/utils/supabase';
+import { TaskInsert, TaskUpdate, TaskWithClient } from '@/types';
+import { clientService } from './clientService';
+import { useAuthStore } from '@/stores/useAuthStore';
 
-export class TaskService {
+export const taskService = {
   /**
-   * Create a new task with client resolution
-   * @param formData - TaskWithClient data from form
-   * @returns Result with created task or error
+   * Fetch all tasks for the current authenticated user with client information
+   * Uses Supabase RLS policies for automatic user filtering
+   * @returns Promise<TaskWithClient[]> - Array of tasks with client names sorted by event time
    */
-  static async createTask(formData: TaskWithClient): Promise<TaskServiceResult> {
-    try {
-      // Get current user
-      const { data: { user }, error: userError } = await supabase.auth.getUser();
-      
-      if (userError || !user) {
-        return {
-          success: false,
-          error: 'Authentication required. Please log in again.'
-        };
-      }
+  async getTasks(): Promise<TaskWithClient[]> {
+    // RLS policies automatically filter by authenticated user
+    const { data, error } = await supabase
+      .from('tasks')
+      .select(`
+        *,
+        clients!inner(
+          client_name
+        )
+      `)
+      .order('event_time', { ascending: true });
 
-      // Resolve client (get existing or create new)
-      const clientId = await this.resolveClient(formData.client_name, user.id);
-      
-      if (!clientId) {
-        return {
-          success: false,
-          error: 'Failed to resolve client information.'
-        };
-      }
-
-      // Prepare task data for insertion
-      const taskData: TaskInsert = {
-        user_id: user.id,
-        client_id: clientId,
-        title: formData.title,
-        event_time: formData.event_time,
-        location: formData.location || null,
-        note: formData.note || null,
-        source_type: 'manual',
-      };
-
-      // Create the task
-      const { data: createdTask, error: taskError } = await supabase
-        .from('tasks')
-        .insert(taskData)
-        .select(`
-          *,
-          clients!inner(
-            id,
-            client_name,
-            created_at
-          )
-        `)
-        .single();
-
-      if (taskError) {
-        console.error('Task creation error:', taskError);
-        return {
-          success: false,
-          error: 'Could not save task. Please try again.'
-        };
-      }
-
-      // Transform the response to match TaskWithClient structure
-      const taskWithClient: TaskWithClient = {
-        ...createdTask,
-        client_name: createdTask.clients.client_name,
-      };
-
-      return {
-        success: true,
-        task: taskWithClient
-      };
-
-    } catch (error) {
-      console.error('Unexpected error creating task:', error);
-      return {
-        success: false,
-        error: 'An unexpected error occurred. Please try again.'
-      };
+    if (error) {
+      throw new Error(`Failed to fetch tasks: ${error.message}`);
     }
-  }
+
+    // Transform to flat TaskWithClient structure
+    return (data || []).map(task => ({
+      ...task,
+      client_name: task.clients?.client_name || null,
+    }));
+  },
 
   /**
-   * Resolve client by name - find existing or create new
-   * @param clientName - Client name from form (can be null/empty)
-   * @param userId - Current user ID
-   * @returns Client ID or null if failed
+   * Create a new task for the current authenticated user
+   * Handles client resolution (find existing or create new)
+   * @param taskData - Task data with client_name for resolution
+   * @returns Promise<TaskWithClient> - The created task with client information
    */
-  static async resolveClient(clientName: string | null, userId: string): Promise<number | null> {
-    try {
-      // Handle empty client name - return null (no client)
-      if (!clientName || clientName.trim() === '') {
-        return null;
-      }
+  async createTask(taskData: TaskWithClient): Promise<TaskWithClient> {
+    // Get current authenticated user from auth store
+    const { session } = useAuthStore.getState();
+    
+    if (!session?.user) {
+      throw new Error('Authentication required. Please log in again.');
+    }
 
-      const trimmedName = clientName.trim();
-
-      // First, try to find existing client (case-insensitive)
-      const { data: existingClient, error: findError } = await supabase
-        .from('clients')
-        .select('id')
-        .eq('user_id', userId)
-        .ilike('client_name', trimmedName)
-        .single();
-
-      if (findError && findError.code !== 'PGRST116') {
-        // PGRST116 = not found, which is expected
-        // Other errors are actual problems
-        console.error('Error finding client:', findError);
-        return null;
-      }
-
-      // If client exists, return its ID
+    // Resolve client ID from client name
+    let clientId: number | null = null;
+    
+    if (taskData.client_name?.trim()) {
+      // Try to find existing client first
+      const existingClient = await clientService.findClientByName(taskData.client_name);
+      
       if (existingClient) {
-        return existingClient.id;
+        clientId = existingClient.id;
+      } else {
+        // Create new client if not found
+        const newClient = await clientService.createClient(taskData.client_name);
+        clientId = newClient.id;
       }
+    }
 
-      // Client doesn't exist, create new one
-      const clientData: ClientInsert = {
-        user_id: userId,
-        client_name: trimmedName,
-      };
+    // Prepare task insert data with explicit user_id
+    const insertData: TaskInsert = {
+      user_id: session.user.id,
+      client_id: clientId,
+      title: taskData.title,
+      event_time: taskData.event_time,
+      location: taskData.location || null,
+      note: taskData.note || null,
+      source_type: taskData.source_type || 'manual',
+    };
 
-      const { data: newClient, error: createError } = await supabase
-        .from('clients')
-        .insert(clientData)
-        .select('id')
-        .single();
+    // Create the task with explicit user_id
+    const { data, error } = await supabase
+      .from('tasks')
+      .insert(insertData)
+      .select(`
+        *,
+        clients(
+          client_name
+        )
+      `)
+      .single();
 
-      if (createError) {
-        // Check for unique constraint violation
-        if (createError.code === '23505') {
-          // Race condition - client was created between our check and insert
-          // Try to find it again
-          const { data: raceClient, error: raceError } = await supabase
-            .from('clients')
-            .select('id')
-            .eq('user_id', userId)
-            .ilike('client_name', trimmedName)
-            .single();
+    if (error) {
+      throw new Error(`Failed to create task: ${error.message}`);
+    }
 
-          if (raceError || !raceClient) {
-            console.error('Race condition resolution failed:', raceError);
-            return null;
-          }
+    // Transform to flat TaskWithClient structure
+    return {
+      ...data,
+      client_name: data.clients?.client_name || null,
+    };
+  },
 
-          return raceClient.id;
+  /**
+   * Update an existing task
+   * @param taskId - ID of task to update
+   * @param updates - Partial task data to update
+   * @returns Promise<TaskWithClient> - The updated task with client information
+   */
+  async updateTask(taskId: number, updates: Partial<TaskWithClient>): Promise<TaskWithClient> {
+    // Get current authenticated user from auth store
+    const { session } = useAuthStore.getState();
+    
+    if (!session?.user) {
+      throw new Error('Authentication required. Please log in again.');
+    }
+
+    // Handle client name changes
+    let clientId: number | null = updates.client_id || null;
+    
+    if (updates.client_name !== undefined) {
+      if (updates.client_name?.trim()) {
+        // Try to find existing client first
+        const existingClient = await clientService.findClientByName(updates.client_name);
+        
+        if (existingClient) {
+          clientId = existingClient.id;
+        } else {
+          // Create new client if not found
+          const newClient = await clientService.createClient(updates.client_name);
+          clientId = newClient.id;
         }
-
-        console.error('Error creating client:', createError);
-        return null;
+      } else {
+        clientId = null;
       }
+    }
 
-      return newClient.id;
+    // Prepare update data (exclude client_name as it's not a database field)
+    const { client_name, ...updateData } = updates;
+    const finalUpdateData: TaskUpdate = {
+      ...updateData,
+      client_id: clientId,
+    };
 
-    } catch (error) {
-      console.error('Unexpected error resolving client:', error);
+    // Update the task
+    const { data, error } = await supabase
+      .from('tasks')
+      .update(finalUpdateData)
+      .eq('id', taskId)
+      .select(`
+        *,
+        clients(
+          client_name
+        )
+      `)
+      .single();
+
+    if (error) {
+      throw new Error(`Failed to update task: ${error.message}`);
+    }
+
+    // Transform to flat TaskWithClient structure
+    return {
+      ...data,
+      client_name: data.clients?.client_name || null,
+    };
+  },
+
+  /**
+   * Delete a task by ID
+   * @param taskId - ID of task to delete
+   * @returns Promise<void>
+   */
+  async deleteTask(taskId: number): Promise<void> {
+    // Get current authenticated user from auth store
+    const { session } = useAuthStore.getState();
+    
+    if (!session?.user) {
+      throw new Error('Authentication required. Please log in again.');
+    }
+
+    const { error } = await supabase
+      .from('tasks')
+      .delete()
+      .eq('id', taskId);
+
+    if (error) {
+      throw new Error(`Failed to delete task: ${error.message}`);
+    }
+  },
+
+  /**
+   * Mark a task as completed
+   * @param taskId - ID of task to complete
+   * @returns Promise<TaskWithClient> - The updated task
+   */
+  async completeTask(taskId: number): Promise<TaskWithClient> {
+    return this.updateTask(taskId, { 
+      completed_at: new Date().toISOString(),
+    });
+  },
+
+  /**
+   * Mark a task as incomplete
+   * @param taskId - ID of task to mark as incomplete
+   * @returns Promise<TaskWithClient> - The updated task
+   */
+  async uncompleteTask(taskId: number): Promise<TaskWithClient> {
+    return this.updateTask(taskId, { 
+      completed_at: null,
+    });
+  },
+
+  /**
+   * Get a single task by ID with client information
+   * @param taskId - ID of task to fetch
+   * @returns Promise<TaskWithClient | null> - The task or null if not found
+   */
+  async getTaskById(taskId: number): Promise<TaskWithClient | null> {
+    // Get current authenticated user from auth store
+    const { session } = useAuthStore.getState();
+    
+    if (!session?.user) {
+      throw new Error('Authentication required. Please log in again.');
+    }
+
+    const { data, error } = await supabase
+      .from('tasks')
+      .select(`
+        *,
+        clients(
+          client_name
+        )
+      `)
+      .eq('id', taskId)
+      .maybeSingle();
+
+    if (error) {
+      throw new Error(`Failed to fetch task: ${error.message}`);
+    }
+
+    if (!data) {
       return null;
     }
-  }
-}
+
+    // Transform to flat TaskWithClient structure
+    return {
+      ...data,
+      client_name: data.clients?.client_name || null,
+    };
+  },
+};
