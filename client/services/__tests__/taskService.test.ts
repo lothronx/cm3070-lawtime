@@ -12,13 +12,14 @@ jest.mock('../clientService', () => ({
 }));
 
 // Mock the auth store
-const mockUseAuthStore = {
-  getState: jest.fn(),
-};
-
 jest.mock('@/stores/useAuthStore', () => ({
-  useAuthStore: mockUseAuthStore,
+  useAuthStore: {
+    getState: jest.fn(),
+  },
 }));
+
+// Import the mocked auth store after mocking
+const { useAuthStore } = require('@/stores/useAuthStore');
 
 // Mock the supabase client
 jest.mock('../../utils/supabase', () => ({
@@ -166,7 +167,7 @@ describe('taskService', () => {
   describe('createTask', () => {
     it('should create task with new client', async () => {
       // Mock authentication
-      (mockUseAuthStore.getState as jest.Mock).mockReturnValue({
+      (useAuthStore.getState as jest.Mock).mockReturnValue({
         session: { user: mockUser },
       });
 
@@ -224,7 +225,7 @@ describe('taskService', () => {
 
     it('should create task with existing client', async () => {
       // Mock authentication
-      (mockUseAuthStore.getState as jest.Mock).mockReturnValue({
+      (useAuthStore.getState as jest.Mock).mockReturnValue({
         session: { user: mockUser },
       });
 
@@ -281,7 +282,7 @@ describe('taskService', () => {
 
     it('should create task without client', async () => {
       // Mock authentication
-      (mockUseAuthStore.getState as jest.Mock).mockReturnValue({
+      (useAuthStore.getState as jest.Mock).mockReturnValue({
         session: { user: mockUser },
       });
 
@@ -333,7 +334,7 @@ describe('taskService', () => {
 
     it('should throw error when user is not authenticated', async () => {
       // Mock failed authentication
-      (mockUseAuthStore.getState as jest.Mock).mockReturnValue({
+      (useAuthStore.getState as jest.Mock).mockReturnValue({
         session: null,
       });
 
@@ -348,7 +349,7 @@ describe('taskService', () => {
   describe('updateTask', () => {
     it('should update task successfully', async () => {
       // Mock authentication
-      (mockUseAuthStore.getState as jest.Mock).mockReturnValue({
+      (useAuthStore.getState as jest.Mock).mockReturnValue({
         session: { user: mockUser },
       });
 
@@ -400,7 +401,7 @@ describe('taskService', () => {
 
     it('should throw error when user is not authenticated', async () => {
       // Mock failed authentication
-      (mockUseAuthStore.getState as jest.Mock).mockReturnValue({
+      (useAuthStore.getState as jest.Mock).mockReturnValue({
         session: null,
       });
 
@@ -411,7 +412,7 @@ describe('taskService', () => {
   describe('completeTask', () => {
     it('should mark task as completed', async () => {
       // Mock authentication
-      (mockUseAuthStore.getState as jest.Mock).mockReturnValue({
+      (useAuthStore.getState as jest.Mock).mockReturnValue({
         session: { user: mockUser },
       });
 
@@ -455,7 +456,7 @@ describe('taskService', () => {
 
     it('should throw error when user is not authenticated', async () => {
       // Mock failed authentication
-      (mockUseAuthStore.getState as jest.Mock).mockReturnValue({
+      (useAuthStore.getState as jest.Mock).mockReturnValue({
         session: null,
       });
 
@@ -466,7 +467,7 @@ describe('taskService', () => {
   describe('deleteTask', () => {
     it('should delete task successfully', async () => {
       // Mock authentication
-      (mockUseAuthStore.getState as jest.Mock).mockReturnValue({
+      (useAuthStore.getState as jest.Mock).mockReturnValue({
         session: { user: mockUser },
       });
 
@@ -490,7 +491,7 @@ describe('taskService', () => {
 
     it('should throw error on delete failure', async () => {
       // Mock authentication
-      (mockUseAuthStore.getState as jest.Mock).mockReturnValue({
+      (useAuthStore.getState as jest.Mock).mockReturnValue({
         session: { user: mockUser },
       });
 
@@ -511,7 +512,7 @@ describe('taskService', () => {
 
     it('should throw error when user is not authenticated', async () => {
       // Mock failed authentication
-      (mockUseAuthStore.getState as jest.Mock).mockReturnValue({
+      (useAuthStore.getState as jest.Mock).mockReturnValue({
         session: null,
       });
 
@@ -522,7 +523,7 @@ describe('taskService', () => {
   describe('getTaskById', () => {
     it('should return task when found', async () => {
       // Mock authentication
-      (mockUseAuthStore.getState as jest.Mock).mockReturnValue({
+      (useAuthStore.getState as jest.Mock).mockReturnValue({
         session: { user: mockUser },
       });
 
@@ -559,7 +560,7 @@ describe('taskService', () => {
 
     it('should return null when not found', async () => {
       // Mock authentication
-      (mockUseAuthStore.getState as jest.Mock).mockReturnValue({
+      (useAuthStore.getState as jest.Mock).mockReturnValue({
         session: { user: mockUser },
       });
 
@@ -587,7 +588,7 @@ describe('taskService', () => {
 
     it('should throw error when user is not authenticated', async () => {
       // Mock failed authentication
-      (mockUseAuthStore.getState as jest.Mock).mockReturnValue({
+      (useAuthStore.getState as jest.Mock).mockReturnValue({
         session: null,
       });
 
