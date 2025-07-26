@@ -2,9 +2,7 @@
  * Client filtering and search utilities
  */
 
-import { Database } from "@/types/supabase";
-
-export type Client = Database["public"]["Tables"]["clients"]["Row"];
+import { DbClient } from "@/types";
 
 /**
  * Filters clients based on search query
@@ -12,7 +10,7 @@ export type Client = Database["public"]["Tables"]["clients"]["Row"];
  * @param query - Search query string
  * @returns Filtered array of clients
  */
-export const filterClients = (clients: Client[], query: string): Client[] => {
+export const filterClients = (clients: DbClient[], query: string): DbClient[] => {
   if (!query.trim()) {
     return clients;
   }

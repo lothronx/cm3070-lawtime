@@ -15,8 +15,15 @@ SplashScreen.preventAutoHideAsync();
 const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
-      // Retry failed requests
-      retry: 3,
+      // Smart retry logic - don't retry auth errors, do retry network errors
+      retry: (failureCount, error) => {
+        // Don't retry authentication errors - redirect to login instead
+        if (error.message.includes('Authentication error') || error.message.includes('No authenticated user')) {
+          return false;
+        }
+        // Retry network/server errors up to 3 times
+        return failureCount < 3;
+      },
       retryDelay: (attemptIndex) => Math.min(1000 * 2 ** attemptIndex, 30000),
 
       // Network error handling optimized for mobile usage

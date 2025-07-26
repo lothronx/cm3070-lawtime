@@ -5,58 +5,26 @@ import { Control, useController, FieldError } from "react-hook-form";
 import { useAppTheme, SPACING, BORDER_RADIUS } from "@/theme/ThemeProvider";
 import { sanitizeInput } from "@/utils/inputUtils";
 import { filterClients, debounce } from "@/utils/clientUtils";
-import { TaskWithClient, DbClient } from "@/types";
-
-// Mock data for testing
-const MOCK_CLIENTS: DbClient[] = [
-  {
-    id: 101,
-    user_id: "123e4567-e89b-12d3-a456-426614174000",
-    client_name: "ACME Corporation",
-    created_at: "2025-08-17T09:15:00+08:00",
-  },
-  {
-    id: 102,
-    user_id: "123e4567-e89b-12d3-a456-426614174000",
-    client_name: "New Horizons LLC",
-    created_at: "2025-08-17T22:42:00+08:00",
-  },
-  {
-    id: 103,
-    user_id: "123e4567-e89b-12d3-a456-426614174000",
-    client_name: "Stellar Industries Inc.",
-    created_at: "2025-08-18T10:30:00+08:00",
-  },
-  {
-    id: 104,
-    user_id: "123e4567-e89b-12d3-a456-426614174000",
-    client_name: "Global Dynamics Corp",
-    created_at: "2025-08-18T14:15:00+08:00",
-  },
-  {
-    id: 105,
-    user_id: "123e4567-e89b-12d3-a456-426614174000",
-    client_name: "Phoenix Enterprises",
-    created_at: "2025-08-19T09:45:00+08:00",
-  },
-];
+import { TaskWithClient } from "@/types";
+import { useClients } from "@/hooks/useClients";
 
 interface ClientAutocompleteInputProps {
   control: Control<TaskWithClient>;
   name: "client_name";
   error?: FieldError;
-  clients?: DbClient[];
 }
 
 const ClientAutocompleteInput: React.FC<ClientAutocompleteInputProps> = ({
   control,
   name,
   error,
-  clients = MOCK_CLIENTS,
 }) => {
   const { theme } = useAppTheme();
   const [showDropdown, setShowDropdown] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
+
+  // Fetch clients using TanStack Query
+  const { clients, isLoading, isError, error: clientError } = useClients();
 
   const {
     field: { onChange, onBlur, value },
@@ -67,6 +35,11 @@ const ClientAutocompleteInput: React.FC<ClientAutocompleteInputProps> = ({
 
   // Memoize filtered clients to avoid unnecessary recalculations
   const filteredClients = useMemo(() => {
+    // Show all clients when no search query (user just focused the field)
+    if (!searchQuery.trim()) {
+      return clients;
+    }
+    // Filter clients when user is typing
     return filterClients(clients, searchQuery);
   }, [clients, searchQuery]);
 
@@ -94,7 +67,7 @@ const ClientAutocompleteInput: React.FC<ClientAutocompleteInputProps> = ({
     (clientName: string) => {
       onChange(clientName);
       setShowDropdown(false);
-      setSearchQuery(clientName);
+      setSearchQuery(""); // Clear search query after selection
     },
     [onChange]
   );
@@ -114,7 +87,7 @@ const ClientAutocompleteInput: React.FC<ClientAutocompleteInputProps> = ({
           }}
           onFocus={() => {
             setShowDropdown(true);
-            setSearchQuery(value || "");
+            setSearchQuery(""); // Start with empty search to show all clients
           }}
           onBlur={handleBlur}
           mode="outlined"
@@ -136,7 +109,8 @@ const ClientAutocompleteInput: React.FC<ClientAutocompleteInputProps> = ({
           accessibilityHint="Enter or select a client name, optional field"
         />
 
-        {showDropdown && filteredClients.length > 0 && (
+        {/* Show dropdown only when we have clients to display */}
+        {showDropdown && !isLoading && !isError && filteredClients.length > 0 && (
           <Card
             style={[styles.dropdown, { backgroundColor: theme.colors.surface }]}
             accessibilityLabel="Client suggestions"
