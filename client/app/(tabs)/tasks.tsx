@@ -1,28 +1,48 @@
-import React, { useState } from "react";
-import { View, StyleSheet, ScrollView } from "react-native";
+import React from "react";
+import { View, StyleSheet, ScrollView, Alert } from "react-native";
 import { Text } from "react-native-paper";
 import { useAppTheme, SPACING } from "@/theme/ThemeProvider";
 import Header from "@/components/Header";
 import TaskSection from "@/components/tasks/TaskSection";
-import { mockTasks, TaskWithClient } from "@/mockData";
+import { useTasks } from "@/hooks/useTasks";
+import { taskService } from "@/services/taskService";
+import { TaskWithClient } from "@/types";
 
 export default function Tasks() {
   const { theme } = useAppTheme();
-  const [tasks, setTasks] = useState<TaskWithClient[]>(mockTasks);
+  const { tasks, isLoading, isError, error, refetch } = useTasks();
 
-  const handleToggleComplete = (taskId: number, completedAt: string | null) => {
-    setTasks((prevTasks) =>
-      prevTasks.map((task) => (task.id === taskId ? { ...task, completed_at: completedAt } : task))
-    );
+  const handleToggleComplete = async (taskId: number, completedAt: string | null) => {
+    try {
+      if (completedAt) {
+        // Mark as completed
+        await taskService.completeTask(taskId);
+      } else {
+        // Mark as incomplete
+        await taskService.uncompleteTask(taskId);
+      }
+      // Refetch tasks to update the UI
+      refetch();
+    } catch (err) {
+      Alert.alert("Error", "Failed to update task status. Please try again.");
+      console.error("Error updating task:", err);
+    }
   };
 
   const handleTaskEdit = (task: TaskWithClient) => {
     console.log("Task pressed:", task.title);
-    // Navigate to edit task screen
+    // TODO: Navigate to edit task screen
   };
 
-  const handleDeleteTask = (taskId: number) => {
-    setTasks((prevTasks) => prevTasks.filter((task) => task.id !== taskId));
+  const handleDeleteTask = async (taskId: number) => {
+    try {
+      await taskService.deleteTask(taskId);
+      // Refetch tasks to update the UI
+      refetch();
+    } catch (err) {
+      Alert.alert("Error", "Failed to delete task. Please try again.");
+      console.error("Error deleting task:", err);
+    }
   };
 
   // Separate and sort tasks into sections
@@ -38,6 +58,54 @@ export default function Tasks() {
     .filter((task) => task.completed_at)
     .sort((a, b) => new Date(b.completed_at!).getTime() - new Date(a.completed_at!).getTime());
 
+  // Loading state
+  if (isLoading) {
+    return (
+      <View style={[styles.container, { backgroundColor: theme.colors.background }]}>
+        <Header title="Tasks" variant="main" />
+        <View style={styles.centerContainer}>
+          <Text style={[styles.indicatorText, { color: theme.colors.onSurfaceVariant }]}>
+            Loading tasks...
+          </Text>
+        </View>
+      </View>
+    );
+  }
+
+  // Error state
+  if (isError) {
+    return (
+      <View style={[styles.container, { backgroundColor: theme.colors.background }]}>
+        <Header title="Tasks" variant="main" />
+        <View style={styles.centerContainer}>
+          <Text style={[styles.indicatorText, { color: theme.colors.error }]}>
+            Error loading tasks: {error?.message}
+          </Text>
+          <Text
+            style={[styles.retryText, { color: theme.colors.primary }]}
+            onPress={() => refetch()}>
+            Tap to retry
+          </Text>
+        </View>
+      </View>
+    );
+  }
+
+  // Empty state
+  if (tasks.length === 0) {
+    return (
+      <View style={[styles.container, { backgroundColor: theme.colors.background }]}>
+        <Header title="Tasks" variant="main" />
+        <View style={styles.centerContainer}>
+          <Text style={[styles.indicatorText, { color: theme.colors.onSurfaceVariant }]}>
+            No tasks yet. Use the action menu below to create your first task.
+          </Text>
+        </View>
+      </View>
+    );
+  }
+
+  // Main content with tasks
   return (
     <View style={[styles.container, { backgroundColor: theme.colors.background }]}>
       <Header title="Tasks" variant="main" />
@@ -74,15 +142,6 @@ export default function Tasks() {
           onDelete={handleDeleteTask}
         />
 
-        {/* Empty State */}
-        {tasks.length === 0 && (
-          <View style={styles.emptyState}>
-            <Text style={[styles.emptyText, { color: theme.colors.onSurfaceVariant }]}>
-              No tasks yet. Use the action menu below to create your first task.
-            </Text>
-          </View>
-        )}
-
         {/* Bottom spacing for action menu */}
         <View style={styles.bottomSpacing} />
       </ScrollView>
@@ -97,17 +156,23 @@ const styles = StyleSheet.create({
   scrollContainer: {
     flex: 1,
   },
-  emptyState: {
+  centerContainer: {
     flex: 1,
     justifyContent: "center",
     alignItems: "center",
     paddingHorizontal: SPACING.lg,
-    paddingTop: SPACING.xxl,
   },
-  emptyText: {
+  indicatorText: {
     fontSize: 16,
     textAlign: "center",
     lineHeight: 24,
+  },
+  retryText: {
+    fontSize: 16,
+    textAlign: "center",
+    lineHeight: 24,
+    marginTop: SPACING.md,
+    textDecorationLine: "underline",
   },
   bottomSpacing: {
     height: 160, // Space for action menu

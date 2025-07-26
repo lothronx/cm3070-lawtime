@@ -8,7 +8,7 @@ import Icon from "react-native-vector-icons/MaterialIcons";
 import Ionicons from "@expo/vector-icons/Ionicons";
 import * as Haptics from "expo-haptics";
 import { useAppTheme, SPACING, BORDER_RADIUS } from "@/theme/ThemeProvider";
-import { TaskWithClient } from "@/mockData";
+import { TaskWithClient } from "@/types";
 
 interface TaskItemProps {
   task: TaskWithClient;
@@ -130,7 +130,7 @@ const TaskItem: React.FC<TaskItemProps> = ({ task, color, onToggleComplete, onEd
                 </Text>
 
                 {/* Client */}
-                {task.clients?.client_name && (
+                {task.client_name && (
                   <View style={styles.detailRow}>
                     <View style={styles.iconContainer}>
                       <Ionicons
@@ -141,7 +141,7 @@ const TaskItem: React.FC<TaskItemProps> = ({ task, color, onToggleComplete, onEd
                     </View>
                     <View style={styles.subtitleContainer}>
                       <Text style={[styles.subtitle, { color: theme.colors.onSurfaceVariant }]}>
-                        {task.clients.client_name}
+                        {task.client_name}
                       </Text>
                     </View>
                   </View>

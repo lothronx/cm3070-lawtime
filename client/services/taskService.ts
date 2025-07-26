@@ -21,7 +21,7 @@ export const taskService = {
       .from('tasks')
       .select(`
         *,
-        clients!inner(
+        clients(
           client_name
         )
       `)
@@ -109,44 +109,22 @@ export const taskService = {
    * @returns Promise<TaskWithClient> - The updated task with client information
    */
   async updateTask(taskId: number, updates: Partial<TaskWithClient>): Promise<TaskWithClient> {
-    // Get current authenticated user from auth store
+    // Validate authentication
     const { session } = useAuthStore.getState();
-    
     if (!session?.user) {
       throw new Error('Authentication required. Please log in again.');
     }
 
-    // Handle client name changes
-    let clientId: number | null = updates.client_id || null;
+    // Resolve client changes if needed
+    const resolvedClientId = await this._resolveClientForUpdate(updates);
     
-    if (updates.client_name !== undefined) {
-      if (updates.client_name?.trim()) {
-        // Try to find existing client first
-        const existingClient = await clientService.findClientByName(updates.client_name);
-        
-        if (existingClient) {
-          clientId = existingClient.id;
-        } else {
-          // Create new client if not found
-          const newClient = await clientService.createClient(updates.client_name);
-          clientId = newClient.id;
-        }
-      } else {
-        clientId = null;
-      }
-    }
+    // Build final update data
+    const updateData = this._buildUpdateData(updates, resolvedClientId);
 
-    // Prepare update data (exclude client_name as it's not a database field)
-    const { client_name, ...updateData } = updates;
-    const finalUpdateData: TaskUpdate = {
-      ...updateData,
-      client_id: clientId,
-    };
-
-    // Update the task
+    // Execute update
     const { data, error } = await supabase
       .from('tasks')
-      .update(finalUpdateData)
+      .update(updateData)
       .eq('id', taskId)
       .select(`
         *,
@@ -160,11 +138,62 @@ export const taskService = {
       throw new Error(`Failed to update task: ${error.message}`);
     }
 
-    // Transform to flat TaskWithClient structure
+    // Transform to flat structure
     return {
       ...data,
       client_name: data.clients?.client_name || null,
     };
+  },
+
+  /**
+   * Helper: Resolve client ID based on update data
+   * @private
+   */
+  async _resolveClientForUpdate(updates: Partial<TaskWithClient>): Promise<number | null | undefined> {
+    // If client_name is explicitly provided, resolve it
+    if (updates.client_name !== undefined) {
+      return updates.client_name?.trim() 
+        ? await this._findOrCreateClient(updates.client_name)
+        : null; // Empty string = clear client
+    }
+    
+    // If client_id is explicitly provided, use it
+    if (updates.client_id !== undefined) {
+      return updates.client_id;
+    }
+    
+    // No client changes requested
+    return undefined;
+  },
+
+  /**
+   * Helper: Find existing client or create new one
+   * @private
+   */
+  async _findOrCreateClient(clientName: string): Promise<number> {
+    const existingClient = await clientService.findClientByName(clientName);
+    if (existingClient) {
+      return existingClient.id;
+    }
+    
+    const newClient = await clientService.createClient(clientName);
+    return newClient.id;
+  },
+
+  /**
+   * Helper: Build final update data object
+   * @private
+   */
+  _buildUpdateData(updates: Partial<TaskWithClient>, clientId: number | null | undefined): TaskUpdate {
+    // Remove client_name (not a database field) and build base update
+    const { client_name, ...baseUpdate } = updates;
+    
+    // Only include client_id if it should be changed
+    if (clientId !== undefined) {
+      return { ...baseUpdate, client_id: clientId };
+    }
+    
+    return baseUpdate;
   },
 
   /**

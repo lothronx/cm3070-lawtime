@@ -119,7 +119,7 @@ describe('taskService', () => {
       const result = await taskService.getTasks();
 
       expect(supabase.from).toHaveBeenCalledWith('tasks');
-      expect(mockSelect).toHaveBeenCalledWith(expect.stringContaining('clients!inner'));
+      expect(mockSelect).toHaveBeenCalledWith(expect.stringContaining('clients('));
       expect(mockOrder).toHaveBeenCalledWith('event_time', { ascending: true });
       
       expect(result).toHaveLength(2);

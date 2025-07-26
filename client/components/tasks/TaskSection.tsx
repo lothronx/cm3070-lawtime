@@ -1,8 +1,8 @@
 import React, { useState } from "react";
 import { View, StyleSheet } from "react-native";
 import { List } from "react-native-paper";
-import { useAppTheme, SPACING } from "@/theme/ThemeProvider";
-import { TaskWithClient } from "@/mockData";
+import { SPACING } from "@/theme/ThemeProvider";
+import { TaskWithClient } from "@/types";
 import TaskItem from "./TaskItem";
 
 interface TaskSectionProps {
@@ -24,7 +24,6 @@ const TaskSection: React.FC<TaskSectionProps> = ({
   onEdit,
   onDelete,
 }) => {
-  const { theme } = useAppTheme();
   const [expanded, setExpanded] = useState(defaultExpanded);
 
   if (tasks.length === 0) {
