@@ -198,12 +198,18 @@ const TaskItem: React.FC<TaskItemProps> = ({ task, color, onToggleComplete, onEd
         {/* Edit and Delete buttons revealed on swipe */}
         <View style={styles.actionsContainer}>
           <TouchableOpacity
-            onPress={() => onEdit(task)}
+            onPress={() => {
+              onEdit(task);
+              resetPosition();
+            }}
             style={[styles.actionButton, { backgroundColor: theme.colors.primary }]}>
             <Icon name="edit" size={20} color={theme.colors.onPrimary} />
           </TouchableOpacity>
           <TouchableOpacity
-            onPress={handleDelete}
+            onPress={() => {
+              handleDelete();
+              resetPosition();
+            }}
             style={[
               styles.actionButton,
               styles.deleteButton,

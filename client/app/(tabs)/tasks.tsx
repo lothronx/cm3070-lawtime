@@ -1,6 +1,7 @@
 import React from "react";
 import { View, StyleSheet, ScrollView, Alert } from "react-native";
 import { Text } from "react-native-paper";
+import { useRouter } from "expo-router";
 import { useAppTheme, SPACING } from "@/theme/ThemeProvider";
 import Header from "@/components/Header";
 import TaskSection from "@/components/tasks/TaskSection";
@@ -10,6 +11,7 @@ import { TaskWithClient } from "@/types";
 
 export default function Tasks() {
   const { theme } = useAppTheme();
+  const router = useRouter();
   const { tasks, isLoading, isError, error, refetch } = useTasks();
 
   const handleToggleComplete = async (taskId: number, completedAt: string | null) => {
@@ -30,8 +32,8 @@ export default function Tasks() {
   };
 
   const handleTaskEdit = (task: TaskWithClient) => {
-    console.log("Task pressed:", task.title);
-    // TODO: Navigate to edit task screen
+    console.log("Navigating to edit task:", task.title);
+    router.push(`/task?taskId=${task.id}`);
   };
 
   const handleDeleteTask = async (taskId: number) => {

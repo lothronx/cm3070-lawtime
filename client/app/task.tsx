@@ -1,9 +1,10 @@
-import React, { useState, useRef } from "react";
+import React, { useState, useRef, useEffect } from "react";
 import { View, ScrollView, StyleSheet } from "react-native";
 import { Snackbar, Text } from "react-native-paper";
 import { useForm } from "react-hook-form";
 import { useRouter, useLocalSearchParams } from "expo-router";
 import Header from "@/components/Header";
+import LoadingComponent from "@/components/LoadingComponent";
 import TitleInput from "@/components/task/TitleInput";
 import ClientAutocompleteInput from "@/components/task/ClientAutocompleteInput";
 import LocationInput from "@/components/task/LocationInput";
@@ -15,12 +16,13 @@ import DiscardButton from "@/components/task/DiscardButton";
 import DeleteButton from "@/components/task/DeleteButton";
 import { useAppTheme, SPACING } from "@/theme/ThemeProvider";
 import { TaskWithClient, TaskFile } from "@/types";
-import { TaskService } from "@/services/taskService";
+import { useTasks } from "@/hooks/useTasks";
+import { taskService } from "@/services/taskService";
 
 export default function Task() {
   const { theme } = useAppTheme();
   const router = useRouter();
-  const { mode, taskId, stackIndex, stackTotal } = useLocalSearchParams<{
+  const { taskId, stackIndex, stackTotal } = useLocalSearchParams<{
     mode?: string;
     taskId?: string;
     stackIndex?: string;
@@ -28,55 +30,58 @@ export default function Task() {
   }>();
   const [snackbarVisible, setSnackbarVisible] = useState(false);
   const [snackbarMessage, setSnackbarMessage] = useState("");
+  const [isLoading, setIsLoading] = useState(false);
+
+  // Use the tasks hook for cache invalidation
+  const { refetch: refetchTasks } = useTasks();
 
   // Refs for scroll control
   const scrollViewRef = useRef<ScrollView>(null);
 
   // Determine screen mode based on URL parameters
-  const isCreateMode = mode === 'create';
   const isEditMode = !!taskId; // Edit mode if taskId is provided
   const isAIFlow = !!(stackIndex && stackTotal); // AI flow if stack parameters provided
   const [currentTaskIndex, setCurrentTaskIndex] = useState(
     stackIndex ? parseInt(stackIndex, 10) : 1
   );
-  const [totalTasks, setTotalTasks] = useState(
-    stackTotal ? parseInt(stackTotal, 10) : 1
-  );
+  const [totalTasks] = useState(stackTotal ? parseInt(stackTotal, 10) : 1);
 
   // Mock attachment data - only for edit mode
   const [attachments, setAttachments] = useState<TaskFile[]>(
-    isEditMode ? [
-      {
-        id: 301,
-        task_id: 5001,
-        user_id: "123e4567-e89b-12d3-a456-426614174000",
-        file_name: "court-notice-p1.jpg",
-        mime_type: "image/jpeg",
-        role: "source",
-        storage_path: "user-id/5001/uuid1.jpg",
-        created_at: "2025-08-17T11:01:00+08:00",
-      },
-      {
-        id: 302,
-        task_id: 5001,
-        user_id: "123e4567-e89b-12d3-a456-426614174000",
-        file_name: "related-exhibit.pdf",
-        mime_type: "application/pdf",
-        role: "attachment",
-        storage_path: "user-id/5001/uuid2.pdf",
-        created_at: "2025-08-18T14:20:00+08:00",
-      },
-      {
-        id: 303,
-        task_id: 5001,
-        user_id: "123e4567-e89b-12d3-a456-426614174000",
-        file_name: "Client-Email.eml",
-        mime_type: "message/rfc822",
-        role: "attachment",
-        storage_path: "user-id/5001/uuid3.eml",
-        created_at: "2025-08-18T16:05:00+08:00",
-      },
-    ] : []
+    isEditMode
+      ? [
+          {
+            id: 301,
+            task_id: 5001,
+            user_id: "123e4567-e89b-12d3-a456-426614174000",
+            file_name: "court-notice-p1.jpg",
+            mime_type: "image/jpeg",
+            role: "source",
+            storage_path: "user-id/5001/uuid1.jpg",
+            created_at: "2025-08-17T11:01:00+08:00",
+          },
+          {
+            id: 302,
+            task_id: 5001,
+            user_id: "123e4567-e89b-12d3-a456-426614174000",
+            file_name: "related-exhibit.pdf",
+            mime_type: "application/pdf",
+            role: "attachment",
+            storage_path: "user-id/5001/uuid2.pdf",
+            created_at: "2025-08-18T14:20:00+08:00",
+          },
+          {
+            id: 303,
+            task_id: 5001,
+            user_id: "123e4567-e89b-12d3-a456-426614174000",
+            file_name: "Client-Email.eml",
+            mime_type: "message/rfc822",
+            role: "attachment",
+            storage_path: "user-id/5001/uuid3.eml",
+            created_at: "2025-08-18T16:05:00+08:00",
+          },
+        ]
+      : []
   );
 
   const {
@@ -84,6 +89,7 @@ export default function Task() {
     handleSubmit,
     formState: { errors, isSubmitting },
     trigger,
+    reset,
   } = useForm<TaskWithClient>({
     defaultValues: {
       title: "",
@@ -95,19 +101,49 @@ export default function Task() {
     mode: "onBlur", // Only validate after user leaves field
   });
 
+  // Load existing task data for edit mode
+  useEffect(() => {
+    const loadTaskData = async () => {
+      if (isEditMode && taskId) {
+        setIsLoading(true);
+        try {
+          const task = await taskService.getTaskById(parseInt(taskId, 10));
+          if (task) {
+            reset({
+              title: task.title,
+              client_name: task.client_name || "",
+              event_time: task.event_time,
+              location: task.location || "",
+              note: task.note || "",
+            });
+          }
+        } catch (error) {
+          console.error("Failed to load task:", error);
+          setSnackbarMessage("Failed to load task data");
+          setSnackbarVisible(true);
+        } finally {
+          setIsLoading(false);
+        }
+      }
+    };
+
+    loadTaskData();
+  }, [isEditMode, taskId, reset]);
+
   const onSubmit = async (data: TaskWithClient) => {
     console.log("Form submitted:", data);
 
     try {
-      // Call the task service to create the task
-      const result = await TaskService.createTask(data);
-
-      if (!result.success) {
-        // Show error message
-        setSnackbarMessage(result.error || "Failed to save task");
-        setSnackbarVisible(true);
-        return;
+      if (isEditMode && taskId) {
+        // Update existing task
+        await taskService.updateTask(parseInt(taskId, 10), data);
+      } else {
+        // Create new task
+        await taskService.createTask(data);
       }
+
+      // Invalidate tasks cache to refresh the tasks list
+      await refetchTasks();
 
       // Success - handle different flow types
       if (isAIFlow) {
@@ -123,7 +159,8 @@ export default function Task() {
           router.back();
         }
       } else {
-        setSnackbarMessage("Task saved successfully!");
+        const action = isEditMode ? "updated" : "saved";
+        setSnackbarMessage(`Task ${action} successfully!`);
         // Navigate back after a brief delay to show success message
         setTimeout(() => {
           router.back();
@@ -131,10 +168,10 @@ export default function Task() {
       }
 
       setSnackbarVisible(true);
-      
     } catch (error) {
       console.error("Unexpected error in onSubmit:", error);
-      setSnackbarMessage("An unexpected error occurred. Please try again.");
+      const action = isEditMode ? "update" : "save";
+      setSnackbarMessage(`Failed to ${action} task. Please try again.`);
       setSnackbarVisible(true);
     }
   };
@@ -165,14 +202,31 @@ export default function Task() {
     setSnackbarVisible(true);
   };
 
-  const handleDeletePress = () => {
-    console.log("Task deleted");
-    setSnackbarMessage("Task deleted successfully");
-    setSnackbarVisible(true);
-    // TODO: Add delete logic here (API call to delete task)
-    setTimeout(() => {
-      router.back();
-    }, 1000);
+  const handleDeletePress = async () => {
+    if (!isEditMode || !taskId) {
+      console.log("Cannot delete: not in edit mode or no task ID");
+      return;
+    }
+
+    console.log("Deleting task:", taskId);
+
+    try {
+      await taskService.deleteTask(parseInt(taskId, 10));
+
+      // Invalidate tasks cache to refresh the tasks list
+      await refetchTasks();
+
+      setSnackbarMessage("Task deleted successfully");
+      setSnackbarVisible(true);
+
+      setTimeout(() => {
+        router.back();
+      }, 1000);
+    } catch (error) {
+      console.error("Failed to delete task:", error);
+      setSnackbarMessage("Failed to delete task. Please try again.");
+      setSnackbarVisible(true);
+    }
   };
 
   const handleNoteInputFocus = () => {
@@ -230,68 +284,82 @@ export default function Task() {
         stackIndex={isAIFlow ? currentTaskIndex : undefined}
         stackTotal={isAIFlow ? totalTasks : undefined}
       />
-      <ScrollView
-        ref={scrollViewRef}
-        style={styles.scrollView}
-        contentContainerStyle={styles.scrollContent}
-        showsVerticalScrollIndicator={true}
-        keyboardShouldPersistTaps="handled"
-        keyboardDismissMode="on-drag"
-        automaticallyAdjustKeyboardInsets={true}
-        contentInsetAdjustmentBehavior="automatic">
-        {/* Essential Information Section */}
-        <View style={styles.formSection}>
-          <Text variant="labelLarge" style={styles.sectionLabel}>
-            Task Information
-          </Text>
 
-          <TitleInput control={control} name="title" error={errors.title} />
-          <ClientAutocompleteInput control={control} name="client_name" error={errors.client_name} />
-        </View>
+      {isLoading ? (
+        <LoadingComponent message="Loading task data..." />
+      ) : (
+        <ScrollView
+          ref={scrollViewRef}
+          style={styles.scrollView}
+          contentContainerStyle={styles.scrollContent}
+          showsVerticalScrollIndicator={true}
+          keyboardShouldPersistTaps="handled"
+          keyboardDismissMode="on-drag"
+          automaticallyAdjustKeyboardInsets={true}
+          contentInsetAdjustmentBehavior="automatic">
+          {/* Essential Information Section */}
+          <View style={styles.formSection}>
+            <Text variant="labelLarge" style={styles.sectionLabel}>
+              Task Information
+            </Text>
 
-        {/* Schedule Section */}
-        <View style={styles.formSection}>
-          <Text variant="labelLarge" style={styles.sectionLabel}>
-            Time & Location
-          </Text>
-
-          <DateTimeInput control={control} name="event_time" error={errors.event_time} />
-
-          <LocationInput control={control} name="location" error={errors.location} />
-        </View>
-
-        {/* Details Section */}
-        <View style={styles.formSection}>
-          <Text variant="labelLarge" style={styles.sectionLabel}>
-            Additional Details
-          </Text>
-
-          <NoteInput
-            control={control}
-            name="note"
-            error={errors.note}
-            onFocus={handleNoteInputFocus}
-          />
-        </View>
-
-        <AttachmentsSection
-          attachments={attachments}
-          onDeleteAttachment={handleDeleteAttachment}
-          onAddAttachment={handleAddAttachment}
-          onPreviewAttachment={handlePreviewAttachment}
-          loading={isSubmitting}
-        />
-
-        <View style={isAIFlow ? styles.buttonRow : styles.buttonSingle}>
-          <SaveButton onPress={handleSavePress} loading={isSubmitting} />
-          {isAIFlow && <DiscardButton onPress={handleDiscardPress} loading={isSubmitting} />}
-        </View>
-        {isEditMode && (
-          <View style={styles.deleteButtonContainer}>
-            <DeleteButton onPress={handleDeletePress} loading={isSubmitting} />
+            <TitleInput control={control} name="title" error={errors.title} />
+            <ClientAutocompleteInput
+              control={control}
+              name="client_name"
+              error={errors.client_name}
+            />
           </View>
-        )}
-      </ScrollView>
+
+          {/* Schedule Section */}
+          <View style={styles.formSection}>
+            <Text variant="labelLarge" style={styles.sectionLabel}>
+              Time & Location
+            </Text>
+
+            <DateTimeInput control={control} name="event_time" error={errors.event_time} />
+
+            <LocationInput control={control} name="location" error={errors.location} />
+          </View>
+
+          {/* Details Section */}
+          <View style={styles.formSection}>
+            <Text variant="labelLarge" style={styles.sectionLabel}>
+              Additional Details
+            </Text>
+
+            <NoteInput
+              control={control}
+              name="note"
+              error={errors.note}
+              onFocus={handleNoteInputFocus}
+            />
+          </View>
+
+          <AttachmentsSection
+            attachments={attachments}
+            onDeleteAttachment={handleDeleteAttachment}
+            onAddAttachment={handleAddAttachment}
+            onPreviewAttachment={handlePreviewAttachment}
+            loading={isSubmitting}
+          />
+
+          <View style={isAIFlow ? styles.buttonRow : styles.buttonSingle}>
+            <SaveButton
+              onPress={handleSavePress}
+              loading={isSubmitting}
+              title={isEditMode ? "Update" : "Save"}
+            />
+            {isAIFlow && <DiscardButton onPress={handleDiscardPress} loading={isSubmitting} />}
+          </View>
+          {isEditMode && (
+            <View style={styles.deleteButtonContainer}>
+              <DeleteButton onPress={handleDeletePress} loading={isSubmitting} />
+            </View>
+          )}
+        </ScrollView>
+      )}
+
       <Snackbar
         visible={snackbarVisible}
         onDismiss={() => setSnackbarVisible(false)}
