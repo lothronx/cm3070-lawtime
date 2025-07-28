@@ -1,5 +1,10 @@
 import { useCallback, useState } from 'react';
 import { useRouter } from 'expo-router';
+import * as ImagePicker from 'expo-image-picker';
+import * as DocumentPicker from 'expo-document-picker';
+import { Alert } from 'react-native';
+import { fileStorageService } from '@/services/fileStorageService';
+import { generateUploadBatchId, extractFileInfo } from '@/utils/fileUploadUtils';
 
 export interface ActionMenuHandlers {
   onPhotoLibrary: () => void;
@@ -11,6 +16,9 @@ export interface ActionMenuHandlers {
   // Audio validation state
   showTooShortWarning: boolean;
   dismissTooShortWarning: () => void;
+  // Upload state
+  isUploading: boolean;
+  uploadProgress: string;
 }
 
 /**
@@ -21,20 +29,194 @@ export function useActionMenu(): ActionMenuHandlers {
 
   const [recordingStartTime, setRecordingStartTime] = useState<number>(0);
   const [showTooShortWarning, setShowTooShortWarning] = useState(false);
-  const onPhotoLibrary = useCallback(() => {
+  const [isUploading, setIsUploading] = useState(false);
+  const [uploadProgress, setUploadProgress] = useState('');
+
+  const onPhotoLibrary = useCallback(async () => {
     console.log('Photo library selected');
-    // TODO: Implement photo library logic
-  }, []);
+    
+    try {
+      // Request permission to access media library
+      const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+      
+      if (status !== 'granted') {
+        Alert.alert(
+          'Permission Required',
+          'Please grant access to your photo library to upload images.',
+          [{ text: 'OK' }]
+        );
+        return;
+      }
 
-  const onTakePhoto = useCallback(() => {
+      // Launch image picker with multiple selection
+      const result = await ImagePicker.launchImageLibraryAsync({
+        mediaTypes: ImagePicker.MediaTypeOptions.Images,
+        allowsMultipleSelection: true,
+        quality: 0.8,
+        exif: false,
+      });
+
+      if (result.canceled || !result.assets || result.assets.length === 0) {
+        return;
+      }
+
+      setIsUploading(true);
+      setUploadProgress(`Uploading ${result.assets.length} file(s)...`);
+
+      // Generate batch ID and extract file info
+      const uploadBatchId = generateUploadBatchId();
+      const files = result.assets.map(extractFileInfo);
+
+      // Upload files to temporary storage
+      const uploadResults = await fileStorageService.uploadMultipleToTempStorage(files, uploadBatchId);
+      
+      setUploadProgress('Processing images...');
+
+      // Navigate to task creation with upload info
+      router.push({
+        pathname: '/task',
+        params: {
+          mode: 'create',
+          source: 'ocr',
+          uploadBatchId,
+          fileCount: files.length.toString(),
+          tempUrls: uploadResults.map(r => r.publicUrl).join(',')
+        }
+      });
+
+    } catch (error) {
+      console.error('Photo library error:', error);
+      Alert.alert(
+        'Upload Failed',
+        'Failed to upload images. Please try again or enter the task manually.',
+        [{ text: 'OK' }]
+      );
+    } finally {
+      setIsUploading(false);
+      setUploadProgress('');
+    }
+  }, [router]);
+
+  const onTakePhoto = useCallback(async () => {
     console.log('Take photo selected');
-    // TODO: Implement camera logic
-  }, []);
+    
+    try {
+      // Request permission to access camera
+      const { status } = await ImagePicker.requestCameraPermissionsAsync();
+      
+      if (status !== 'granted') {
+        Alert.alert(
+          'Permission Required',
+          'Please grant camera access to take photos.',
+          [{ text: 'OK' }]
+        );
+        return;
+      }
 
-  const onChooseFile = useCallback(() => {
+      // Launch camera
+      const result = await ImagePicker.launchCameraAsync({
+        mediaTypes: ImagePicker.MediaTypeOptions.Images,
+        quality: 0.8,
+        exif: false,
+      });
+
+      if (result.canceled || !result.assets || result.assets.length === 0) {
+        return;
+      }
+
+      setIsUploading(true);
+      setUploadProgress('Uploading photo...');
+
+      // Generate batch ID and extract file info
+      const uploadBatchId = generateUploadBatchId();
+      const files = result.assets.map(extractFileInfo);
+
+      // Upload file to temporary storage
+      const uploadResults = await fileStorageService.uploadMultipleToTempStorage(files, uploadBatchId);
+
+      setUploadProgress('Processing photo...');
+
+      // Navigate to task creation with upload info
+      router.push({
+        pathname: '/task',
+        params: {
+          mode: 'create',
+          source: 'ocr',
+          uploadBatchId,
+          fileCount: '1',
+          tempUrls: uploadResults[0].publicUrl
+        }
+      });
+
+    } catch (error) {
+      console.error('Camera error:', error);
+      Alert.alert(
+        'Upload Failed',
+        'Failed to upload photo. Please try again or enter the task manually.',
+        [{ text: 'OK' }]
+      );
+    } finally {
+      setIsUploading(false);
+      setUploadProgress('');
+    }
+  }, [router]);
+
+  const onChooseFile = useCallback(async () => {
     console.log('Choose file selected');
-    // TODO: Implement file picker logic
-  }, []);
+    
+    try {
+      // Launch document picker
+      const result = await DocumentPicker.getDocumentAsync({
+        type: ['image/*', 'application/pdf'],
+        multiple: true,
+        copyToCacheDirectory: true,
+      });
+
+      if (result.canceled || !result.assets || result.assets.length === 0) {
+        return;
+      }
+
+      setIsUploading(true);
+      setUploadProgress(`Uploading ${result.assets.length} file(s)...`);
+
+      // Generate batch ID and convert document picker results
+      const uploadBatchId = generateUploadBatchId();
+      const files = result.assets.map(asset => ({
+        uri: asset.uri,
+        fileName: asset.name,
+        mimeType: asset.mimeType || 'application/octet-stream',
+        size: asset.size
+      }));
+
+      // Upload files to temporary storage
+      const uploadResults = await fileStorageService.uploadMultipleToTempStorage(files, uploadBatchId);
+
+      setUploadProgress('Processing files...');
+
+      // Navigate to task creation with upload info
+      router.push({
+        pathname: '/task',
+        params: {
+          mode: 'create',
+          source: 'ocr',
+          uploadBatchId,
+          fileCount: files.length.toString(),
+          tempUrls: uploadResults.map(r => r.publicUrl).join(',')
+        }
+      });
+
+    } catch (error) {
+      console.error('File picker error:', error);
+      Alert.alert(
+        'Upload Failed',
+        'Failed to upload files. Please try again or enter the task manually.',
+        [{ text: 'OK' }]
+      );
+    } finally {
+      setIsUploading(false);
+      setUploadProgress('');
+    }
+  }, [router]);
 
   const onAudioHoldStart = useCallback(() => {
     console.log('Audio recording started');
@@ -75,5 +257,7 @@ export function useActionMenu(): ActionMenuHandlers {
     onManualPress,
     showTooShortWarning,
     dismissTooShortWarning,
+    isUploading,
+    uploadProgress,
   };
 }
