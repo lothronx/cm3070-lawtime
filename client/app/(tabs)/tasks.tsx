@@ -168,6 +168,8 @@ const styles = StyleSheet.create({
     fontSize: 16,
     textAlign: "center",
     lineHeight: 24,
+    paddingBottom: SPACING.xl * 4,
+    paddingHorizontal: SPACING.md,
   },
   retryText: {
     fontSize: 16,
