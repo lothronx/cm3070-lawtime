@@ -4,7 +4,7 @@ import * as ImagePicker from 'expo-image-picker';
 import * as DocumentPicker from 'expo-document-picker';
 import { Alert } from 'react-native';
 import { fileStorageService } from '@/services/fileStorageService';
-import { generateUploadBatchId, extractFileInfo } from '@/utils/fileUploadUtils';
+import { generateUploadBatchId, extractFileInfo, generateUniqueFileName } from '@/utils/fileUploadUtils';
 
 export interface ActionMenuHandlers {
   onPhotoLibrary: () => void;
@@ -181,12 +181,16 @@ export function useActionMenu(): ActionMenuHandlers {
 
       // Generate batch ID and convert document picker results
       const uploadBatchId = generateUploadBatchId();
-      const files = result.assets.map(asset => ({
-        uri: asset.uri,
-        fileName: asset.name,
-        mimeType: asset.mimeType || 'application/octet-stream',
-        size: asset.size
-      }));
+      const files = result.assets.map(asset => {
+        const { storageFileName, originalFileName } = generateUniqueFileName(asset.name);
+        return {
+          uri: asset.uri,
+          fileName: storageFileName,
+          mimeType: asset.mimeType || 'application/octet-stream',
+          size: asset.size,
+          originalFileName
+        };
+      });
 
       // Upload files to temporary storage
       const uploadResults = await fileStorageService.uploadMultipleToTempStorage(files, uploadBatchId);

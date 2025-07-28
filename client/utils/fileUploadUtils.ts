@@ -14,8 +14,31 @@ export function generateUploadBatchId(): string {
 }
 
 /**
+ * Generate a unique filename while preserving original in metadata
+ * This approach uses a timestamp + random ID but keeps original name for reference
+ */
+export function generateUniqueFileName(originalFileName: string): {
+  storageFileName: string;
+  originalFileName: string;
+} {
+  // Get file extension
+  const lastDotIndex = originalFileName.lastIndexOf('.');
+  const extension = lastDotIndex > 0 ? originalFileName.substring(lastDotIndex) : '';
+  
+  // Generate a unique, storage-safe filename
+  const timestamp = Date.now();
+  const randomId = Math.random().toString(36).substring(2, 8);
+  const storageFileName = `file_${timestamp}_${randomId}${extension}`;
+  
+  return {
+    storageFileName,
+    originalFileName
+  };
+}
+
+/**
  * Extract file info from image picker result
- * Normalizes file data from different sources
+ * Uses unique storage filenames to avoid any character encoding issues
  */
 export function extractFileInfo(imagePickerAsset: {
   uri: string;
@@ -24,18 +47,22 @@ export function extractFileInfo(imagePickerAsset: {
   fileSize?: number | null;
   width?: number;
   height?: number;
-}): { uri: string; fileName: string; mimeType: string; size?: number } {
-  // Generate filename if not provided
-  const fileName = imagePickerAsset.fileName || 
+}): { uri: string; fileName: string; mimeType: string; size?: number; originalFileName: string } {
+  // Get original filename
+  const originalFileName = imagePickerAsset.fileName || 
     `image_${Date.now()}.${imagePickerAsset.mimeType?.split('/')[1] || 'jpg'}`;
+  
+  // Generate a unique, storage-safe filename
+  const { storageFileName } = generateUniqueFileName(originalFileName);
   
   // Default to image/jpeg if mime type not provided
   const mimeType = imagePickerAsset.mimeType || 'image/jpeg';
 
   return {
     uri: imagePickerAsset.uri,
-    fileName,
+    fileName: storageFileName, // Use the safe storage filename
     mimeType,
-    size: imagePickerAsset.fileSize || undefined
+    size: imagePickerAsset.fileSize || undefined,
+    originalFileName // Keep the original for display/database
   };
 }
