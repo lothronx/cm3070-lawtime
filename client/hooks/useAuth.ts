@@ -122,7 +122,7 @@ export default function useAuth() {
       const response = await authService.verifyOTP(formattedPhone, smsCode);
       
       // Set session in global state
-      setSession(response.session);
+      await setSession(response.session);
       
       // Navigate to main app
       router.replace("/(tabs)");
