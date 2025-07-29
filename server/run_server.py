@@ -10,8 +10,7 @@ import os
 
 # Configure logging
 logging.basicConfig(
-    level=logging.INFO,
-    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+    level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s"
 )
 
 if __name__ == "__main__":
@@ -20,14 +19,14 @@ if __name__ == "__main__":
         print("🚀 Starting LawTime SMS OTP Authentication Server")
         print("📱 SMS OTP Service: Ready")
         print("🔐 Authentication Endpoints:")
-        print("   POST /auth/send-otp")
-        print("   POST /auth/verify-otp")
+        print("   POST /api/auth/send-otp")
+        print("   POST /api/auth/verify-otp")
         print("=" * 50)
-        
+
         # Run Flask development server
-        port = int(os.getenv('PORT', 5001))
-        app.run(debug=True, host='0.0.0.0', port=port)
-        
+        port = int(os.getenv("PORT", 5001))
+        app.run(debug=True, host="0.0.0.0", port=port)
+
     except Exception as e:
         print(f"❌ Server startup failed: {e}")
         print("\nTroubleshooting:")

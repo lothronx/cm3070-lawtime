@@ -126,7 +126,7 @@ def create_app(test_config=None):
     def hello():
         return "Yep, it's running"
 
-    @app.route("/auth/send-otp", methods=["POST"])
+    @app.route("/api/auth/send-otp", methods=["POST"])
     def send_otp():
         """Send OTP code to phone number."""
         try:
@@ -213,7 +213,7 @@ def create_app(test_config=None):
             logger.error(f"Send OTP error: {str(e)}")
             return jsonify({"status": "error", "message": "Internal server error"}), 500
 
-    @app.route("/auth/verify-otp", methods=["POST"])
+    @app.route("/api/auth/verify-otp", methods=["POST"])
     def verify_otp_endpoint():
         """Verify OTP and return JWT token."""
         try:

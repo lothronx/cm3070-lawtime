@@ -56,7 +56,7 @@ class AuthService {
    */
   async sendOTP(phoneNumber: string): Promise<SendOTPResponse> {
     try {
-      const response = await fetch(`${API_BASE_URL}/auth/send-otp`, {
+      const response = await fetch(`${API_BASE_URL}/api/auth/send-otp`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ phone_number: phoneNumber }),
@@ -100,7 +100,7 @@ class AuthService {
    */
   async verifyOTP(phoneNumber: string, otpCode: string): Promise<VerifyOTPResponse> {
     try {
-      const response = await fetch(`${API_BASE_URL}/auth/verify-otp`, {
+      const response = await fetch(`${API_BASE_URL}/api/auth/verify-otp`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({

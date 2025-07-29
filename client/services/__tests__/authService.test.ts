@@ -53,7 +53,7 @@ describe('AuthService', () => {
 
       // Assert
       expect(mockFetch).toHaveBeenCalledWith(
-        'http://localhost:5001/auth/send-otp',
+        'http://localhost:5001/api/auth/send-otp',
         {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
@@ -161,7 +161,7 @@ describe('AuthService', () => {
 
       // Assert
       expect(mockFetch).toHaveBeenCalledWith(
-        'http://localhost:5001/auth/verify-otp',
+        'http://localhost:5001/api/auth/verify-otp',
         {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
