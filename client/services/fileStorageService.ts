@@ -30,14 +30,21 @@ export const fileStorageService = {
 
     const tempPath = `${session.user.id}/temp/${uploadBatchId}/${file.fileName}`;
     
-    // Convert URI to blob for upload
+    // Convert URI to ArrayBuffer for upload
     const response = await fetch(file.uri);
-    const blob = await response.blob();
+    if (!response.ok) {
+      throw new Error(`Failed to fetch file: ${response.status} ${response.statusText}`);
+    }
+    
+    const arrayBuffer = await response.arrayBuffer();
+    if (arrayBuffer.byteLength === 0) {
+      throw new Error(`File is empty or could not be read: ${file.fileName}`);
+    }
 
-    // Upload to Supabase Storage
+    // Upload to Supabase Storage using ArrayBuffer
     const { error } = await supabase.storage
       .from('task_files')
-      .upload(tempPath, blob, {
+      .upload(tempPath, arrayBuffer, {
         contentType: file.mimeType,
         upsert: false
       });

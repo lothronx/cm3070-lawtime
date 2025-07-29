@@ -50,7 +50,7 @@ export function useActionMenu(): ActionMenuHandlers {
 
       // Launch image picker with multiple selection
       const result = await ImagePicker.launchImageLibraryAsync({
-        mediaTypes: ImagePicker.MediaTypeOptions.Images,
+        mediaTypes: ["images"],
         allowsMultipleSelection: true,
         quality: 0.8,
         exif: false,
@@ -115,7 +115,7 @@ export function useActionMenu(): ActionMenuHandlers {
 
       // Launch camera
       const result = await ImagePicker.launchCameraAsync({
-        mediaTypes: ImagePicker.MediaTypeOptions.Images,
+        mediaTypes: "images",
         quality: 0.8,
         exif: false,
       });
