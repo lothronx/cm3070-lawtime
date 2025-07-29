@@ -53,12 +53,10 @@ export const fileStorageService = {
       throw new Error(`Failed to upload ${file.fileName}: ${error.message}`);
     }
 
-    // Get the public URL
-    const { data: { publicUrl } } = supabase.storage
-      .from('task_files')
-      .getPublicUrl(tempPath);
+    // Get a signed URL for secure access (valid for 1 hour for temp files)
+    const signedUrl = await this.createSignedUrl(tempPath, 3600);
 
-    return { path: tempPath, publicUrl };
+    return { path: tempPath, publicUrl: signedUrl };
   },
 
   /**
@@ -118,14 +116,25 @@ export const fileStorageService = {
   },
 
   /**
-   * Get public URL for a file in storage
+   * Create a signed URL for secure, temporary access to a file
+   * @param filePath Path to the file in storage
+   * @param expiresIn Expiration time in seconds (default: 60 seconds)
+   * @returns Promise<string> Signed URL that expires after specified time
    */
-  async getPublicUrl(filePath: string): Promise<string> {
-    const { data } = supabase.storage
+  async createSignedUrl(filePath: string, expiresIn: number = 60): Promise<string> {
+    const { data, error } = await supabase.storage
       .from('task_files')
-      .getPublicUrl(filePath);
-    
-    return data.publicUrl;
+      .createSignedUrl(filePath, expiresIn);
+
+    if (error) {
+      throw new Error(`Failed to create signed URL for ${filePath}: ${error.message}`);
+    }
+
+    if (!data?.signedUrl) {
+      throw new Error(`No signed URL returned for ${filePath}`);
+    }
+
+    return data.signedUrl;
   },
 
   /**
@@ -156,33 +165,4 @@ export const fileStorageService = {
 
     return data || [];
   },
-
-  /**
-   * Get file info and public URL
-   */
-  async getFileInfo(filePath: string): Promise<{ file: any; publicUrl: string }> {
-    const publicUrl = await this.getPublicUrl(filePath);
-    
-    // Get file metadata
-    const folderPath = filePath.substring(0, filePath.lastIndexOf('/'));
-    const fileName = filePath.substring(filePath.lastIndexOf('/') + 1);
-    
-    const { session } = useAuthStore.getState();
-    if (!session?.user) {
-      throw new Error('User not authenticated');
-    }
-    
-    const { data, error } = await supabase.storage
-      .from('task_files')
-      .list(folderPath, {
-        search: fileName
-      });
-
-    if (error) {
-      throw new Error(`Failed to get file info: ${error.message}`);
-    }
-
-    const file = data?.find(f => f.name === fileName);
-    return { file: file || {}, publicUrl };
-  }
 };
