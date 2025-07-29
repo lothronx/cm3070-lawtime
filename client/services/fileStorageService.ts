@@ -115,5 +115,74 @@ export const fileStorageService = {
     } catch (error) {
       console.warn('Error during temp file cleanup:', error);
     }
+  },
+
+  /**
+   * Get public URL for a file in storage
+   */
+  async getPublicUrl(filePath: string): Promise<string> {
+    const { data } = supabase.storage
+      .from('task_files')
+      .getPublicUrl(filePath);
+    
+    return data.publicUrl;
+  },
+
+  /**
+   * List files in a user's temp folder
+   */
+  async listTempFiles(uploadBatchId?: string): Promise<any[]> {
+    const { session } = useAuthStore.getState();
+    
+    if (!session?.user) {
+      throw new Error('User not authenticated');
+    }
+    
+    let folderPath = `${session.user.id}/temp`;
+    if (uploadBatchId) {
+      folderPath += `/${uploadBatchId}`;
+    }
+    
+    const { data, error } = await supabase.storage
+      .from('task_files')
+      .list(folderPath, {
+        limit: 100,
+        sortBy: { column: 'created_at', order: 'desc' }
+      });
+
+    if (error) {
+      throw new Error(`Failed to list files: ${error.message}`);
+    }
+
+    return data || [];
+  },
+
+  /**
+   * Get file info and public URL
+   */
+  async getFileInfo(filePath: string): Promise<{ file: any; publicUrl: string }> {
+    const publicUrl = await this.getPublicUrl(filePath);
+    
+    // Get file metadata
+    const folderPath = filePath.substring(0, filePath.lastIndexOf('/'));
+    const fileName = filePath.substring(filePath.lastIndexOf('/') + 1);
+    
+    const { session } = useAuthStore.getState();
+    if (!session?.user) {
+      throw new Error('User not authenticated');
+    }
+    
+    const { data, error } = await supabase.storage
+      .from('task_files')
+      .list(folderPath, {
+        search: fileName
+      });
+
+    if (error) {
+      throw new Error(`Failed to get file info: ${error.message}`);
+    }
+
+    const file = data?.find(f => f.name === fileName);
+    return { file: file || {}, publicUrl };
   }
 };
