@@ -61,5 +61,13 @@ dev = [
     "langgraph-cli[inmem]>=0.2.8",
     "mypy>=1.13.0",
     "pytest>=8.3.5",
+    "pytest-asyncio>=0.21.0",
     "ruff>=0.8.2",
 ]
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+testpaths = ["tests"]
+python_files = ["test_*.py"]
+python_classes = ["Test*"]
+python_functions = ["test_*"]

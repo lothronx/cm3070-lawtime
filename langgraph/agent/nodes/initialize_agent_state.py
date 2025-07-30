@@ -22,11 +22,22 @@ async def initialize_agent_state(
     """
     # TODO: Add validation logic for input parameters
     # TODO: Initialize state structure based on source_type
-    return {
+    
+    # Copy input state and add required fields
+    result = dict(state)  # Copy all fields from input state
+    
+    # Initialize workflow-specific fields
+    result.update({
         "raw_text": "",  # Initialize as empty, to be populated by processing nodes
         "extracted_events": [],
         "proposed_tasks": [],
         "identified_parties": None,
         "document_type": None,
         "validation_passed": None,
-    }
+    })
+    
+    # Set default client_list if not provided
+    if "client_list" not in result:
+        result["client_list"] = []
+    
+    return result
