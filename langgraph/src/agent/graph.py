@@ -10,10 +10,10 @@ from typing import TypedDict
 
 from langgraph.graph import StateGraph
 
-from .utils.state import AgentState
+from agent.utils.state import AgentState
 
 # Import all nodes
-from .nodes import (
+from agent.nodes import (
     initialize_agent_state,
     extract_text_from_docs,
     resolve_parties,
@@ -24,7 +24,7 @@ from .nodes import (
 )
 
 # Import specialist extractors
-from .nodes.extractors import (
+from agent.nodes.extractors import (
     extract_contract_renewal,
     extract_asset_preservation,
     extract_hearing_details,
@@ -33,7 +33,7 @@ from .nodes.extractors import (
 )
 
 # Import routing functions
-from .routing import (
+from agent.routing import (
     route_by_source_type,
     route_by_document_type,
     check_extraction_success,
