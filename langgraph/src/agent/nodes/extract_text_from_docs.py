@@ -4,13 +4,13 @@ This module handles OCR text extraction from image files only.
 Supported formats: BMP, JPEG, PNG, TIFF, WEBP, HEIC.
 """
 
+import asyncio
 import logging
 import os
 from typing import Any, Dict, List
 
 from dotenv import load_dotenv
-from langchain_community.chat_models.tongyi import ChatTongyi
-from langchain_core.messages import HumanMessage
+import dashscope
 from langgraph.runtime import Runtime
 
 from agent.utils.state import AgentState
@@ -26,60 +26,77 @@ class Context:
     pass
 
 
-async def _extract_text_from_single_image(image_url: str, ocr_model: ChatTongyi) -> str:
-    """Extract text from a single image using Qwen-VL-OCR.
+def _extract_text_with_qwen_ocr(image_url: str) -> str:
+    """Extract text from image using direct Dashscope Qwen-VL-OCR API.
     
-    Qwen-VL-OCR model limitations:
-    - Images only (no PDFs), max 10MB file size
-    - Min dimensions: 10x10 pixels, aspect ratio max 200:1 or 1:200
-    - Recommended max pixels: 15.68M (can go up to 23.52M with max_pixels adjustment)
+    Uses the native Dashscope API with explicit stream=False to avoid streaming issues.
     
     Args:
         image_url: URL of the image to process
-        ocr_model: Initialized ChatTongyi OCR model
         
     Returns:
         Extracted text string, empty if extraction fails
     """
     try:
-        # Validate image format - only supported formats by Qwen-VL-OCR
-        supported_formats = [
-            '.bmp',           # BMP
-            '.jpe', '.jpeg', '.jpg',  # JPEG
-            '.png',           # PNG  
-            '.tif', '.tiff',  # TIFF
-            '.webp',          # WEBP
-            '.heic'           # HEIC
-        ]
-        
+        # Validate image format
+        supported_formats = ['.bmp', '.jpe', '.jpeg', '.jpg', '.png', '.tif', '.tiff', '.webp', '.heic']
         url_lower = image_url.lower()
         if not any(url_lower.endswith(fmt) for fmt in supported_formats):
-            logger.error(f"Unsupported image format for OCR: {image_url}. Supported: {supported_formats}")
+            logger.error(f"Unsupported image format for OCR: {image_url}")
             return ""
         
-        # Prepare OCR request
-        image_message = {"image": image_url}
-        text_message = {
-            "text": "Please output only the text content from the image without any additional descriptions or formatting."
-        }
+        # Call Dashscope API directly with stream explicitly disabled
+        response = dashscope.MultiModalConversation.call(
+            model='qwen-vl-ocr',
+            messages=[
+                {
+                    'role': 'user',
+                    'content': [
+                        {
+                            'text': 'Please output only the text content from the image without any additional descriptions or formatting.'
+                        },
+                        {
+                            'image': image_url
+                        }
+                    ]
+                }
+            ],
+            stream=False,  # Explicitly disable streaming
+            temperature=0
+        )
         
-        message = HumanMessage(content=[text_message, image_message])
-        
-        # Call OCR model
-        response = ocr_model.invoke([message])
-        
-        extracted_text = response.content.strip() if response.content else ""
-        
-        if extracted_text:
-            logger.info(f"Successfully extracted {len(extracted_text)} characters from: {image_url}")
+        # Handle response
+        if response.status_code == 200:
+            content = response.output.choices[0].message.content
+            if isinstance(content, list) and len(content) > 0:
+                if isinstance(content[0], dict) and 'text' in content[0]:
+                    extracted_text = content[0]['text'].strip()
+                else:
+                    extracted_text = str(content[0]).strip()
+            elif isinstance(content, str):
+                extracted_text = content.strip()
+            else:
+                logger.warning(f"Unexpected content format: {type(content)}")
+                extracted_text = ""
+                
+            if extracted_text:
+                logger.info(f"Successfully extracted {len(extracted_text)} characters from: {image_url}")
+            return extracted_text
         else:
-            logger.warning(f"No text extracted from: {image_url}")
+            logger.error(f"OCR API error: {response.code} - {response.message}")
+            return ""
             
-        return extracted_text
-        
     except Exception as e:
         logger.error(f"Failed to extract text from image {image_url}: {str(e)}")
         return ""
+
+
+async def _extract_text_from_single_image(image_url: str) -> str:
+    """Async wrapper for OCR extraction that runs the blocking call in a separate thread.
+    
+    This prevents blocking the event loop when running under LangGraph dev's ASGI server.
+    """
+    return await asyncio.to_thread(_extract_text_with_qwen_ocr, image_url)
 
 
 async def extract_text_from_docs(
@@ -109,14 +126,15 @@ async def extract_text_from_docs(
             logger.warning("No image files provided for OCR extraction")
             return {"raw_text": ""}
         
-        # Initialize OCR model
+        # Initialize Dashscope API
         dashscope_api_key = os.getenv("DASHSCOPE_API_KEY")
         if not dashscope_api_key:
             logger.error("DASHSCOPE_API_KEY not found in environment variables")
             return {"raw_text": ""}
             
-        ocr_model = ChatTongyi(model_name="qwen-vl-ocr", api_key=dashscope_api_key)
-        logger.debug("Initialized Qwen-VL-OCR model")
+        # Set Dashscope API key
+        dashscope.api_key = dashscope_api_key
+        logger.debug("Initialized Dashscope API for OCR")
         
         # Process each image file
         extracted_texts: List[str] = []
@@ -124,7 +142,7 @@ async def extract_text_from_docs(
         for i, image_url in enumerate(source_file_urls, 1):
             logger.info(f"Processing image {i}/{len(source_file_urls)}: {image_url}")
             
-            extracted_text = await _extract_text_from_single_image(image_url, ocr_model)
+            extracted_text = await _extract_text_from_single_image(image_url)
             
             if extracted_text:
                 extracted_texts.append(extracted_text)
