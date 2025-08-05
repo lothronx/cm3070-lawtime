@@ -1,44 +1,17 @@
-# from langgraph_sdk import get_client
-# import asyncio
+################ Qwen ####################
+import os
+from dotenv import load_dotenv
+from langchain_community.chat_models.tongyi import ChatTongyi
 
-# client = get_client(url="http://localhost:2024")
+load_dotenv(".env")
 
+dashscope_api_key = os.getenv("DASHSCOPE_API_KEY")
 
-# async def main():
-#     async for chunk in client.runs.stream(
-#         None,  # Threadless run
-#         "agent",  # Name of assistant. Defined in langgraph.json.
-#         input={
-#             "messages": [
-#                 {
-#                     "role": "human",
-#                     "content": "What is LangGraph?",
-#                 }
-#             ],
-#         },
-#     ):
-#         print(f"Receiving new event of type: {chunk.event}...")
-#         print(chunk.data)
-#         print("\n\n")
+chatLLM = ChatTongyi(model="qwen3-30b-a3b-instruct-2507", api_key=dashscope_api_key)
 
+msg = chatLLM.invoke("What's 5 times forty two")
 
-# asyncio.run(main())
-
-
-################# Qwen ####################
-# import os
-# from dotenv import load_dotenv
-# from langchain_community.chat_models.tongyi import ChatTongyi
-
-# load_dotenv(".env")
-
-# dashscope_api_key = os.getenv("DASHSCOPE_API_KEY")
-
-# chatLLM = ChatTongyi(model="qwen3-30b-a3b-instruct-2507", api_key=dashscope_api_key)
-
-# msg = chatLLM.invoke("What's 5 times forty two")
-
-# print(msg)
+print(msg)
 
 ################# OCR ####################
 
@@ -75,3 +48,27 @@ for i, image_url in enumerate(image_urls, 1):
         print(f"❌ ERROR for Image {i}: {e}")
 
 ################# ASR ####################
+import os
+from dotenv import load_dotenv
+from http import HTTPStatus
+import dashscope
+from dashscope.audio.asr import Transcription
+import json
+
+load_dotenv(".env")
+
+dashscope.api_key = os.getenv("DASHSCOPE_API_KEY")
+
+task_response = Transcription.async_call(
+    model="paraformer-v2",
+    file_urls=[
+        "https://fekzslcjlovoavfgtjea.supabase.co/storage/v1/object/public/test/audio1.m4a"
+    ],
+    vocabulary_id="",
+    disfluency_removal_enabled=True,
+)
+
+transcribe_response = Transcription.wait(task=task_response.output.task_id)
+if transcribe_response.status_code == HTTPStatus.OK:
+    print(json.dumps(transcribe_response.output, indent=4, ensure_ascii=False))
+    print("transcription done!")
