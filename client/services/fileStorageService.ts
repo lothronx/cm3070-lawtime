@@ -43,7 +43,7 @@ export const fileStorageService = {
 
     // Upload to Supabase Storage using ArrayBuffer
     const { error } = await supabase.storage
-      .from('task_files')
+      .from('temp_uploads')
       .upload(tempPath, arrayBuffer, {
         contentType: file.mimeType,
         upsert: false
@@ -53,10 +53,10 @@ export const fileStorageService = {
       throw new Error(`Failed to upload ${file.fileName}: ${error.message}`);
     }
 
-    // Get a signed URL for secure access (valid for 1 hour for temp files)
-    const signedUrl = await this.createSignedUrl(tempPath, 3600);
+    // Get public URL for temp files (no signing needed for public bucket)
+    const publicUrl = this.retrievePublicUrl(tempPath);
 
-    return { path: tempPath, publicUrl: signedUrl };
+    return { path: tempPath, publicUrl };
   },
 
   /**
@@ -92,9 +92,8 @@ export const fileStorageService = {
 
     try {
       const tempDir = `${session.user.id}/temp/${uploadBatchId}`;
-      
       const { data: files, error: listError } = await supabase.storage
-        .from('task_files')
+        .from('temp_uploads')
         .list(tempDir);
 
       if (listError || !files || files.length === 0) {
@@ -104,7 +103,7 @@ export const fileStorageService = {
       const filePaths = files.map(file => `${tempDir}/${file.name}`);
       
       const { error: deleteError } = await supabase.storage
-        .from('task_files')
+        .from('temp_uploads')
         .remove(filePaths);
 
       if (deleteError) {
@@ -116,25 +115,17 @@ export const fileStorageService = {
   },
 
   /**
-   * Create a signed URL for secure, temporary access to a file
+   * Get public URL for a file in temp storage
    * @param filePath Path to the file in storage
-   * @param expiresIn Expiration time in seconds (default: 60 seconds)
-   * @returns Promise<string> Signed URL that expires after specified time
+   * @param bucket Bucket name (default: 'temp_uploads' for temporary files)
+   * @returns string Public URL for the file
    */
-  async createSignedUrl(filePath: string, expiresIn: number = 60): Promise<string> {
-    const { data, error } = await supabase.storage
-      .from('task_files')
-      .createSignedUrl(filePath, expiresIn);
+  retrievePublicUrl(filePath: string, bucket: string = 'temp_uploads'): string {
+    const { data } = supabase.storage
+      .from(bucket)
+      .getPublicUrl(filePath);
 
-    if (error) {
-      throw new Error(`Failed to create signed URL for ${filePath}: ${error.message}`);
-    }
-
-    if (!data?.signedUrl) {
-      throw new Error(`No signed URL returned for ${filePath}`);
-    }
-
-    return data.signedUrl;
+    return data.publicUrl;
   },
 
   /**
@@ -153,7 +144,7 @@ export const fileStorageService = {
     }
     
     const { data, error } = await supabase.storage
-      .from('task_files')
+      .from('temp_uploads')
       .list(folderPath, {
         limit: 100,
         sortBy: { column: 'created_at', order: 'desc' }
@@ -161,6 +152,122 @@ export const fileStorageService = {
 
     if (error) {
       throw new Error(`Failed to list files: ${error.message}`);
+    }
+
+    return data || [];
+  },
+
+  /**
+   * Upload a file to permanent task_files storage
+   * @param file File URI and metadata
+   * @param taskId Task ID for organizing files
+   * @param fileName File name for storage
+   * @returns Promise<UploadResult> Storage path and public URL
+   */
+  async uploadToTaskFiles(
+    file: { uri: string; fileName: string; mimeType: string },
+    taskId: number,
+    fileName: string
+  ): Promise<UploadResult> {
+    const { session } = useAuthStore.getState();
+    
+    if (!session?.user) {
+      throw new Error('Authentication required. Please log in again.');
+    }
+
+    const filePath = `${session.user.id}/${taskId}/${fileName}`;
+    
+    // Convert URI to ArrayBuffer for upload
+    const response = await fetch(file.uri);
+    if (!response.ok) {
+      throw new Error(`Failed to fetch file: ${response.status} ${response.statusText}`);
+    }
+    
+    const arrayBuffer = await response.arrayBuffer();
+    if (arrayBuffer.byteLength === 0) {
+      throw new Error(`File is empty or could not be read: ${file.fileName}`);
+    }
+
+    // Upload to Supabase Storage using ArrayBuffer
+    const { error } = await supabase.storage
+      .from('task_files')
+      .upload(filePath, arrayBuffer, {
+        contentType: file.mimeType,
+        upsert: false
+      });
+
+    if (error) {
+      throw new Error(`Failed to upload ${file.fileName}: ${error.message}`);
+    }
+
+    // Get public URL (though task_files is private, this gets the URL structure)
+    const publicUrl = this.retrievePublicUrl(filePath, 'task_files');
+
+    return { path: filePath, publicUrl };
+  },
+
+  /**
+   * Download a file from task_files storage
+   * @param filePath Path to the file in storage
+   * @returns Promise<Blob> File content as blob
+   */
+  async downloadFromTaskFiles(filePath: string): Promise<Blob> {
+    const { data, error } = await supabase.storage
+      .from('task_files')
+      .download(filePath);
+
+    if (error) {
+      throw new Error(`Failed to download file: ${error.message}`);
+    }
+
+    if (!data) {
+      throw new Error(`No file data returned for: ${filePath}`);
+    }
+
+    return data;
+  },
+
+  /**
+   * Delete a file from task_files storage
+   * @param filePath Path to the file in storage
+   * @returns Promise<void>
+   */
+  async deleteFromTaskFiles(filePath: string): Promise<void> {
+    const { error } = await supabase.storage
+      .from('task_files')
+      .remove([filePath]);
+
+    if (error) {
+      throw new Error(`Failed to delete file: ${error.message}`);
+    }
+  },
+
+  /**
+   * List files in a user's task folder
+   * @param taskId Optional task ID to filter by
+   * @returns Promise<any[]> Array of file objects
+   */
+  async listTaskFiles(taskId?: number): Promise<any[]> {
+    const { session } = useAuthStore.getState();
+    
+    if (!session?.user) {
+      throw new Error('User not authenticated');
+    }
+    
+    let folderPath = `${session.user.id}`;
+    if (taskId) {
+      folderPath += `/${taskId}`;
+    }
+    
+    const { data, error } = await supabase.storage
+      .from('task_files')
+      .list(folderPath, {
+        limit: 100,
+        sortBy: { column: 'created_at', order: 'desc' }
+      });
+
+    if (error) {
+      throw new Error(`Failed to list task files: ${error.message}`);
     }
 
     return data || [];

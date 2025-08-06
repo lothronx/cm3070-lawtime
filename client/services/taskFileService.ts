@@ -84,6 +84,39 @@ export const taskFileService = {
   },
 
   /**
+   * Create multiple task file records in a single batch operation
+   * @param taskId - ID of the task to associate files with
+   * @param filesData - Array of task file data to create
+   * @returns Promise<TaskFile[]> - Array of created task file objects
+   */
+  async createMultipleTaskFiles(taskId: number, filesData: TaskFileInsert[]): Promise<TaskFile[]> {
+    // Get current authenticated user from auth store
+    const { session } = useAuthStore.getState();
+    
+    if (!session?.user) {
+      throw new Error('Authentication required. Please log in again.');
+    }
+
+    // Batch create task files - RLS policies automatically enforce user_id
+    const { data, error } = await supabase
+      .from('task_files')
+      .insert(
+        filesData.map(fileData => ({
+          ...fileData,
+          task_id: taskId,
+          user_id: session.user.id, // Explicitly set user_id for clarity
+        }))
+      )
+      .select();
+
+    if (error) {
+      throw new Error(`Failed to create task files: ${error.message}`);
+    }
+
+    return data || [];
+  },
+
+  /**
    * Get a single task file by ID
    * @param fileId - ID of task file to fetch
    * @returns Promise<TaskFile | null> - The task file or null if not found
