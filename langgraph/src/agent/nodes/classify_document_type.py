@@ -1,21 +1,16 @@
 """Classify legal documents into specialized categories."""
 
-from typing import Any, Dict, List, Optional, Literal
-from langgraph.runtime import Runtime
-from pydantic import BaseModel, Field
-from langchain_core.prompts import PromptTemplate
+import asyncio
+import logging
+from typing import Any, Dict, List, Literal
+from langchain_community.chat_models.tongyi import ChatTongyi
 from langchain_core.output_parsers import PydanticOutputParser
+from langchain_core.prompts import PromptTemplate
+from pydantic import BaseModel, Field
 from agent.utils.state import AgentState
 
+logger = logging.getLogger(__name__)
 
-class Context:
-    """Context parameters for the agent."""
-
-    pass
-
-
-from typing import List, Literal
-from pydantic import BaseModel, Field
 
 # Define the five allowed categories using Literal
 ClassificationCategory = Literal[
@@ -156,13 +151,108 @@ PROMPT_CLASSIFY_DOCUMENT = """
 """
 
 
-async def classify_document_type(
-    state: AgentState, runtime: Runtime[Context]
-) -> Dict[str, Any]:
-    """Perform quick analysis to determine document category."""
-    # TODO: Make focused LLM call to classify document
+async def classify_document_type(state: AgentState) -> Dict[str, Any]:
+    """Classify legal document into one of five specialized categories.
 
-    # Placeholder implementation - cycle through types for testing
-    return {
-        "document_type": "CONTRACT",  # Could be CONTRACT, COURT_HEARING, ASSET_PRESERVATION, HEARING_TRANSCRIPT, GENERAL
-    }
+    This function analyzes the extracted text to determine the document's primary
+    legal purpose and categorizes it for routing to appropriate specialist nodes.
+
+    Args:
+        state: AgentState containing raw_text from OCR processing
+
+    Returns:
+        A dictionary with the key 'document_type' containing the classification result
+    """
+    try:
+        raw_text = state.get("raw_text", "")
+
+        logger.info("Starting document type classification")
+
+        # Handle empty text gracefully
+        if not raw_text or not raw_text.strip():
+            logger.warning("No text available for document classification")
+            return {"document_type": "GENERAL"}
+
+        # Create LLM instance
+        chat_llm = ChatTongyi(
+            model="qwen3-30b-a3b-instruct-2507",
+            api_key=state.get("dashscope_api_key"),
+            temperature=0,
+        )
+        logger.info("ChatTongyi LLM instance created successfully")
+
+        # Set up Pydantic output parser with schema
+        parser = PydanticOutputParser(pydantic_object=DocumentClassification)
+        logger.info(
+            "Pydantic output parser initialized with DocumentClassification schema"
+        )
+
+        # Create and format prompt with input variables
+        prompt = PromptTemplate(
+            template=PROMPT_CLASSIFY_DOCUMENT,
+            input_variables=["raw_text"],
+            partial_variables={"format_instructions": parser.get_format_instructions()},
+        ).format(raw_text=raw_text)
+
+        logger.debug("Sending prompt to Tongyi ChatLLM for document classification")
+
+        # Make LLM call with retry logic
+        max_retries = 2
+        last_error = None
+
+        for attempt in range(max_retries + 1):
+            try:
+                # Wrap potentially blocking LLM call in asyncio.to_thread
+                response = await asyncio.to_thread(chat_llm.invoke, prompt)
+                response_text = response.content
+
+                logger.info(
+                    f"Raw classification response received from LLM: {response_text}"
+                )
+
+                # Wrap JSON parsing in asyncio.to_thread to avoid blocking
+                parsed_result = await asyncio.to_thread(parser.parse, response_text)
+
+                # Extract the classification result
+                document_type = parsed_result.classification
+                confidence = parsed_result.confidence
+                key_indicators = parsed_result.key_indicators
+                reasoning = parsed_result.reasoning
+
+                logger.info(
+                    f"Document classified as {document_type} with confidence {confidence:.2f}: {reasoning}"
+                )
+                logger.debug(f"Key indicators: {key_indicators}")
+
+                return {"document_type": document_type}
+
+            except Exception as e:
+                last_error = e
+                logger.warning(
+                    "Classification attempt %d failed: %s", attempt + 1, str(e)
+                )
+
+                if attempt < max_retries:
+                    logger.info(
+                        "Retrying document classification (attempt %d/%d)",
+                        attempt + 2,
+                        max_retries + 1,
+                    )
+                    continue
+
+                break
+
+        # All attempts failed
+        logger.error(
+            "Document classification failed after %d attempts. Last error: %s",
+            max_retries + 1,
+            last_error,
+        )
+
+        # Return GENERAL as fallback to allow workflow to continue
+        return {"document_type": "GENERAL"}
+
+    except Exception as e:
+        logger.error("Unexpected error in classify_document_type: %s", str(e))
+        # Return GENERAL as fallback for graceful degradation
+        return {"document_type": "GENERAL"}
