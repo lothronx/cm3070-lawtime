@@ -1,5 +1,6 @@
 """Initialize agent state with frontend-provided context."""
 
+import asyncio
 import os
 from dotenv import load_dotenv
 from datetime import datetime, timezone, timedelta
@@ -91,7 +92,7 @@ async def initialize_agent_state(
     validate_frontend_input(state)
 
     # Validate and initialize API key (required for all AI operations)
-    load_dotenv(".env")
+    await asyncio.to_thread(load_dotenv, ".env")
     dashscope_api_key = os.getenv("DASHSCOPE_API_KEY")
     if not dashscope_api_key:
         raise ValueError(

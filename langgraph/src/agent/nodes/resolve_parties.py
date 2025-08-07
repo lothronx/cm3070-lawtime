@@ -4,18 +4,20 @@ This module identifies legal parties in documents and matches them against
 the user's existing client list to determine relationships.
 """
 
+import asyncio
 import json
 import logging
 from typing import Any, Dict, List, Optional, Literal
 from langchain_community.chat_models.tongyi import ChatTongyi
 from langchain_core.output_parsers import PydanticOutputParser
 from langchain_core.prompts import PromptTemplate
-from pydantic import BaseModel, Field, ValidationError
+from pydantic import BaseModel, Field
 from agent.utils.state import AgentState
 
 logger = logging.getLogger(__name__)
 
 ClientStatus = Literal["MATCH_FOUND", "NEW_CLIENT_PROPOSED", "OTHER_PARTY"]
+
 
 class ClientResolution(BaseModel):
     status: ClientStatus = Field(description="与客户列表的匹配状态")
@@ -95,11 +97,25 @@ PROMPT_RESOLVE_PARTIES = """
 - 特别注意：一个实体可能有多个角色，需要选择主要角色
 
 步骤4 - 客户关系匹配：
-对每个识别出的参与方：
-a) 精确匹配：与client_list中的client_name进行完全匹配
-b) 模糊匹配：处理简称、全称差异（如"阿里巴巴"vs"阿里巴巴（中国）有限公司"）
-c) 上下文推断：如果无匹配但文档表明某方是"我方"/"委托方"，标记为NEW_CLIENT_PROPOSED
-d) 其他情况：标记为OTHER_PARTY
+对每个识别出的参与方，必须严格按照以下优先级顺序来确定其客户关系：
+
+a) **最高优先级：匹配客户列表 (Client List Match)**
+   - **精确匹配：** 首先，将参与方名称与 `client_list` 中的 `client_name` 进行严格的全名比对。
+   - **模糊匹配：** 若无精确匹配，则尝试处理简称、别称或部分名称的匹配（例如，“阿里巴巴” vs “阿里巴巴（中国）有限公司”）。
+   - **判定：** 一旦在此步骤匹配成功，立即将该参与方的 `status` 设为 `MATCH_FOUND`，并停止对该参与方的后续判断。
+
+b) **第二优先级：上下文线索推断 (Contextual Inference)**
+   - **条件：** 仅当一个参与方在步骤 a) 中未能匹配成功时，才执行此步骤。
+   - **规则：** 在文档上下文中寻找明确指向该参与方为我方的词语，如“我方”、“我司”、“委托方”、“本公司”等。
+   - **判定：** 如果找到强关联线索，则将该参与方的 `status` 设为 `NEW_CLIENT_PROPOSED`。
+
+c) **最终优先级：默认规则 (Default Rule)**
+   - **触发条件：** 仅当分析完**所有**参与方后，通过上述 a) 和 b) 两种方法**都未能识别出任何一个客户**时，才启用此规则。
+   - **单一参与方情况：** 如果文档中只识别出**唯一**一个参与方，则默认该参与方为我方客户。将其 `status` 设为 `NEW_CLIENT_PROPOSED`，并设定一个合理的 `confidence` 值，以表明这是基于假设的推断。
+   - **多参与方情况：** 如果文档中有多个参与方，则将最符合客户角色的实体（例如，合同中的“甲方”、诉讼中的“原告”或“上诉人”）标记为 `NEW_CLIENT_PROPOSED`，并赋予较低的 `confidence`。
+
+d) **默认情况：其他方 (Other Party)**
+   - 任何未通过以上 a), b), c) 规则被识别为我方客户的参与方，其 `status` 必须设为 `OTHER_PARTY`。
 
 步骤5 - 质量检查：
 - 确保至少识别出1个参与方（除非文档确实无参与方信息）
@@ -112,7 +128,7 @@ d) 其他情况：标记为OTHER_PARTY
 <examples>
 示例1 - 法院传票：
 输入文档：传唤书 被传唤人：深圳市腾讯计算机系统有限公司 传唤事由：合同纠纷案件开庭审理
-客户列表：[{"id": 102, "client_name": "深圳市腾讯计算机系统有限公司"}]
+客户列表：[{{"id": 102, "client_name": "深圳市腾讯计算机系统有限公司"}}]
 
 输出：
 {{
@@ -173,29 +189,6 @@ d) 其他情况：标记为OTHER_PARTY
 """
 
 
-def _format_identified_parties_for_prompt(identified_parties: list) -> str:
-    """Format identified parties list for inclusion in prompts.
-
-    Args:
-        identified_parties: List of party dictionaries from resolve_parties
-
-    Returns:
-        Formatted string representation of identified parties
-    """
-    if not identified_parties:
-        return "No parties identified"
-
-    formatted_parties = []
-    for party in identified_parties:
-        name = party.get("name", "N/A")
-        role = party.get("role", "N/A")
-        resolution = party.get("client_resolution", {})
-        status = resolution.get("status", "N/A")
-        formatted_parties.append(f"- Name: {name}, Role: {role}, Status: {status}")
-
-    return "\n".join(formatted_parties)
-
-
 async def resolve_parties(state: AgentState) -> Dict[str, Any]:
     """Resolve legal parties from document text and determine client relationships.
 
@@ -207,44 +200,43 @@ async def resolve_parties(state: AgentState) -> Dict[str, Any]:
         state: AgentState containing raw_text and client_list
 
     Returns:
-        Dict containing "identified_parties" with resolved party information
+        A dictionary with the key 'identified_parties' containing a JSON string
+        that represents a list of identified parties and their client relationships.
     """
     try:
         raw_text = state.get("raw_text", "")
-        client_list = state.get("client_list", [])
+        client_list_formatted = state.get(
+            "client_list_formatted", "No existing clients"
+        )
 
         logger.info("Starting party identification and resolution")
-        logger.debug(f"Text length: {len(raw_text)} characters")
-        logger.debug(f"Client list size: {len(client_list)} clients")
 
         # Handle empty text gracefully
         if not raw_text or not raw_text.strip():
             logger.warning("No text available for party identification")
-            return {"identified_parties": []}
-
-        # Initialize Tongyi ChatLLM
-        dashscope_api_key = state.get("dashscope_api_key")
-        if not dashscope_api_key:
-            logger.error("dashscope_api_key not found in state")
-            return {"identified_parties": []}
+            return {"identified_parties": "[]"}
 
         # Create LLM instance
-        chatLLM = ChatTongyi(
+        chat_llm = ChatTongyi(
             model="qwen3-30b-a3b-instruct-2507",
-            api_key=dashscope_api_key,
-            temperature=0,  # Deterministic output for consistency
-            max_tokens=2000,  # Sufficient for party identification
+            api_key=state.get("dashscope_api_key"),
+            temperature=0,
         )
+        logger.info("ChatTongyi LLM instance created successfully")
 
         # Set up Pydantic output parser with schema
         parser = PydanticOutputParser(pydantic_object=ResolvedParties)
+        logger.info("Pydantic output parser initialized with ResolvedParties schema")
 
+        # Create and format prompt with input variables
         prompt = PromptTemplate(
             template=PROMPT_RESOLVE_PARTIES,
             input_variables=["raw_text", "client_list"],
             partial_variables={"format_instructions": parser.get_format_instructions()},
+        ).format(
+            raw_text=raw_text,
+            client_list=client_list_formatted,
         )
-
         logger.debug("Sending prompt to Tongyi ChatLLM for party identification")
 
         # Make LLM call with retry logic
@@ -253,47 +245,67 @@ async def resolve_parties(state: AgentState) -> Dict[str, Any]:
 
         for attempt in range(max_retries + 1):
             try:
-                response = await chatLLM.ainvoke(prompt)
+                # Wrap potentially blocking LLM call in asyncio.to_thread
+                response = await asyncio.to_thread(chat_llm.invoke, prompt)
                 response_text = response.content
 
-                logger.debug(
-                    f"Received response (attempt {attempt + 1}): {len(response_text)} characters"
-                )
+                logger.info(f"Raw response text received from LLM: {response_text}")
 
-                # Parse and validate response
-                identified_parties = response_text
+                # Wrap JSON parsing in asyncio.to_thread to avoid blocking
+                parsed_result = await asyncio.to_thread(parser.parse, response_text)
+                identified_parties = parsed_result.identified_parties
+
+                # Convert parsed parties to dict format for state storage
+                parties_for_state = []
+                for party in identified_parties:
+                    party_dict = {
+                        "name": party.name,
+                        "role": party.role,
+                        "client_resolution": {
+                            "status": party.client_resolution.status,
+                            "client_id": party.client_resolution.client_id,
+                            "client_name": party.client_resolution.client_name,
+                            "confidence": party.client_resolution.confidence,
+                        },
+                    }
+                    parties_for_state.append(party_dict)
+
+                # Store as JSON string in state for later nodes to use
+                identified_parties_string = await asyncio.to_thread(
+                    json.dumps, parties_for_state, ensure_ascii=False, indent=2
+                )
 
                 logger.info(
-                    f"Successfully identified {len(identified_parties)} parties"
+                    f"Successfully processed and stored identified parties in state: {identified_parties_string}"
                 )
-                for party in identified_parties:
-                    logger.debug(
-                        f"Party: {party['name']} - Role: {party['role']} - Status: {party['client_resolution']['status']}"
-                    )
 
-                return {"identified_parties": response_text}
+                return {"identified_parties": identified_parties_string}
 
             except Exception as e:
                 last_error = e
-                logger.warning(f"Attempt {attempt + 1} failed: {str(e)}")
+                logger.warning("Attempt %d failed: %s", attempt + 1, str(e))
 
                 if attempt < max_retries:
                     logger.info(
-                        f"Retrying party identification (attempt {attempt + 2}/{max_retries + 1})"
+                        "Retrying party identification (attempt %d/%d)",
+                        attempt + 2,
+                        max_retries + 1,
                     )
                     continue
-                else:
-                    break
+
+                break
 
         # All attempts failed
         logger.error(
-            f"Party identification failed after {max_retries + 1} attempts. Last error: {last_error}"
+            "Party identification failed after %d attempts. Last error: %s",
+            max_retries + 1,
+            last_error,
         )
 
-        # Return empty list to allow workflow to continue
-        return {"identified_parties": []}
+        # Return empty JSON string to allow workflow to continue
+        return {"identified_parties": "[]"}
 
     except Exception as e:
-        logger.error(f"Unexpected error in resolve_parties: {str(e)}")
-        # Return empty list to allow graceful degradation
-        return {"identified_parties": []}
+        logger.error("Unexpected error in resolve_parties: %s", str(e))
+        # Return empty JSON string to allow graceful degradation
+        return {"identified_parties": "[]"}
