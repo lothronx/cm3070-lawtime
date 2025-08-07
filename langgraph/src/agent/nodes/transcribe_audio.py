@@ -9,8 +9,13 @@ import os
 from dotenv import load_dotenv
 import asyncio
 import logging
-from typing import Any, Dict, List
+from typing import Any, Dict, List, Optional
 import dashscope
+from dashscope.audio.asr import (
+    Transcription,
+    VocabularyService,
+    VocabularyServiceException,
+)
 import json
 from urllib import request
 from http import HTTPStatus
@@ -82,6 +87,85 @@ def _extract_legal_vocabulary(client_list: List[dict]) -> List[str]:
     return vocabulary
 
 
+def _create_custom_vocabulary(vocabulary_terms: List[str]) -> Optional[str]:
+    """Create a custom vocabulary for ASR using Dashscope VocabularyService.
+
+    Creates a custom vocabulary list with legal terms and client names
+    to improve speech recognition accuracy. Uses proper VocabularyService API.
+
+    Args:
+        vocabulary_terms: List of terms to include in custom vocabulary
+
+    Returns:
+        vocabulary_id string if successful, None if failed
+    """
+    if not vocabulary_terms:
+        logger.warning(
+            "No vocabulary terms provided, skipping custom vocabulary creation"
+        )
+        return None
+
+    try:
+        # Initialize VocabularyService
+        service = VocabularyService()
+
+        # Create vocabulary payload with proper format (limit to 50 terms)
+        vocabulary_list = []
+        for term in vocabulary_terms[:50]:  # API efficiency and limit compliance
+            vocabulary_list.append(
+                {
+                    "text": term,
+                    "weight": 4,  # High priority for legal terms
+                    "lang": "zh",  # Chinese language
+                }
+            )
+
+        # Call VocabularyService to create vocabulary
+        vocabulary_id = service.create_vocabulary(
+            target_model="paraformer-v2",  # Use paraformer-v2 for file transcription
+            prefix="lawtime",  # Prefix to identify vocabularies
+            vocabulary=vocabulary_list,
+        )
+
+        if vocabulary_id:
+            logger.info(
+                f"Custom vocabulary created successfully with ID: {vocabulary_id}"
+            )
+            return vocabulary_id
+        else:
+            logger.warning("Custom vocabulary creation returned None")
+            return None
+
+    except VocabularyServiceException as e:
+        logger.warning(f"VocabularyService error: {str(e)}")
+        return None
+    except Exception as e:
+        logger.warning(f"Failed to create custom vocabulary: {str(e)}")
+        return None
+
+
+def _delete_custom_vocabulary(vocabulary_id: str) -> bool:
+    """Delete a custom vocabulary to free up quota (10 vocabulary limit per account).
+
+    Args:
+        vocabulary_id: The vocabulary ID to delete
+
+    Returns:
+        True if successfully deleted, False otherwise
+    """
+    if not vocabulary_id:
+        return False
+
+    try:
+        service = VocabularyService()
+        service.delete_vocabulary(vocabulary_id)
+        logger.info(f"Successfully deleted custom vocabulary: {vocabulary_id}")
+        return True
+    except Exception as e:
+        logger.warning(f"Failed to delete vocabulary {vocabulary_id}: {str(e)}")
+        return False
+
+
 def _extract_transcribed_text(transcription_results: List[Dict[str, Any]]) -> str:
     """
     Extract and concatenate all transcribed text from Dashscope ASR results.
@@ -124,62 +208,78 @@ def _transcribe_batch_with_paraformer(
     """
     try:
         logger.info(f"Batch transcribing {len(audio_urls)} audio files")
-        logger.debug(f"Custom vocabulary prepared: {len(custom_vocabulary)} terms")
+
+        # Create custom vocabulary if terms are provided
+        vocabulary_id = None
+        if custom_vocabulary:
+            vocabulary_id = _create_custom_vocabulary(custom_vocabulary)
+            if vocabulary_id:
+                logger.info(
+                    f"Using custom vocabulary with {len(custom_vocabulary)} terms"
+                )
+
+        # Prepare API call parameters
+        api_params = {
+            "model": "paraformer-v2",
+            "file_urls": audio_urls,  # Pass all URLs at once
+            "language_hints": ["zh"],
+        }
+
+        # Add vocabulary_id if available
+        if vocabulary_id:
+            api_params["vocabulary_id"] = vocabulary_id
 
         # Call async transcription API with all files at once
-        task_response = dashscope.audio.asr.Transcription.async_call(
-            model="paraformer-v2",
-            file_urls=audio_urls,  # Pass all URLs at once
-            language_hints=["zh", "en"],
-        )
+        task_response = Transcription.async_call(**api_params)
 
         # Wait for transcription to complete
-        transcription_response = dashscope.audio.asr.Transcription.wait(
-            task=task_response.output.task_id
-        )
+        transcription_response = Transcription.wait(task=task_response.output.task_id)
 
         # Extract transcribed text from results
         if transcription_response.status_code == HTTPStatus.OK:
-            logger.info(f"API call successful, processing {len(transcription_response.output.get('results', []))} results")
             transcription_results: List[Dict[str, Any]] = []
 
             # Fetch results from each transcription URL
-            for i, transcription in enumerate(transcription_response.output["results"]):
+            for transcription in transcription_response.output["results"]:
                 url = transcription["transcription_url"]
-                logger.debug(f"Fetching transcription result {i+1} from: {url}")
                 try:
                     result = json.loads(request.urlopen(url).read().decode("utf8"))
-                    logger.debug(f"Successfully fetched result {i+1}, keys: {list(result.keys())}")
                     transcription_results.append(result)
                 except Exception as e:
-                    logger.error(f"Failed to fetch result {i+1} from {url}: {str(e)}")
+                    logger.error(f"Failed to fetch result from {url}: {str(e)}")
                     continue
-
-            logger.info(f"Successfully fetched {len(transcription_results)} transcription results")
 
             # Extract and combine all text
             combined_text = _extract_transcribed_text(transcription_results)
 
+            # Clean up vocabulary after successful transcription
+            if vocabulary_id:
+                _delete_custom_vocabulary(vocabulary_id)
+
             if combined_text:
                 logger.info(
-                    f"Batch transcription successful: {len(combined_text)} characters from {len(audio_urls)} files"
+                    f"Transcription successful: {len(combined_text)} characters"
                 )
                 return combined_text
             else:
-                logger.warning(
-                    f"Empty transcription results for all {len(audio_urls)} audio files"
-                )
+                logger.warning("No text was transcribed from audio files")
                 return ""
         else:
             logger.error(
                 f"Batch transcription API error (status: {transcription_response.status_code}): {transcription_response.output.message}"
             )
+            # Clean up vocabulary on error
+            if vocabulary_id:
+                _delete_custom_vocabulary(vocabulary_id)
             return ""
 
     except Exception as e:
         logger.error(
             f"Failed to batch transcribe {len(audio_urls)} audio files: {str(e)}"
         )
+        # Clean up vocabulary on exception
+        if "vocabulary_id" in locals() and vocabulary_id:
+            _delete_custom_vocabulary(vocabulary_id)
         return ""
 
 
@@ -215,8 +315,6 @@ async def transcribe_audio(
         client_list = state.get("client_list", [])
 
         logger.info(f"Starting audio transcription for {len(source_file_urls)} files")
-        logger.debug(f"Audio URLs: {source_file_urls}")
-        logger.debug(f"Client list: {[c.get('client_name', 'Unknown') for c in client_list]}")
 
         # Handle empty file list gracefully
         if not source_file_urls:
@@ -229,15 +327,11 @@ async def transcribe_audio(
             logger.error("DASHSCOPE_API_KEY not found in environment variables")
             return {"raw_text": ""}
 
-        logger.debug(f"Found DASHSCOPE_API_KEY: {dashscope_api_key[:10]}...{dashscope_api_key[-4:]}")
-
         # Set Dashscope API key
         dashscope.api_key = dashscope_api_key
-        logger.debug("Initialized Dashscope API for ASR")
 
         # Extract legal vocabulary for improved recognition
         custom_vocabulary = _extract_legal_vocabulary(client_list)
-        logger.debug(f"Prepared custom vocabulary with {len(custom_vocabulary)} terms")
 
         # Validate audio formats (support common formats)
         supported_formats = [
@@ -268,17 +362,11 @@ async def transcribe_audio(
             source_file_urls, custom_vocabulary
         )
 
-        if raw_text.strip():
-            logger.info(
-                f"Batch audio transcription completed. Total text length: {len(raw_text)} characters"
-            )
-        else:
-            logger.warning("No text was successfully transcribed from any audio files")
+        if not raw_text.strip():
+            logger.warning("No text was transcribed from audio files")
 
         return {"raw_text": raw_text}
 
     except Exception as e:
         logger.error(f"Audio transcription failed: {str(e)}")
-        logger.exception("Full traceback:")  # This will log the full stack trace
-        # Return empty text on error to allow graceful degradation
         return {"raw_text": ""}
