@@ -1,5 +1,7 @@
 """Initialize agent state with frontend-provided context."""
 
+import os
+from dotenv import load_dotenv
 from datetime import datetime, timezone, timedelta
 from typing import Any, Dict
 from langgraph.runtime import Runtime
@@ -8,12 +10,13 @@ from ..utils.state import AgentState
 
 class Context:
     """Context parameters for the agent."""
+
     pass
 
 
 def validate_frontend_input(state: AgentState) -> None:
     """Validate input parameters from the frontend API call.
-    
+
     Raises:
         ValueError: If required fields are missing or invalid.
     """
@@ -73,45 +76,54 @@ async def initialize_agent_state(
 
     Entry point that validates input parameters and sets up
     the workflow for either OCR or ASR processing.
-    
+
     Args:
         state: Current agent state with frontend-provided inputs
         runtime: LangGraph runtime context
-        
+
     Returns:
         Updated state with initialized workflow fields
-        
+
     Raises:
         ValueError: If required input parameters are missing or invalid
     """
     # Validate input parameters from frontend
     validate_frontend_input(state)
-    
+
+    # Validate and initialize API key (required for all AI operations)
+    load_dotenv(".env")
+    dashscope_api_key = os.getenv("DASHSCOPE_API_KEY")
+    if not dashscope_api_key:
+        raise ValueError(
+            "DASHSCOPE_API_KEY not found in environment variables - required for AI processing"
+        )
+
     # Initialize workflow-specific fields based on state structure
     # These fields will be populated by subsequent nodes in the workflow
-    
+
     # Generate current datetime in GMT+8 timezone for ASR time conversion
     gmt8_timezone = timezone(timedelta(hours=8))
     current_datetime = datetime.now(gmt8_timezone).isoformat()
-    
+
     # Pre-format client list for prompt optimization (format once, use many times)
     client_list = state.get("client_list", [])
     if client_list is None:
         client_list = []
     client_list_formatted = format_client_list_for_prompt(client_list)
-    
+
     initialized_fields = {
+        "dashscope_api_key": dashscope_api_key,  # API key for all AI operations
         "current_datetime": current_datetime,  # Required for ASR time conversion
         "client_list": client_list,  # Raw data for potential logic operations
         "client_list_formatted": client_list_formatted,  # Pre-formatted for prompts
+        
         "raw_text": "",  # Will be populated by extract_text_from_docs or transcribe_audio
         "extracted_events": [],  # Will be populated by specialist extractor nodes
         "proposed_tasks": [],  # Will be populated by aggregate_and_format
-
         # OCR path specific fields (only used for document processing)
         "identified_parties": None,  # Will be populated by resolve_parties
-        "document_type": None,  # Will be populated by classify_document_type  
+        "document_type": None,  # Will be populated by classify_document_type
         "validation_passed": None,  # Will be set by specialist extractor nodes
     }
-    
+
     return initialized_fields

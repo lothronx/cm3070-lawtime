@@ -6,17 +6,11 @@ Supported formats: BMP, JPEG, PNG, TIFF, WEBP, HEIC.
 
 import asyncio
 import logging
-import os
 from typing import Any, Dict, List
-
-from dotenv import load_dotenv
 import dashscope
 from langgraph.runtime import Runtime
-
 from agent.utils.state import AgentState
 
-# Load environment variables
-load_dotenv(".env")
 
 logger = logging.getLogger(__name__)
 
@@ -140,13 +134,10 @@ async def extract_text_from_docs(
             return {"raw_text": ""}
 
         # Initialize Dashscope API
-        dashscope_api_key = os.getenv("DASHSCOPE_API_KEY")
-        if not dashscope_api_key:
-            logger.error("DASHSCOPE_API_KEY not found in environment variables")
+        dashscope.api_key = state.get("dashscope_api_key")
+        if not dashscope.api_key:
+            logger.error("dashscope_api_key not found in state")
             return {"raw_text": ""}
-
-        # Set Dashscope API key
-        dashscope.api_key = dashscope_api_key
         logger.debug("Initialized Dashscope API for OCR")
 
         # Process each image file

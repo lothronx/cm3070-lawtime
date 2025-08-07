@@ -6,24 +6,16 @@ the user's existing client list to determine relationships.
 
 import json
 import logging
-import os
 from typing import Any, Dict, List, Optional, Literal
-
-from dotenv import load_dotenv
 from langchain_community.chat_models.tongyi import ChatTongyi
 from langchain_core.output_parsers import PydanticOutputParser
 from langchain_core.prompts import PromptTemplate
 from pydantic import BaseModel, Field, ValidationError
-
 from agent.utils.state import AgentState
 
-# Load environment variables
-load_dotenv(".env")
 logger = logging.getLogger(__name__)
 
-
 ClientStatus = Literal["MATCH_FOUND", "NEW_CLIENT_PROPOSED", "OTHER_PARTY"]
-
 
 class ClientResolution(BaseModel):
     status: ClientStatus = Field(description="与客户列表的匹配状态")
@@ -231,9 +223,9 @@ async def resolve_parties(state: AgentState) -> Dict[str, Any]:
             return {"identified_parties": []}
 
         # Initialize Tongyi ChatLLM
-        dashscope_api_key = os.getenv("DASHSCOPE_API_KEY")
+        dashscope_api_key = state.get("dashscope_api_key")
         if not dashscope_api_key:
-            logger.error("DASHSCOPE_API_KEY not found in environment variables")
+            logger.error("dashscope_api_key not found in state")
             return {"identified_parties": []}
 
         # Create LLM instance
