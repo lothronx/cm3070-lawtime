@@ -1,11 +1,16 @@
 """Extract court hearing details from summons/notices."""
 
+import asyncio
+import logging
 from typing import Any, Dict, List, Optional, Literal
 from pydantic import BaseModel, Field
 from langgraph.runtime import Runtime
+from langchain_community.chat_models.tongyi import ChatTongyi
 from langchain_core.prompts import PromptTemplate
 from langchain_core.output_parsers import PydanticOutputParser
 from agent.utils.state import AgentState
+
+logger = logging.getLogger(__name__)
 
 
 class Context:
@@ -102,7 +107,8 @@ PROMPT_EXTRACT_HEARING_DETAILS = """
 1. **事件标题 (raw_title)**:
    - 优先提取"传唤事由"字段内容
    - 如无明确事由，使用文档类型（如"开庭"、"听证"）
-   - 标准化术语：开庭、听证、质证、调解、谈话
+   - 格式：当事人简称 + 传唤事由/文档类型
+   - 示例：阿里巴巴开庭
 
 2. **时间信息 (raw_date_time)**:
    - 提取完整的日期时间：年月日+时分
@@ -112,7 +118,7 @@ PROMPT_EXTRACT_HEARING_DETAILS = """
 
 3. **地点信息 (raw_location)**:
    - 合并法院名称+审判庭信息
-   - 格式：{法院全称} + {审判庭或法庭或房间号}
+   - 格式：法院全称 + 审判庭/法庭/房间号
    - 示例：威海市文登区人民法院开发区第一审判庭
 
 4. **案件概述 (note)**:
@@ -194,7 +200,7 @@ PROMPT_EXTRACT_HEARING_DETAILS = """
   "extracted_events": [
     {{
       "event_type": "court_hearing",
-      "raw_title": "开庭",
+      "raw_title": "阿里巴巴开庭",
       "raw_date_time": "2025-08-26T13:40:00+08:00",
       "raw_location": "威海市文登区人民法院开发区第一审判庭",
       "related_party_name": "阿里巴巴（中国）有限公司", 
@@ -231,22 +237,125 @@ PROMPT_EXTRACT_HEARING_DETAILS = """
 async def extract_hearing_details(
     state: AgentState, runtime: Runtime[Context]
 ) -> Dict[str, Any]:
-    """Extract court hearing details from summons/notices."""
-    # TODO: Validate for hearing-specific keywords
-    # TODO: Extract hearing date, time, location, case details
+    """Extract court hearing details from summons/notices.
 
-    # Placeholder implementation
-    extracted_events = [
-        {
-            "title": "Court Hearing",
-            "client_name": "Placeholder Client",
-            "event_time": "2024-03-20T10:00:00",
-            "location": "Room 5, District Court",
-            "notes": "Court hearing details extracted from summons",
+    This function analyzes legal documents to identify court hearing information
+    and validates that the document is actually a hearing notice/summons.
+
+    Args:
+        state: AgentState containing raw_text and identified_parties
+        runtime: LangGraph runtime context (unused in this implementation)
+
+    Returns:
+        A dictionary with validation_passed flag and extracted_events list
+    """
+    try:
+        raw_text = state.get("raw_text", "")
+        identified_parties = state.get("identified_parties", "[]")
+
+        logger.info("Starting court hearing details extraction")
+
+        # Handle empty text gracefully
+        if not raw_text or not raw_text.strip():
+            logger.warning("No text available for hearing details extraction")
+            return {"validation_passed": False, "extracted_events": []}
+
+        # Create LLM instance following resolve_parties.py pattern
+        chat_llm = ChatTongyi(
+            model="qwen3-30b-a3b-instruct-2507",
+            api_key=state.get("dashscope_api_key"),
+            temperature=0,
+        )
+        logger.info("ChatTongyi LLM instance created successfully")
+
+        # Set up Pydantic output parser with schema
+        parser = PydanticOutputParser(pydantic_object=HearingDetailsOutput)
+        logger.info(
+            "Pydantic output parser initialized with HearingDetailsOutput schema"
+        )
+
+        # Create and format prompt with input variables
+        prompt = PromptTemplate(
+            template=PROMPT_EXTRACT_HEARING_DETAILS,
+            input_variables=["raw_text", "identified_parties"],
+            partial_variables={"format_instructions": parser.get_format_instructions()},
+        ).format(
+            raw_text=raw_text,
+            identified_parties=identified_parties,
+        )
+        logger.debug("Sending prompt to Tongyi ChatLLM for hearing details extraction")
+
+        # Make LLM call with retry logic (following resolve_parties.py pattern)
+        max_retries = 2
+        last_error = None
+
+        for attempt in range(max_retries + 1):
+            try:
+                # Wrap potentially blocking LLM call in asyncio.to_thread
+                response = await asyncio.to_thread(chat_llm.invoke, prompt)
+                response_text = response.content
+
+                logger.info(f"Raw response text received from LLM: {response_text}")
+
+                # Wrap JSON parsing in asyncio.to_thread to avoid blocking
+                parsed_result = await asyncio.to_thread(parser.parse, response_text)
+
+                # Convert extracted events to dict format for state storage
+                events_for_state = []
+                if parsed_result.validation_passed and parsed_result.extracted_events:
+                    for event in parsed_result.extracted_events:
+                        event_dict = {
+                            "event_type": event.event_type,
+                            "raw_title": event.raw_title,
+                            "raw_date_time": event.raw_date_time,
+                            "raw_location": event.raw_location,
+                            "related_party_name": event.related_party_name,
+                            "note": event.note,
+                            "confidence": event.confidence,
+                        }
+                        events_for_state.append(event_dict)
+
+                logger.info(
+                    f"Successfully extracted hearing details - validation_passed: {parsed_result.validation_passed}, "
+                    f"events_count: {len(events_for_state)}"
+                )
+
+                return {
+                    "validation_passed": parsed_result.validation_passed,
+                    "extracted_events": events_for_state,
+                }
+
+            except Exception as e:
+                last_error = e
+                logger.warning("Attempt %d failed: %s", attempt + 1, str(e))
+
+                if attempt < max_retries:
+                    logger.info(
+                        "Retrying hearing details extraction (attempt %d/%d)",
+                        attempt + 2,
+                        max_retries + 1,
+                    )
+                    continue
+
+                break
+
+        # All attempts failed
+        logger.error(
+            "Hearing details extraction failed after %d attempts. Last error: %s",
+            max_retries + 1,
+            last_error,
+        )
+
+        # Return failed validation to allow workflow to continue
+        return {
+            "validation_passed": False,
+            "extracted_events": [],
         }
-    ]
 
-    return {
-        "validation_passed": True,
-        "extracted_events": extracted_events,
-    }
+    except Exception as e:
+        logger.error("Unexpected error in extract_hearing_details: %s", str(e))
+        # Return failed validation to allow graceful degradation
+        return {
+            "validation_passed": False,
+            "extracted_events": [],
+        }
