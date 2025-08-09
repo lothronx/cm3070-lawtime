@@ -1,17 +1,22 @@
 """Extract follow-up tasks from hearing transcripts."""
 
+import asyncio
+import logging
 from typing import Any, Dict, List, Optional, Literal
+
 from pydantic import BaseModel, Field
-from langgraph.runtime import Runtime
+from langchain_community.chat_models.tongyi import ChatTongyi
 from langchain_core.prompts import PromptTemplate
 from langchain_core.output_parsers import PydanticOutputParser
+from langgraph.runtime import Runtime
+
 from agent.utils.state import AgentState
+
+logger = logging.getLogger(__name__)
 
 
 class Context:
     """Context parameters for the agent."""
-
-    pass
 
 
 TextQuality = Literal["low", "medium", "high"]
@@ -21,15 +26,18 @@ ErrorCode = Literal[
 
 
 class TaskDetails(BaseModel):
+    """Task assignment details and context information."""
+
     task_assignor: str = Field(description="任务的分配方（例如：法官、审判员）")
     task_context: str = Field(description="描述任务分配时的具体上下文背景")
     attribution_confidence: float = Field(description="任务归属判定的置信度（0.0-1.0）")
 
 
 class ExtractedEvent(BaseModel):
+    """Extracted post-hearing task event with all required details."""
+
     event_type: Literal["post_hearing_task"] = Field(
-        default="post_hearing_task",
-        description="事件类型，固定为 'post_hearing_task'"
+        default="post_hearing_task", description="事件类型，固定为 'post_hearing_task'"
     )
     raw_title: str = Field(description="提取的庭后任务的简洁描述")
     raw_date_time: Optional[str] = Field(
@@ -43,6 +51,8 @@ class ExtractedEvent(BaseModel):
 
 
 class ProcessingNotes(BaseModel):
+    """Processing notes and metadata for post-hearing task extraction."""
+
     # Success fields
     dialogue_participants: Optional[List[str]] = Field(
         description="识别到的所有对话参与方角色"
@@ -60,8 +70,9 @@ class ProcessingNotes(BaseModel):
     potential_issues: Optional[List[str]] = Field(description="描述验证失败的具体原因")
 
 
-# This is the main, top-level model that handles both success and failure cases
 class PostHearingTasksOutput(BaseModel):
+    """Main output model for post-hearing task extraction results."""
+
     validation_passed: bool = Field(
         description="文档是否通过了所有验证（如，是否为庭审笔录，是否找到我方当事人）"
     )
@@ -289,22 +300,137 @@ PROMPT_EXTRACT_POST_HEARING_TASKS = """
 async def extract_post_hearing_tasks(
     state: AgentState, runtime: Runtime[Context]
 ) -> Dict[str, Any]:
-    """Extract follow-up tasks from hearing transcripts."""
-    # TODO: Validate for transcript-specific content
-    # TODO: Extract action items and deadlines from transcript
+    """Extract follow-up tasks from hearing transcripts.
 
-    # Placeholder implementation
-    extracted_events = [
-        {
-            "title": "Submit Evidence",
-            "client_name": "Placeholder Client",
-            "event_time": "2024-03-25T09:00:00",
-            "location": "Office",
-            "notes": "Evidence submission deadline from hearing transcript",
+    This function analyzes hearing transcript documents to identify post-hearing
+    tasks assigned to our party and validates that the document is actually
+    a hearing transcript/record.
+
+    Args:
+        state: AgentState containing raw_text and identified_parties
+        runtime: LangGraph runtime context (unused in this implementation)
+
+    Returns:
+        A dictionary with validation_passed flag and extracted_events list
+    """
+    try:
+        raw_text = state.get("raw_text", "")
+        identified_parties = state.get("identified_parties", "[]")
+        current_datetime = state.get("current_datetime", "")
+
+        logger.info("Starting post-hearing tasks extraction")
+
+        # Handle empty text gracefully
+        if not raw_text or not raw_text.strip():
+            logger.warning("No text available for post-hearing tasks extraction")
+            return {"validation_passed": False, "extracted_events": []}
+
+        # Create LLM instance following hearing_details.py pattern
+        chat_llm = ChatTongyi(
+            model="qwen3-30b-a3b-instruct-2507",
+            api_key=state.get("dashscope_api_key"),
+            temperature=0,
+        )
+        logger.info("ChatTongyi LLM instance created successfully")
+
+        # Set up Pydantic output parser with schema
+        parser = PydanticOutputParser(pydantic_object=PostHearingTasksOutput)
+        logger.info(
+            "Pydantic output parser initialized with PostHearingTasksOutput schema"
+        )
+
+        # Create and format prompt with input variables
+        prompt = PromptTemplate(
+            template=PROMPT_EXTRACT_POST_HEARING_TASKS,
+            input_variables=["raw_text", "identified_parties", "current_datetime"],
+            partial_variables={"format_instructions": parser.get_format_instructions()},
+        ).format(
+            raw_text=raw_text,
+            identified_parties=identified_parties,
+            current_datetime=current_datetime,
+        )
+        logger.debug(
+            "Sending prompt to Tongyi ChatLLM for post-hearing tasks extraction"
+        )
+
+        # Make LLM call with retry logic (following hearing_details.py pattern)
+        max_retries = 2
+        last_error = None
+
+        for attempt in range(max_retries + 1):
+            try:
+                # Wrap potentially blocking LLM call in asyncio.to_thread
+                response = await asyncio.to_thread(chat_llm.invoke, prompt)
+                response_text = response.content
+
+                logger.info("Raw response text received from LLM: %s", response_text)
+
+                # Wrap JSON parsing in asyncio.to_thread to avoid blocking
+                parsed_result = await asyncio.to_thread(parser.parse, response_text)
+
+                # Convert extracted events to dict format for state storage
+                events_for_state = []
+                if parsed_result.validation_passed and parsed_result.extracted_events:
+                    for event in parsed_result.extracted_events:
+                        event_dict = {
+                            "event_type": event.event_type,
+                            "raw_title": event.raw_title,
+                            "raw_date_time": event.raw_date_time,
+                            "raw_location": event.raw_location,
+                            "related_party_name": event.related_party_name,
+                            "note": event.note,
+                            "confidence": event.confidence,
+                            "task_details": {
+                                "task_assignor": event.task_details.task_assignor,
+                                "task_context": event.task_details.task_context,
+                                "attribution_confidence": event.task_details.attribution_confidence,
+                            },
+                        }
+                        events_for_state.append(event_dict)
+
+                logger.info(
+                    "Successfully extracted post-hearing tasks - validation_passed: %s, "
+                    "events_count: %d",
+                    parsed_result.validation_passed,
+                    len(events_for_state),
+                )
+
+                return {
+                    "validation_passed": parsed_result.validation_passed,
+                    "extracted_events": events_for_state,
+                }
+
+            except Exception as e:
+                last_error = e
+                logger.warning("Attempt %d failed: %s", attempt + 1, str(e))
+
+                if attempt < max_retries:
+                    logger.info(
+                        "Retrying post-hearing tasks extraction (attempt %d/%d)",
+                        attempt + 2,
+                        max_retries + 1,
+                    )
+                    continue
+
+                break
+
+        # All attempts failed
+        logger.error(
+            "Post-hearing tasks extraction failed after %d attempts. Last error: %s",
+            max_retries + 1,
+            last_error,
+        )
+
+        # Return failed validation to allow workflow to continue
+        return {
+            "validation_passed": False,
+            "extracted_events": [],
         }
-    ]
 
-    return {
-        "validation_passed": True,
-        "extracted_events": extracted_events,
-    }
+    except Exception as e:
+        logger.error("Unexpected error in extract_post_hearing_tasks: %s", str(e))
+        # Return failed validation to allow graceful degradation
+        return {
+            "validation_passed": False,
+            "extracted_events": [],
+        }
