@@ -1,11 +1,18 @@
 """Handle uncategorized or misclassified documents (fallback)."""
 
+import asyncio
+import logging
 from typing import Any, Dict, List, Optional, Literal
-from langgraph.runtime import Runtime
+
 from pydantic import BaseModel, Field
+from langchain_community.chat_models.tongyi import ChatTongyi
 from langchain_core.prompts import PromptTemplate
 from langchain_core.output_parsers import PydanticOutputParser
+from langgraph.runtime import Runtime
+
 from agent.utils.state import AgentState
+
+logger = logging.getLogger(__name__)
 
 
 class Context:
@@ -166,7 +173,7 @@ PROMPT_EXTRACT_GENERAL_TASK = """
 
 2. **任务描述构建 (raw_title)**：
    - 提取核心行动动词和对象
-   - 格式：{动词} + {对象或内容}
+   - 格式：动词 + 对象或内容
    - 示例："审核证据清单"、"联系对方律师"、"提交管辖权异议申请"
 
 3. **时间信息提取 (raw_date_time)**：
@@ -355,21 +362,137 @@ PROMPT_EXTRACT_GENERAL_TASK = """
 async def extract_general_task(
     state: AgentState, runtime: Runtime[Context]
 ) -> Dict[str, Any]:
-    """Handle uncategorized or misclassified documents (fallback)."""
-    # TODO: Execute broad prompt to find any general task
+    """Handle uncategorized or misclassified documents (fallback).
 
-    # Placeholder implementation - always succeeds as fallback
-    extracted_events = [
-        {
-            "title": "General Legal Task",
-            "client_name": "Placeholder Client",
-            "event_time": "2024-03-30T09:00:00",
-            "location": "Office",
-            "notes": "General task extracted from document",
+    This function analyzes various informal legal texts, memos, and communications
+    to identify actionable tasks and to-do items, serving as a fallback extractor
+    for documents that don't fit specific categories.
+
+    Args:
+        state: AgentState containing raw_text and identified_parties
+        runtime: LangGraph runtime context (unused in this implementation)
+
+    Returns:
+        A dictionary with validation_passed flag and extracted_events list
+    """
+    try:
+        raw_text = state.get("raw_text", "")
+        identified_parties = state.get("identified_parties", "[]")
+        current_datetime = state.get("current_datetime", "")
+
+        logger.info("Starting general task extraction")
+
+        # Handle empty text gracefully
+        if not raw_text or not raw_text.strip():
+            logger.warning("No text available for general task extraction")
+            return {"validation_passed": False, "extracted_events": []}
+
+        # Create LLM instance following post_hearing_tasks.py pattern
+        chat_llm = ChatTongyi(
+            model="qwen3-30b-a3b-instruct-2507",
+            api_key=state.get("dashscope_api_key"),
+            temperature=0,
+        )
+        logger.info("ChatTongyi LLM instance created successfully")
+
+        # Set up Pydantic output parser with schema
+        parser = PydanticOutputParser(pydantic_object=GeneralTaskOutput)
+        logger.info(
+            "Pydantic output parser initialized with GeneralTaskOutput schema"
+        )
+
+        # Create and format prompt with input variables
+        prompt = PromptTemplate(
+            template=PROMPT_EXTRACT_GENERAL_TASK,
+            input_variables=["raw_text", "identified_parties", "current_datetime"],
+            partial_variables={"format_instructions": parser.get_format_instructions()},
+        ).format(
+            raw_text=raw_text,
+            identified_parties=identified_parties,
+            current_datetime=current_datetime,
+        )
+        logger.debug(
+            "Sending prompt to Tongyi ChatLLM for general task extraction"
+        )
+
+        # Make LLM call with retry logic (following post_hearing_tasks.py pattern)
+        max_retries = 2
+        last_error = None
+
+        for attempt in range(max_retries + 1):
+            try:
+                # Wrap potentially blocking LLM call in asyncio.to_thread
+                response = await asyncio.to_thread(chat_llm.invoke, prompt)
+                response_text = response.content
+
+                logger.info("Raw response text received from LLM: %s", response_text)
+
+                # Wrap JSON parsing in asyncio.to_thread to avoid blocking
+                parsed_result = await asyncio.to_thread(parser.parse, response_text)
+
+                # Convert extracted events to dict format for state storage
+                events_for_state = []
+                if parsed_result.validation_passed and parsed_result.extracted_events:
+                    for event in parsed_result.extracted_events:
+                        event_dict = {
+                            "event_type": event.event_type,
+                            "raw_title": event.raw_title,
+                            "raw_date_time": event.raw_date_time,
+                            "raw_location": event.raw_location,
+                            "related_party_name": event.related_party_name,
+                            "note": event.note,
+                            "confidence": event.confidence,
+                            "task_details": {
+                                "urgency_level": event.task_details.urgency_level,
+                                "action_type": event.task_details.action_type,
+                                "context_clues": event.task_details.context_clues,
+                            },
+                        }
+                        events_for_state.append(event_dict)
+
+                logger.info(
+                    "Successfully extracted general tasks - validation_passed: %s, "
+                    "events_count: %d",
+                    parsed_result.validation_passed,
+                    len(events_for_state),
+                )
+
+                return {
+                    "validation_passed": parsed_result.validation_passed,
+                    "extracted_events": events_for_state,
+                }
+
+            except Exception as e:
+                last_error = e
+                logger.warning("Attempt %d failed: %s", attempt + 1, str(e))
+
+                if attempt < max_retries:
+                    logger.info(
+                        "Retrying general task extraction (attempt %d/%d)",
+                        attempt + 2,
+                        max_retries + 1,
+                    )
+                    continue
+
+                break
+
+        # All attempts failed
+        logger.error(
+            "General task extraction failed after %d attempts. Last error: %s",
+            max_retries + 1,
+            last_error,
+        )
+
+        # Return failed validation to allow workflow to continue
+        return {
+            "validation_passed": False,
+            "extracted_events": [],
         }
-    ]
 
-    return {
-        "validation_passed": True,  # General extraction always passes
-        "extracted_events": extracted_events,
-    }
+    except Exception as e:
+        logger.error("Unexpected error in extract_general_task: %s", str(e))
+        # Return failed validation to allow graceful degradation
+        return {
+            "validation_passed": False,
+            "extracted_events": [],
+        }
