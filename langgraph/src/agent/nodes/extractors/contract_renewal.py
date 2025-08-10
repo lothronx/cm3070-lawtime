@@ -1,11 +1,18 @@
 """Extract contract renewal dates and related tasks."""
 
+import asyncio
+import logging
 from typing import Any, Dict, List, Optional, Literal
-from langgraph.runtime import Runtime
+
 from pydantic import BaseModel, Field
+from langchain_community.chat_models.tongyi import ChatTongyi
 from langchain_core.prompts import PromptTemplate
 from langchain_core.output_parsers import PydanticOutputParser
+from langgraph.runtime import Runtime
+
 from agent.utils.state import AgentState
+
+logger = logging.getLogger(__name__)
 
 
 class Context:
@@ -19,14 +26,16 @@ class ContractEvent(BaseModel):
         default="contract_renewal",
         description="时间类型，固定为 'contract_renewal'.",
     )
-    raw_title: str = Field(description="构建的合同到期标题, e.g., '法律顾问合同到期'")
+    raw_title: str = Field(
+        description="构建的合同到期标题, e.g., '阿里巴巴法律顾问合同到期'"
+    )
     raw_date_time: Optional[str] = Field(
         description="任务的绝对ISO日期时间字符串（格式：YYYY-MM-DDTHH:MM:SS+08:00），如果没有时间则为null"
     )
     raw_location: None = Field(default=None, description="地点信息，固定为null")
     related_party_name: Optional[str] = Field(description="关联的我方客户标准名称")
     note: str = Field(
-        description="合同概述信息, e.g., '{甲方}与{乙方}签订的{合同类型}'"
+        description="合同概述信息, e.g., '{{甲方}}与{{乙方}}签订的{{合同类型}}'"
     )
     confidence: float = Field(
         description="提取结果的置信度, 范围 0.0-1.0", ge=0.0, le=1.0
@@ -34,15 +43,24 @@ class ContractEvent(BaseModel):
 
 
 class ProcessingNotes(BaseModel):
-    contract_type: str = Field(description="从文档中识别出的具体合同类型")
-    expiry_date_source: str = Field(
+    # Success fields
+    contract_type: Optional[str] = Field(description="从文档中识别出的具体合同类型")
+    expiry_date_source: Optional[str] = Field(
         description="到期日期信息的文本来源, e.g., '协议有效期条款'"
     )
-    parties_identified: List[str] = Field(
+    parties_identified: Optional[List[str]] = Field(
         description="合同中识别出的所有当事方名称列表"
     )
-    extraction_completeness: Literal["high", "medium", "low"] = Field(
+    extraction_completeness: Literal["high", "medium", "low", "none"] = Field(
         description="信息提取的完整度评估"
+    )
+
+    # Error fields
+    error: Optional[str] = Field(
+        default=None, description="如果验证失败，则显示错误代码"
+    )
+    potential_issues: Optional[List[str]] = Field(
+        default=None, description="描述验证失败的具体原因"
     )
 
 
@@ -101,8 +119,8 @@ PROMPT_EXTRACT_CONTRACT_RENEWAL = """
 
 1. **合同标题提取 (raw_title构建)**:
    - 识别合同类型：法律顾问、服务、委托、租赁等
-   - 构建标准格式：{合同类型}合同到期
-   - 示例：法律顾问合同到期、服务合同到期
+   - 构建标准格式：客户简称+合同类型+合同到期
+   - 示例：阿里巴巴法律顾问合同到期、阿里巴巴服务合同到期
 
 2. **到期日期提取 (raw_date_time)**:
    - 提取"至"、"止"、"截止"后的日期
@@ -118,7 +136,7 @@ PROMPT_EXTRACT_CONTRACT_RENEWAL = """
 4. **合同概述 (note)**:
    - 包含双方当事人名称
    - 合同类型和核心内容
-   - 格式：{甲方}与{乙方}签订的{合同类型}
+   - 格式：{{甲方}}与{{乙方}}签订的{{合同类型}}
 
 5. **地点信息 (raw_location)**:
    - 合同到期通常无特定地点，固定为null
@@ -205,7 +223,7 @@ PROMPT_EXTRACT_CONTRACT_RENEWAL = """
   "extracted_events": [
     {{
       "event_type": "contract_renewal",
-      "raw_title": "法律顾问合同到期",
+      "raw_title": "阿里巴巴法律顾问合同到期",
       "raw_date_time": "2027-05-31T09:00:00+08:00",
       "raw_location": null,
       "related_party_name": "阿里巴巴（中国）有限公司",
@@ -243,22 +261,127 @@ PROMPT_EXTRACT_CONTRACT_RENEWAL = """
 async def extract_contract_renewal(
     state: AgentState, runtime: Runtime[Context]
 ) -> Dict[str, Any]:
-    """Extract contract renewal dates and related tasks."""
-    # TODO: Validate for specific keywords, set validation_passed
-    # TODO: If valid, extract contract-specific events
+    """Extract contract renewal dates and related tasks from contract documents.
 
-    # Placeholder implementation
-    extracted_events = [
-        {
-            "title": "Contract Renewal Due",
-            "client_name": "Placeholder Client",
-            "event_time": "2024-03-15T09:00:00",
-            "location": "Office",
-            "notes": "Contract renewal deadline extracted from document",
+    This function analyzes contract documents to identify contract expiration dates
+    and validates that the document is actually a contract with valid terms.
+
+    Args:
+        state: AgentState containing raw_text and identified_parties
+        runtime: LangGraph runtime context (unused in this implementation)
+
+    Returns:
+        A dictionary with validation_passed flag and extracted_events list
+    """
+    try:
+        raw_text = state.get("raw_text", "")
+        identified_parties = state.get("identified_parties", "[]")
+
+        logger.info("Starting contract renewal extraction")
+
+        # Handle empty text gracefully
+        if not raw_text or not raw_text.strip():
+            logger.warning("No text available for contract renewal extraction")
+            return {"validation_passed": False, "extracted_events": []}
+
+        # Create LLM instance following post_hearing_tasks.py pattern
+        chat_llm = ChatTongyi(
+            model="qwen3-30b-a3b-instruct-2507",
+            api_key=state.get("dashscope_api_key"),
+            temperature=0,
+        )
+        logger.info("ChatTongyi LLM instance created successfully")
+
+        # Set up Pydantic output parser with schema
+        parser = PydanticOutputParser(pydantic_object=ContractRenewalOutput)
+        logger.info(
+            "Pydantic output parser initialized with ContractRenewalOutput schema"
+        )
+
+        # Create and format prompt with input variables
+        prompt = PromptTemplate(
+            template=PROMPT_EXTRACT_CONTRACT_RENEWAL,
+            input_variables=["raw_text", "identified_parties"],
+            partial_variables={"format_instructions": parser.get_format_instructions()},
+        ).format(
+            raw_text=raw_text,
+            identified_parties=identified_parties,
+        )
+        logger.debug("Sending prompt to Tongyi ChatLLM for contract renewal extraction")
+
+        # Make LLM call with retry logic (following post_hearing_tasks.py pattern)
+        max_retries = 2
+        last_error = None
+
+        for attempt in range(max_retries + 1):
+            try:
+                # Wrap potentially blocking LLM call in asyncio.to_thread
+                response = await asyncio.to_thread(chat_llm.invoke, prompt)
+                response_text = response.content
+
+                logger.info("Raw response text received from LLM: %s", response_text)
+
+                # Wrap JSON parsing in asyncio.to_thread to avoid blocking
+                parsed_result = await asyncio.to_thread(parser.parse, response_text)
+
+                # Convert extracted events to dict format for state storage
+                events_for_state = []
+                if parsed_result.validation_passed and parsed_result.extracted_events:
+                    for event in parsed_result.extracted_events:
+                        event_dict = {
+                            "event_type": event.event_type,
+                            "raw_title": event.raw_title,
+                            "raw_date_time": event.raw_date_time,
+                            "raw_location": event.raw_location,
+                            "related_party_name": event.related_party_name,
+                            "note": event.note,
+                            "confidence": event.confidence,
+                        }
+                        events_for_state.append(event_dict)
+
+                logger.info(
+                    "Successfully extracted contract renewal - validation_passed: %s, "
+                    "events_count: %d",
+                    parsed_result.validation_passed,
+                    len(events_for_state),
+                )
+
+                return {
+                    "validation_passed": parsed_result.validation_passed,
+                    "extracted_events": events_for_state,
+                }
+
+            except Exception as e:
+                last_error = e
+                logger.warning("Attempt %d failed: %s", attempt + 1, str(e))
+
+                if attempt < max_retries:
+                    logger.info(
+                        "Retrying contract renewal extraction (attempt %d/%d)",
+                        attempt + 2,
+                        max_retries + 1,
+                    )
+                    continue
+
+                break
+
+        # All attempts failed
+        logger.error(
+            "Contract renewal extraction failed after %d attempts. Last error: %s",
+            max_retries + 1,
+            last_error,
+        )
+
+        # Return failed validation to allow workflow to continue
+        return {
+            "validation_passed": False,
+            "extracted_events": [],
         }
-    ]
 
-    return {
-        "validation_passed": True,
-        "extracted_events": extracted_events,
-    }
+    except Exception as e:
+        logger.error("Unexpected error in extract_contract_renewal: %s", str(e))
+        # Return failed validation to allow graceful degradation
+        return {
+            "validation_passed": False,
+            "extracted_events": [],
+        }
