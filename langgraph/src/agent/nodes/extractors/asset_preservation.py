@@ -1,11 +1,18 @@
 """Extract asset preservation/seizure expiration dates."""
 
+import asyncio
+import logging
 from typing import Any, Dict, List, Optional, Literal
-from langgraph.runtime import Runtime
+
 from pydantic import BaseModel, Field
+from langchain_community.chat_models.tongyi import ChatTongyi
 from langchain_core.prompts import PromptTemplate
 from langchain_core.output_parsers import PydanticOutputParser
+from langgraph.runtime import Runtime
+
 from agent.utils.state import AgentState
+
+logger = logging.getLogger(__name__)
 
 
 class Context:
@@ -94,6 +101,11 @@ PROMPT_EXTRACT_ASSET_PRESERVATION = """
 </task>
 
 <context>
+<current_datetime>
+当前日期时间：{current_datetime}
+时区：GMT+8 (+08:00)
+</current_datetime>
+
 <document_text>
 {raw_text}
 </document_text>
@@ -152,7 +164,7 @@ PROMPT_EXTRACT_ASSET_PRESERVATION = """
    - 如无明确期限，按legal_preservation_periods计算
 
 3. **标题构建 (raw_title)**:
-   - 格式：{资产简要描述}查封冻结到期
+   - 格式：{{资产简要描述}}查封冻结到期
    - 示例：腾讯公司和平路1号不动产查封冻结到期
 
 4. **案件信息 (note)**:
@@ -308,22 +320,137 @@ PROMPT_EXTRACT_ASSET_PRESERVATION = """
 async def extract_asset_preservation(
     state: AgentState, runtime: Runtime[Context]
 ) -> Dict[str, Any]:
-    """Extract asset preservation/seizure expiration dates."""
-    # TODO: Validate for asset preservation keywords
-    # TODO: Extract preservation order deadlines
+    """Extract asset preservation/seizure expiration dates.
 
-    # Placeholder implementation
-    extracted_events = [
-        {
-            "title": "Asset Preservation Order Expires",
-            "client_name": "Placeholder Client",
-            "event_time": "2024-04-01T09:00:00",
-            "location": "Court",
-            "notes": "Asset preservation order expiration extracted from document",
+    This function analyzes asset preservation documents to identify preservation
+    expiration dates and validates that the document is actually an asset
+    preservation or execution document.
+
+    Args:
+        state: AgentState containing raw_text and identified_parties
+        runtime: LangGraph runtime context (unused in this implementation)
+
+    Returns:
+        A dictionary with validation_passed flag and extracted_events list
+    """
+    try:
+        raw_text = state.get("raw_text", "")
+        identified_parties = state.get("identified_parties", "[]")
+        current_datetime = state.get("current_datetime", "")
+
+        logger.info("Starting asset preservation extraction")
+
+        # Handle empty text gracefully
+        if not raw_text or not raw_text.strip():
+            logger.warning("No text available for asset preservation extraction")
+            return {"validation_passed": False, "extracted_events": []}
+
+        # Create LLM instance following post_hearing_tasks.py pattern
+        chat_llm = ChatTongyi(
+            model="qwen3-30b-a3b-instruct-2507",
+            api_key=state.get("dashscope_api_key"),
+            temperature=0,
+        )
+        logger.info("ChatTongyi LLM instance created successfully")
+
+        # Set up Pydantic output parser with schema
+        parser = PydanticOutputParser(pydantic_object=AssetPreservationOutput)
+        logger.info(
+            "Pydantic output parser initialized with AssetPreservationOutput schema"
+        )
+
+        # Create and format prompt with input variables
+        prompt = PromptTemplate(
+            template=PROMPT_EXTRACT_ASSET_PRESERVATION,
+            input_variables=["raw_text", "identified_parties", "current_datetime"],
+            partial_variables={"format_instructions": parser.get_format_instructions()},
+        ).format(
+            raw_text=raw_text,
+            identified_parties=identified_parties,
+            current_datetime=current_datetime,
+        )
+        logger.debug(
+            "Sending prompt to Tongyi ChatLLM for asset preservation extraction"
+        )
+
+        # Make LLM call with retry logic (following post_hearing_tasks.py pattern)
+        max_retries = 2
+        last_error = None
+
+        for attempt in range(max_retries + 1):
+            try:
+                # Wrap potentially blocking LLM call in asyncio.to_thread
+                response = await asyncio.to_thread(chat_llm.invoke, prompt)
+                response_text = response.content
+
+                logger.info("Raw response text received from LLM: %s", response_text)
+
+                # Wrap JSON parsing in asyncio.to_thread to avoid blocking
+                parsed_result = await asyncio.to_thread(parser.parse, response_text)
+
+                # Convert extracted events to dict format for state storage
+                events_for_state = []
+                if parsed_result.validation_passed and parsed_result.extracted_events:
+                    for event in parsed_result.extracted_events:
+                        event_dict = {
+                            "event_type": event.event_type,
+                            "raw_title": event.raw_title,
+                            "raw_date_time": event.raw_date_time,
+                            "raw_location": event.raw_location,
+                            "related_party_name": event.related_party_name,
+                            "note": event.note,
+                            "confidence": event.confidence,
+                            "asset_details": {
+                                "asset_type": event.asset_details.asset_type,
+                                "preservation_method": event.asset_details.preservation_method,
+                                "calculation_method": event.asset_details.calculation_method,
+                            },
+                        }
+                        events_for_state.append(event_dict)
+
+                logger.info(
+                    "Successfully extracted asset preservation events - validation_passed: %s, "
+                    "events_count: %d",
+                    parsed_result.validation_passed,
+                    len(events_for_state),
+                )
+
+                return {
+                    "validation_passed": parsed_result.validation_passed,
+                    "extracted_events": events_for_state,
+                }
+
+            except Exception as e:
+                last_error = e
+                logger.warning("Attempt %d failed: %s", attempt + 1, str(e))
+
+                if attempt < max_retries:
+                    logger.info(
+                        "Retrying asset preservation extraction (attempt %d/%d)",
+                        attempt + 2,
+                        max_retries + 1,
+                    )
+                    continue
+
+                break
+
+        # All attempts failed
+        logger.error(
+            "Asset preservation extraction failed after %d attempts. Last error: %s",
+            max_retries + 1,
+            last_error,
+        )
+
+        # Return failed validation to allow workflow to continue
+        return {
+            "validation_passed": False,
+            "extracted_events": [],
         }
-    ]
 
-    return {
-        "validation_passed": True,
-        "extracted_events": extracted_events,
-    }
+    except Exception as e:
+        logger.error("Unexpected error in extract_asset_preservation: %s", str(e))
+        # Return failed validation to allow graceful degradation
+        return {
+            "validation_passed": False,
+            "extracted_events": [],
+        }
