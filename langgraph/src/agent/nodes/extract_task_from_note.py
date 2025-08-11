@@ -1,11 +1,18 @@
 """Extract tasks from voice note transcriptions."""
 
+import asyncio
+import logging
 from typing import Any, Dict, List, Optional, Literal
+
 from pydantic import BaseModel, Field
-from langgraph.runtime import Runtime
+from langchain_community.chat_models.tongyi import ChatTongyi
 from langchain_core.prompts import PromptTemplate
 from langchain_core.output_parsers import PydanticOutputParser
+from langgraph.runtime import Runtime
+
 from agent.utils.state import AgentState
+
+logger = logging.getLogger(__name__)
 
 
 class Context:
@@ -304,22 +311,132 @@ async def extract_task_from_note(
 ) -> Dict[str, Any]:
     """Lightweight all-in-one analysis of voice note.
 
-    Simultaneously extracts event details and identifies relevant client.
+    This function analyzes voice note transcriptions to identify actionable tasks,
+    handling colloquial speech patterns and relative time expressions. Unlike
+    formal document extractors, this handles casual speech, simplified references,
+    and conversational task instructions.
+
+    Args:
+        state: AgentState containing raw_text and client_list
+        runtime: LangGraph runtime context (unused in this implementation)
+
+    Returns:
+        A dictionary with extracted_events list containing voice note tasks
     """
-    # TODO: Call LLM with specialized prompt for voice notes
-    # TODO: Extract task details and match client in single step
+    try:
+        raw_text = state.get("raw_text", "")
+        client_list_formatted = state.get("client_list_formatted", [])
+        current_datetime = state.get("current_datetime", "")
 
-    # Placeholder implementation
-    extracted_events = [
-        {
-            "title": "Meeting with Client",
-            "client_name": "Voice Note Client",
-            "event_time": "2024-03-18T14:00:00",
-            "location": "Conference Room",
-            "notes": "Task extracted from voice note",
+        logger.info("Starting voice note task extraction")
+
+        # Handle empty text gracefully
+        if not raw_text or not raw_text.strip():
+            logger.warning("No text available for voice note task extraction")
+            return {"extracted_events": []}
+
+        # Create LLM instance following general_task.py pattern
+        chat_llm = ChatTongyi(
+            model="qwen3-30b-a3b-instruct-2507",
+            api_key=state.get("dashscope_api_key"),
+            temperature=0,
+        )
+        logger.info("ChatTongyi LLM instance created successfully")
+
+        # Set up Pydantic output parser with schema
+        parser = PydanticOutputParser(pydantic_object=ExtractedTasks)
+        logger.info(
+            "Pydantic output parser initialized with ExtractedTasks schema"
+        )
+
+        # Create and format prompt with input variables
+        prompt = PromptTemplate(
+            template=PROMPT_EXTRACT_TASK,
+            input_variables=["raw_text", "client_list", "current_datetime"],
+            partial_variables={"format_instructions": parser.get_format_instructions()},
+        ).format(
+            raw_text=raw_text,
+            client_list=client_list_formatted,
+            current_datetime=current_datetime,
+        )
+        logger.debug(
+            "Sending prompt to Tongyi ChatLLM for voice note task extraction"
+        )
+
+        # Make LLM call with retry logic (following general_task.py pattern)
+        max_retries = 2
+        last_error = None
+
+        for attempt in range(max_retries + 1):
+            try:
+                # Wrap potentially blocking LLM call in asyncio.to_thread
+                response = await asyncio.to_thread(chat_llm.invoke, prompt)
+                response_text = response.content
+
+                logger.info("Raw response text received from LLM: %s", response_text)
+
+                # Wrap JSON parsing in asyncio.to_thread to avoid blocking
+                parsed_result = await asyncio.to_thread(parser.parse, response_text)
+
+                # Convert extracted tasks to dict format for state storage
+                events_for_state = []
+                if parsed_result.tasks:
+                    for task in parsed_result.tasks:
+                        task_dict = {
+                            "event_type": task.event_type,
+                            "raw_title": task.raw_title,
+                            "raw_date_time": task.raw_date_time,
+                            "raw_location": task.raw_location,
+                            "related_party_name": task.related_party_name,
+                            "note": task.note,
+                            "confidence": task.confidence,
+                            "voice_note_details": {
+                                "original_mention": task.voice_note_details.original_mention,
+                                "client_match_confidence": task.voice_note_details.client_match_confidence,
+                                "time_interpretation": task.voice_note_details.time_interpretation,
+                                "speech_patterns": task.voice_note_details.speech_patterns,
+                            },
+                        }
+                        events_for_state.append(task_dict)
+
+                logger.info(
+                    "Successfully extracted voice note tasks - events_count: %d",
+                    len(events_for_state),
+                )
+
+                return {
+                    "extracted_events": events_for_state,
+                }
+
+            except Exception as e:
+                last_error = e
+                logger.warning("Attempt %d failed: %s", attempt + 1, str(e))
+
+                if attempt < max_retries:
+                    logger.info(
+                        "Retrying voice note task extraction (attempt %d/%d)",
+                        attempt + 2,
+                        max_retries + 1,
+                    )
+                    continue
+
+                break
+
+        # All attempts failed
+        logger.error(
+            "Voice note task extraction failed after %d attempts. Last error: %s",
+            max_retries + 1,
+            last_error,
+        )
+
+        # Return empty events list to allow workflow to continue
+        return {
+            "extracted_events": [],
         }
-    ]
 
-    return {
-        "extracted_events": extracted_events,
-    }
+    except Exception as e:
+        logger.error("Unexpected error in extract_task_from_note: %s", str(e))
+        # Return empty events list to allow graceful degradation
+        return {
+            "extracted_events": [],
+        }
