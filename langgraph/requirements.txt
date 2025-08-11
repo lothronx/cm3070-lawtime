@@ -16,6 +16,7 @@ alibabacloud_tea_util==0.3.13
 annotated-types==0.7.0
 anyio==4.10.0
 APScheduler==3.11.0
+astroid==3.3.11
 attrs==25.3.0
 blinker==1.9.0
 blockbuster==1.5.25
@@ -30,6 +31,7 @@ darabonba-core==1.0.3
 dashscope==1.24.2
 dataclasses-json==0.6.7
 deprecation==2.1.0
+dill==0.4.0
 distro==1.9.0
 dotenv==0.9.9
 execnet==2.1.1
@@ -47,6 +49,7 @@ httpx-sse==0.4.1
 hyperframe==6.1.0
 idna==3.10
 iniconfig==2.1.0
+isort==6.0.1
 itsdangerous==2.2.0
 Jinja2==3.1.6
 jiter==0.10.0
@@ -58,15 +61,16 @@ langchain-community==0.3.29
 langchain-core==0.3.75
 langchain-text-splitters==0.3.10
 langgraph==0.6.6
-langgraph-api==0.4.7
+langgraph-api==0.4.11
 langgraph-checkpoint==2.1.1
 langgraph-cli==0.4.0
 langgraph-prebuilt==0.6.4
-langgraph-runtime-inmem==0.9.0
+langgraph-runtime-inmem==0.11.0
 langgraph-sdk==0.2.4
 langsmith==0.4.20
 MarkupSafe==3.0.2
 marshmallow==3.26.1
+mccabe==0.7.0
 multidict==6.6.4
 mypy_extensions==1.1.0
 numpy==2.3.2
@@ -74,6 +78,7 @@ openai==1.102.0
 orjson==3.11.3
 ormsgpack==1.10.0
 packaging==25.0
+platformdirs==4.4.0
 pluggy==1.6.0
 postgrest==0.16.11
 propcache==0.3.2
@@ -83,6 +88,7 @@ pydantic-settings==2.10.1
 pydantic_core==2.33.2
 Pygments==2.19.2
 PyJWT==2.10.1
+pylint==3.3.8
 pytest==8.4.1
 pytest-asyncio==1.1.0
 pytest-cov==6.2.1
@@ -109,6 +115,7 @@ supabase_auth==2.12.3
 supabase_functions==0.10.1
 supafunc==0.5.1
 tenacity==9.1.2
+tomlkit==0.13.3
 tqdm==4.67.1
 truststore==0.10.4
 typing-inspect==0.9.0
