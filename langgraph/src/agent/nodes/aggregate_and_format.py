@@ -1,15 +1,107 @@
 """Final formatting and standardization of extracted data."""
 
-from typing import Any, Dict
+import logging
+from typing import Any, Dict, List, Optional
 
 from langgraph.runtime import Runtime
 
-from ..utils.state import AgentState
+from agent.utils.state import AgentState
+
+logger = logging.getLogger(__name__)
 
 
 class Context:
     """Context parameters for the agent."""
+
     pass
+
+
+def _resolve_client_relationship(
+    related_party_name: Optional[str], client_list: List[dict]
+) -> Dict[str, Any]:
+    """Resolve client relationship from extracted party name.
+
+    Args:
+        related_party_name: The party name extracted from the document/audio
+        client_list: List of existing clients with id and client_name
+
+    Returns:
+        Dictionary with client resolution status and details
+    """
+    if not related_party_name or not related_party_name.strip():
+        return {
+            "status": "NO_CLIENT_IDENTIFIED",
+            "client_id": None,
+            "client_name": None,
+        }
+
+    # Clean and normalize the party name for comparison
+    normalized_party_name = related_party_name.strip()
+
+    # Try to find exact or partial matches in client list
+    for client in client_list:
+        client_name = client.get("client_name", "").strip()
+        client_id = client.get("id")
+
+        if not client_name:
+            continue
+
+        # Exact match
+        if normalized_party_name == client_name:
+            return {
+                "status": "MATCH_FOUND",
+                "client_id": client_id,
+                "client_name": client_name,
+            }
+
+        # Partial match (party name contains client name or vice versa)
+        if normalized_party_name in client_name or client_name in normalized_party_name:
+            return {
+                "status": "MATCH_FOUND",
+                "client_id": client_id,
+                "client_name": client_name,
+            }
+
+    # No match found, propose as new client
+    return {
+        "status": "NEW_CLIENT_PROPOSED",
+        "client_id": None,
+        "client_name": normalized_party_name,
+    }
+
+
+def _standardize_extracted_event(
+    event: Dict[str, Any], client_list: List[dict]
+) -> Dict[str, Any]:
+    """Convert a single extracted event to the proposed task format.
+
+    Args:
+        event: Raw extracted event from specialist nodes
+        client_list: List of existing clients for resolution
+
+    Returns:
+        Standardized proposed task matching API specification
+    """
+    # Extract core fields with defaults
+    title = event.get("raw_title", "Untitled Task")
+    event_time = event.get("raw_date_time")  # ISO format or None
+    location = event.get("raw_location")
+    note = event.get("note", "")
+    related_party_name = event.get("related_party_name")
+
+    # Resolve client relationship
+    client_resolution = _resolve_client_relationship(related_party_name, client_list)
+
+    # Build the proposed task according to API spec
+    proposed_task = {
+        "title": title,
+        "event_time": event_time,  # Already in ISO format from extractors
+        "location": location,
+        "note": note,
+        "client_resolution": client_resolution,
+    }
+
+    return proposed_task
 
 
 async def aggregate_and_format(
@@ -18,43 +110,58 @@ async def aggregate_and_format(
     """Perform final cleaning, standardization, and formatting of extracted data.
 
     This node is the convergence point for both OCR and ASR paths.
+    Converts extracted_events to proposed_tasks format expected by the frontend.
+
+    Args:
+        state: AgentState containing extracted_events and client_list
+        runtime: LangGraph runtime context (unused in this implementation)
+
+    Returns:
+        Dictionary with proposed_tasks list ready for API response
     """
-    # TODO: Implement standardization logic
-    # TODO: Apply business logic (e.g., defaulting event time to 09:00 AM)
+    try:
+        extracted_events = state.get("extracted_events", [])
+        client_list = state.get("client_list", [])
 
-    # Placeholder: Convert extracted_events to proposed_tasks format
-    proposed_tasks = []
-    identified_parties = state.get("identified_parties", [])
-    
-    for event in state.get("extracted_events", []):
-        # Find matching client resolution for this event
-        client_resolution = {"status": "OTHER_PARTY", "client_id": None, "client_name": "Unknown Client"}
-        
-        # Look for matching party by name
-        related_party_name = event.get("related_party_name")
-        if related_party_name and identified_parties:
-            for party in identified_parties:
-                if party.get("name") == related_party_name and "client_resolution" in party:
-                    client_resolution = party["client_resolution"]
-                    break
-        
-        # If no match by specific party name, or if there are parties available, use the first party's resolution
-        if client_resolution["status"] == "OTHER_PARTY" and identified_parties:
-            first_party = identified_parties[0]
-            if "client_resolution" in first_party:
-                client_resolution = first_party["client_resolution"]
-        
-        # Simple format conversion - in real implementation this would be more sophisticated
-        task = {
-            "title": event.get("raw_title", event.get("title", "Untitled Task")),
-            "client_name": client_resolution.get("client_name", "Unknown Client"),
-            "event_time": event.get("raw_date_time", event.get("event_time", "09:00")),
-            "location": event.get("raw_location", event.get("location", "")),
-            "note": event.get("note", event.get("notes", "")),
-            "client_resolution": client_resolution,
-        }
-        proposed_tasks.append(task)
+        logger.info(
+            "Starting aggregate_and_format with %d extracted events",
+            len(extracted_events),
+        )
 
-    return {
-        "proposed_tasks": proposed_tasks,
-    }
+        # Handle empty events case
+        if not extracted_events:
+            logger.info("No extracted events to process")
+            return {"proposed_tasks": []}
+
+        # Convert each extracted event to proposed task format
+        proposed_tasks = []
+        for i, event in enumerate(extracted_events):
+            try:
+                proposed_task = _standardize_extracted_event(event, client_list)
+                proposed_tasks.append(proposed_task)
+
+                logger.debug(
+                    "Converted event %d: '%s' -> client_resolution: %s",
+                    i + 1,
+                    proposed_task.get("title", "Unknown"),
+                    proposed_task.get("client_resolution", {}).get("status", "Unknown"),
+                )
+
+            except Exception as e:
+                logger.warning(
+                    "Failed to convert extracted event %d: %s. Skipping.", i + 1, str(e)
+                )
+                continue
+
+        logger.info(
+            "Successfully aggregated %d proposed tasks from %d extracted events",
+            len(proposed_tasks),
+            len(extracted_events),
+        )
+
+        return {"proposed_tasks": proposed_tasks}
+
+    except Exception as e:
+        logger.error("Unexpected error in aggregate_and_format: %s", str(e))
+        # Return empty tasks to allow graceful degradation
+        return {"proposed_tasks": []}
