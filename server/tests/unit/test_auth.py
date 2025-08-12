@@ -19,7 +19,7 @@ def app():
         "os.environ",
         {
             "SUPABASE_URL": "https://test.supabase.co",
-            "SUPABASE_KEY": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InRlc3QiLCJyb2xlIjoic2VydmljZV9yb2xlIiwiaWF0IjoxNjQ5NzI4MDAwfQ.test",
+            "SUPABASE_ANON_KEY": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InRlc3QiLCJyb2xlIjoic2VydmljZV9yb2xlIiwiaWF0IjoxNjQ5NzI4MDAwfQ.test",
             "ALIBABA_DYSMS_ACCESS_KEY_ID": "test",
             "ALIBABA_DYSMS_ACCESS_KEY_SECRET": "test",
         },
@@ -39,7 +39,7 @@ def app():
 
             # Mock auth response with JSON-serializable values
             auth_response = Mock()
-            
+
             # Create user mock with proper string values
             user_mock = Mock()
             user_mock.id = "test-user-123"
@@ -47,7 +47,7 @@ def app():
             user_mock.phone = "18501052017"
             user_mock.created_at = "2025-01-01T00:00:00.000Z"
             auth_response.user = user_mock
-            
+
             # Create session mock with proper values
             session_mock = Mock()
             session_mock.access_token = "test-jwt-token"
@@ -55,12 +55,14 @@ def app():
             session_mock.expires_at = 1234567890
             session_mock.token_type = "bearer"
             auth_response.session = session_mock
-            
+
             # Mock the user creation/update response to return a dict instead of Mock
             mock_user_response = Mock()
             mock_user_response.data = {"id": "test-user-123", "phone": "18501052017"}
-            mock_client.table.return_value.upsert.return_value.execute.return_value = mock_user_response
-            
+            mock_client.table.return_value.upsert.return_value.execute.return_value = (
+                mock_user_response
+            )
+
             mock_client.auth.sign_in_with_password.return_value = auth_response
 
             # Mock SMS service

@@ -25,7 +25,7 @@ def validate_environment():
     """Validate that all required environment variables are present."""
     required_vars = [
         "SUPABASE_URL",
-        "SUPABASE_KEY",
+        "SUPABASE_ANON_KEY",
         "ALIBABA_DYSMS_ACCESS_KEY_ID",
         "ALIBABA_DYSMS_ACCESS_KEY_SECRET",
     ]
@@ -111,7 +111,7 @@ def create_app(test_config=None):
 
     # Initialize services
     url: str = os.environ.get("SUPABASE_URL")
-    key: str = os.environ.get("SUPABASE_KEY")
+    key: str = os.environ.get("SUPABASE_ANON_KEY")
     supabase: Client = create_client(url, key)
 
     try:

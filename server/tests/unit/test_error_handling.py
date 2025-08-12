@@ -16,7 +16,7 @@ def test_missing_environment_variables():
     with patch.dict(
         "os.environ",
         {
-            "SUPABASE_KEY": "test-key",
+            "SUPABASE_ANON_KEY": "test-key",
             "ALIBABA_DYSMS_ACCESS_KEY_ID": "test-id",
             "ALIBABA_DYSMS_ACCESS_KEY_SECRET": "test-secret",
         },
@@ -40,7 +40,7 @@ def test_supabase_auth_failure():
         "os.environ",
         {
             "SUPABASE_URL": "https://test.supabase.co",
-            "SUPABASE_KEY": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InRlc3QiLCJyb2xlIjoic2VydmljZV9yb2xlIiwiaWF0IjoxNjQ5NzI4MDAwfQ.test",
+            "SUPABASE_ANON_KEY": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InRlc3QiLCJyb2xlIjoic2VydmljZV9yb2xlIiwiaWF0IjoxNjQ5NzI4MDAwfQ.test",
             "ALIBABA_DYSMS_ACCESS_KEY_ID": "test",
             "ALIBABA_DYSMS_ACCESS_KEY_SECRET": "test",
         },
@@ -95,7 +95,7 @@ def test_sms_service_initialization_failure():
         "os.environ",
         {
             "SUPABASE_URL": "https://test.supabase.co",
-            "SUPABASE_KEY": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InRlc3QiLCJyb2xlIjoic2VydmljZV9yb2xlIiwiaWF0IjoxNjQ5NzI4MDAwfQ.test",
+            "SUPABASE_ANON_KEY": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InRlc3QiLCJyb2xlIjoic2VydmljZV9yb2xlIiwiaWF0IjoxNjQ5NzI4MDAwfQ.test",
             "ALIBABA_DYSMS_ACCESS_KEY_ID": "test",
             "ALIBABA_DYSMS_ACCESS_KEY_SECRET": "test",
         },
