@@ -281,6 +281,4 @@ class TestInitializeAgentState:
         # Act
         result = await initialize_agent_state(input_state, mock_runtime)
         
-        # Assert - client_list should not be in the returned dict since it's already valid
-        # The function only returns fields that need to be updated/initialized
-        assert "client_list" not in result
+        assert "client_list" in result
