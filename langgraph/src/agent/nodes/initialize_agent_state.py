@@ -6,7 +6,7 @@ from dotenv import load_dotenv
 from datetime import datetime, timezone, timedelta
 from typing import Any, Dict
 from langgraph.runtime import Runtime
-from ..utils.state import AgentState
+from agent.utils.state import AgentState
 
 
 class Context:

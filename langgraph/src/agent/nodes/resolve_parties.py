@@ -11,10 +11,18 @@ from typing import Any, Dict, List, Optional, Literal
 from langchain_community.chat_models.tongyi import ChatTongyi
 from langchain_core.output_parsers import PydanticOutputParser
 from langchain_core.prompts import PromptTemplate
+from langgraph.runtime import Runtime
 from pydantic import BaseModel, Field
 from agent.utils.state import AgentState
 
 logger = logging.getLogger(__name__)
+
+
+class Context:
+    """Context parameters for the agent."""
+
+    pass
+
 
 ClientStatus = Literal["MATCH_FOUND", "NEW_CLIENT_PROPOSED", "OTHER_PARTY"]
 
@@ -189,7 +197,7 @@ d) **默认情况：其他方 (Other Party)**
 """
 
 
-async def resolve_parties(state: AgentState) -> Dict[str, Any]:
+async def resolve_parties(state: AgentState, runtime: Runtime[Context]) -> Dict[str, Any]:
     """Resolve legal parties from document text and determine client relationships.
 
     This function analyzes the extracted text to identify all legal parties
