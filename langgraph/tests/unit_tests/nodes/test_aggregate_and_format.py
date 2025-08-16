@@ -8,10 +8,8 @@ from agent.nodes.aggregate_and_format import (
     _resolve_client_relationship,
     _standardize_extracted_event
 )
-from agent.utils.state import AgentState
 from tests.fixtures.mock_data import (
     MockExtractedEvents, 
-    MockExtractedParties,
     get_mock_initial_state,
     MOCK_CLIENT_LIST
 )
