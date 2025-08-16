@@ -1,7 +1,7 @@
 """Unit tests for transcribe_audio node."""
 
 import pytest
-from unittest.mock import Mock, patch, AsyncMock, ANY
+from unittest.mock import Mock, patch, ANY
 import json
 import asyncio
 from http import HTTPStatus

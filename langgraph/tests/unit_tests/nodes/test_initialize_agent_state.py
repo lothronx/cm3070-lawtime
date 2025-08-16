@@ -4,7 +4,6 @@ import pytest
 from unittest.mock import Mock
 
 from agent.nodes.initialize_agent_state import initialize_agent_state, validate_frontend_input
-from agent.utils.state import AgentState
 from tests.fixtures.mock_data import get_mock_ocr_request, get_mock_asr_request, MOCK_CLIENT_LIST
 
 

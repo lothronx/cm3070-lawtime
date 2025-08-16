@@ -2,10 +2,9 @@
 
 import asyncio
 import pytest
-from unittest.mock import Mock, patch, AsyncMock
+from unittest.mock import Mock, patch
 
 from agent.nodes.extract_text_from_docs import extract_text_from_docs, _extract_text_from_single_image, _extract_text_with_qwen_ocr
-from agent.utils.state import AgentState
 from tests.fixtures.mock_data import get_mock_initial_state, MockDocuments
 
 
