@@ -3,14 +3,16 @@
 import pytest
 from unittest.mock import Mock
 
-from agent.nodes.extractors.contract_renewal import extract_contract_renewal
-from agent.utils.state import AgentState
+from agent.nodes.extractors.contract_renewal import (
+    extract_contract_renewal,
+    ContractRenewalOutput,
+    ContractEvent,
+    ProcessingNotes,
+)
 from tests.fixtures.mock_data import (
-    get_mock_ocr_state_after_text_extraction,
+    get_mock_initial_state,
     MockDocuments,
-    MockExtractedEvents,
     MockExtractedParties,
-    MockValidationResults
 )
 
 
@@ -20,6 +22,63 @@ def mock_runtime():
     return Mock()
 
 
+@pytest.fixture
+def sample_contract_event():
+    """Sample contract renewal event with all required fields."""
+    return ContractEvent(
+        event_type="contract_renewal",
+        raw_title="阿里巴巴法律顾问合同到期",
+        raw_date_time="2027-05-31T09:00:00+08:00",
+        raw_location=None,
+        related_party_name="阿里巴巴（中国）有限公司",
+        note="北京朝阳律师事务所与阿里巴巴（中国）有限公司签订的聘请常年法律顾问协议书",
+        confidence=0.95
+    )
+
+
+@pytest.fixture
+def sample_valid_contract_output(sample_contract_event):
+    """Sample valid contract renewal extraction output."""
+    return ContractRenewalOutput(
+        validation_passed=True,
+        extracted_events=[sample_contract_event],
+        processing_notes=ProcessingNotes(
+            contract_type="法律顾问协议",
+            expiry_date_source="协议有效期条款",
+            parties_identified=["阿里巴巴（中国）有限公司", "北京朝阳律师事务所"],
+            extraction_completeness="high"
+        )
+    )
+
+
+@pytest.fixture
+def sample_invalid_contract_output():
+    """Sample invalid contract renewal extraction output."""
+    return ContractRenewalOutput(
+        validation_passed=False,
+        extracted_events=[],
+        processing_notes=ProcessingNotes(
+            contract_type=None,
+            expiry_date_source=None,
+            parties_identified=None,
+            extraction_completeness="none",
+            error="NOT_CONTRACT_DOCUMENT",
+            potential_issues=["缺少合同和有效期关键词", "非合同性质文档"]
+        )
+    )
+
+
+@pytest.fixture
+def mock_state_with_contract_document():
+    """Mock state with contract document and identified parties."""
+    state = get_mock_initial_state("ocr")
+    state["raw_text"] = MockDocuments.CONTRACT_CN
+    state["identified_parties"] = MockExtractedParties.ALIBABA_MATCH_FOUND
+    state["document_type"] = "CONTRACT"
+    state["dashscope_api_key"] = "test_api_key"
+    return state
+
+
 class TestExtractContractRenewal:
     """Test cases for extract_contract_renewal specialist extractor."""
     
@@ -27,7 +86,7 @@ class TestExtractContractRenewal:
     async def test_extract_valid_contract_document(self, mock_runtime):
         """Test extraction from valid contract document."""
         # Arrange
-        state = get_mock_ocr_state_after_text_extraction()
+        state = get_mock_initial_state("ocr")
         state["raw_text"] = MockDocuments.CONTRACT_CN
         state["identified_parties"] = MockExtractedParties.ALIBABA_MATCH_FOUND
         state["document_type"] = "CONTRACT"
@@ -54,7 +113,7 @@ class TestExtractContractRenewal:
     async def test_extract_invalid_contract_fails_validation(self, mock_runtime):
         """Test extraction with invalid contract document fails validation."""
         # Arrange
-        state = get_mock_ocr_state_after_text_extraction()
+        state = get_mock_initial_state("ocr")
         state["raw_text"] = MockDocuments.INVALID_CONTRACT
         state["identified_parties"] = MockExtractedParties.ALIBABA_MATCH_FOUND
         state["document_type"] = "CONTRACT"
@@ -76,7 +135,7 @@ class TestExtractContractRenewal:
     async def test_extract_court_hearing_document_fails_validation(self, mock_runtime):
         """Test extraction with court hearing document (wrong type) fails validation."""
         # Arrange
-        state = get_mock_ocr_state_after_text_extraction()
+        state = get_mock_initial_state("ocr")
         state["raw_text"] = MockDocuments.COURT_HEARING_CN
         state["identified_parties"] = MockExtractedParties.ALIBABA_MATCH_FOUND
         state["document_type"] = "CONTRACT"  # Misclassified
@@ -95,7 +154,7 @@ class TestExtractContractRenewal:
     async def test_extract_with_contract_expiration_date(self, mock_runtime):
         """Test extraction of contract with explicit expiration date."""
         # Arrange
-        state = get_mock_ocr_state_after_text_extraction()
+        state = get_mock_initial_state("ocr")
         state["raw_text"] = MockDocuments.CONTRACT_CN  # Contains "2027年5月31日止"
         state["identified_parties"] = MockExtractedParties.ALIBABA_MATCH_FOUND
         state["document_type"] = "CONTRACT"
@@ -118,7 +177,7 @@ class TestExtractContractRenewal:
     async def test_extract_with_multiple_parties(self, mock_runtime):
         """Test extraction with multiple identified parties."""
         # Arrange
-        state = get_mock_ocr_state_after_text_extraction()
+        state = get_mock_initial_state("ocr")
         state["raw_text"] = MockDocuments.CONTRACT_CN
         state["identified_parties"] = MockExtractedParties.MULTI_PARTY
         state["document_type"] = "CONTRACT"
@@ -138,7 +197,7 @@ class TestExtractContractRenewal:
     async def test_extract_with_new_client_proposed(self, mock_runtime):
         """Test extraction when new client is proposed."""
         # Arrange
-        state = get_mock_ocr_state_after_text_extraction()
+        state = get_mock_initial_state("ocr")
         state["raw_text"] = MockDocuments.CONTRACT_CN
         state["identified_parties"] = MockExtractedParties.NEW_CLIENT_PROPOSED
         state["document_type"] = "CONTRACT"
@@ -158,7 +217,7 @@ class TestExtractContractRenewal:
     async def test_extract_with_empty_text(self, mock_runtime):
         """Test extraction with empty document text."""
         # Arrange
-        state = get_mock_ocr_state_after_text_extraction()
+        state = get_mock_initial_state("ocr")
         state["raw_text"] = ""
         state["identified_parties"] = MockExtractedParties.ALIBABA_MATCH_FOUND
         state["document_type"] = "CONTRACT"
@@ -178,7 +237,7 @@ class TestExtractContractRenewal:
     async def test_extract_contract_with_legal_advisor_agreement(self, mock_runtime):
         """Test extraction of legal advisor agreement specifically."""
         # Arrange
-        state = get_mock_ocr_state_after_text_extraction()
+        state = get_mock_initial_state("ocr")
         # Contract contains "聘请常年法律顾问协议书"
         state["raw_text"] = MockDocuments.CONTRACT_CN
         state["identified_parties"] = MockExtractedParties.ALIBABA_MATCH_FOUND
@@ -201,7 +260,7 @@ class TestExtractContractRenewal:
     async def test_extract_preserves_state(self, mock_runtime):
         """Test that extraction preserves original state."""
         # Arrange
-        state = get_mock_ocr_state_after_text_extraction()
+        state = get_mock_initial_state("ocr")
         original_raw_text = state["raw_text"]
         original_parties = state.get("identified_parties")
         
@@ -220,7 +279,7 @@ class TestExtractContractRenewal:
     async def test_extract_return_type_structure(self, mock_runtime):
         """Test extraction returns proper structure."""
         # Arrange
-        state = get_mock_ocr_state_after_text_extraction()
+        state = get_mock_initial_state("ocr")
         
         # Act
         result = await extract_contract_renewal(state, mock_runtime)
@@ -237,7 +296,7 @@ class TestExtractContractRenewal:
     async def test_extract_contract_event_structure(self, mock_runtime):
         """Test that extracted contract events have proper structure."""
         # Arrange
-        state = get_mock_ocr_state_after_text_extraction()
+        state = get_mock_initial_state("ocr")
         state["raw_text"] = MockDocuments.CONTRACT_CN
         state["identified_parties"] = MockExtractedParties.ALIBABA_MATCH_FOUND
         
@@ -260,7 +319,7 @@ class TestExtractContractRenewal:
         """Test validation logic recognizes contract-specific keywords."""
         # Arrange - Test with contract containing specific keywords
         contract_keywords_text = "法律顾问协议书 有效期 2027年5月31日止"
-        state = get_mock_ocr_state_after_text_extraction()
+        state = get_mock_initial_state("ocr")
         state["raw_text"] = contract_keywords_text
         state["identified_parties"] = MockExtractedParties.ALIBABA_MATCH_FOUND
         
