@@ -2,6 +2,7 @@ import React, { useState, useMemo } from "react";
 import { View, StyleSheet, ScrollView, Alert } from "react-native";
 import { Text } from "react-native-paper";
 import { ExpandableCalendar, CalendarProvider } from "react-native-calendars";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useRouter } from "expo-router";
 import { useAppTheme, SPACING } from "@/theme/ThemeProvider";
 import Header from "@/components/Header";
@@ -13,6 +14,7 @@ import { taskService } from "@/services/taskService";
 export default function Calendar() {
   const { theme } = useAppTheme();
   const router = useRouter();
+  const insets = useSafeAreaInsets();
   const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split("T")[0]);
   const { tasks, isLoading, isError, error, refetch } = useTasks();
 
@@ -181,7 +183,7 @@ export default function Calendar() {
 
         <ScrollView
           style={styles.tasksList}
-          contentContainerStyle={styles.tasksContent}
+          contentContainerStyle={[styles.tasksContent, { marginBottom: insets.bottom }]}
           showsVerticalScrollIndicator={false}>
           {selectedDateTasks.length > 0 ? (
             <View style={styles.tasksContainer}>
@@ -274,7 +276,7 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     alignItems: "center",
     paddingHorizontal: SPACING.xl,
-    paddingTop: SPACING.xxl,
+    paddingBottom: SPACING.xl * 4,
   },
   emptyTitle: {
     textAlign: "center",
