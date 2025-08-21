@@ -1,29 +1,39 @@
 import React, { useState, useMemo } from "react";
-import { View, StyleSheet, ScrollView } from "react-native";
+import { View, StyleSheet, ScrollView, Alert } from "react-native";
 import { Text } from "react-native-paper";
 import { ExpandableCalendar, CalendarProvider } from "react-native-calendars";
+import { useRouter } from "expo-router";
 import { useAppTheme, SPACING } from "@/theme/ThemeProvider";
 import Header from "@/components/Header";
-import { mockTasks, TaskWithClient } from "@/mockData";
+import { TaskWithClient } from "@/types";
 import TaskItem from "@/components/tasks/TaskItem";
+import { useTasks } from "@/hooks/useTasks";
+import { taskService } from "@/services/taskService";
 
 export default function Calendar() {
   const { theme } = useAppTheme();
+  const router = useRouter();
   const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split("T")[0]);
+  const { tasks, isLoading, isError, error, refetch } = useTasks();
 
-  // Create marked dates object from mock tasks
+  // Create marked dates object from real tasks
   const markedDates = useMemo(() => {
     const marked: { [key: string]: any } = {};
 
-    mockTasks.forEach((task) => {
+    tasks.forEach((task) => {
       if (task.event_time) {
         const date = new Date(task.event_time).toISOString().split("T")[0];
         if (!marked[date]) {
           marked[date] = { marked: true, dots: [] };
         }
-        // Add dot for task (different colors for completed vs pending)
-        const dotColor = task.completed_at ? theme.colors.onSurfaceDisabled : theme.colors.primary;
-        marked[date].dots.push({ color: dotColor });
+
+        // Dot color based on selection state and completion status
+        let dotColor: string;
+        dotColor = task.completed_at
+          ? theme.colors.onSurfaceDisabled // Completed tasks (muted)
+          : theme.colors.secondary; // Active tasks (prominent)
+
+        marked[date].dots.push({ color: dotColor, selectedDotColor: theme.colors.onSecondary });
       }
     });
 
@@ -35,11 +45,17 @@ export default function Calendar() {
     }
 
     return marked;
-  }, [selectedDate, theme.colors.primary, theme.colors.onSurfaceDisabled]);
+  }, [
+    tasks,
+    selectedDate,
+    theme.colors.onSurfaceDisabled,
+    theme.colors.primary,
+    theme.colors.onSecondary,
+  ]);
 
   // Get tasks for selected date
   const selectedDateTasks = useMemo(() => {
-    return mockTasks
+    return tasks
       .filter((task) => {
         if (!task.event_time) return false;
         const taskDate = new Date(task.event_time).toISOString().split("T")[0];
@@ -49,21 +65,39 @@ export default function Calendar() {
         if (!a.event_time || !b.event_time) return 0;
         return new Date(a.event_time).getTime() - new Date(b.event_time).getTime();
       });
-  }, [selectedDate]);
+  }, [tasks, selectedDate]);
 
-  const handleToggleComplete = (taskId: number, completedAt: string | null) => {
-    console.log("Toggle complete:", taskId, completedAt);
-    // TODO: Implement actual toggle functionality
+  const handleToggleComplete = async (taskId: number, completedAt: string | null) => {
+    try {
+      if (completedAt) {
+        // Mark as completed
+        await taskService.completeTask(taskId);
+      } else {
+        // Mark as incomplete
+        await taskService.uncompleteTask(taskId);
+      }
+      // Refetch tasks to update the UI
+      refetch();
+    } catch (err) {
+      Alert.alert("Error", "Failed to update task status. Please try again.");
+      console.error("Error updating task:", err);
+    }
   };
 
   const handleEdit = (task: TaskWithClient) => {
-    console.log("Edit task:", task.id);
-    // TODO: Navigate to task edit screen
+    console.log("Navigating to edit task:", task.title);
+    router.push(`/task?taskId=${task.id}`);
   };
 
-  const handleDelete = (taskId: number) => {
-    console.log("Delete task:", taskId);
-    // TODO: Implement delete functionality
+  const handleDelete = async (taskId: number) => {
+    try {
+      await taskService.deleteTask(taskId);
+      // Refetch tasks to update the UI
+      refetch();
+    } catch (err) {
+      Alert.alert("Error", "Failed to delete task. Please try again.");
+      console.error("Error deleting task:", err);
+    }
   };
 
   const getTaskColor = (task: TaskWithClient) => {
@@ -77,6 +111,39 @@ export default function Calendar() {
     return theme.colors.primary; // Normal
   };
 
+  // Loading state
+  if (isLoading) {
+    return (
+      <View style={[styles.container, { backgroundColor: theme.colors.background }]}>
+        <Header title="Calendar" variant="main" />
+        <View style={styles.centerContainer}>
+          <Text style={[styles.indicatorText, { color: theme.colors.onSurfaceVariant }]}>
+            Loading calendar...
+          </Text>
+        </View>
+      </View>
+    );
+  }
+
+  // Error state
+  if (isError) {
+    return (
+      <View style={[styles.container, { backgroundColor: theme.colors.background }]}>
+        <Header title="Calendar" variant="main" />
+        <View style={styles.centerContainer}>
+          <Text style={[styles.indicatorText, { color: theme.colors.error }]}>
+            Error loading tasks: {error?.message}
+          </Text>
+          <Text
+            style={[styles.retryText, { color: theme.colors.primary }]}
+            onPress={() => refetch()}>
+            Tap to retry
+          </Text>
+        </View>
+      </View>
+    );
+  }
+
   return (
     <View style={[styles.container, { backgroundColor: theme.colors.background }]}>
       <Header title="Calendar" variant="main" />
@@ -84,36 +151,32 @@ export default function Calendar() {
       <CalendarProvider
         date={selectedDate}
         onDateChanged={setSelectedDate}
-        showTodayButton
-        disabledOpacity={0.6}
-        theme={{
-          selectedDayBackgroundColor: theme.colors.primary,
-          selectedDayTextColor: theme.colors.onPrimary,
-          todayTextColor: theme.colors.primary,
-          dayTextColor: theme.colors.onBackground,
-          textDisabledColor: theme.colors.onSurfaceDisabled,
-          dotColor: theme.colors.primary,
-          selectedDotColor: theme.colors.onPrimary,
-          arrowColor: theme.colors.primary,
-          monthTextColor: theme.colors.onBackground,
-          indicatorColor: theme.colors.primary,
-          textDayFontWeight: "500",
-          textMonthFontWeight: "600",
-          textDayHeaderFontWeight: "600",
-          textDayFontSize: 16,
-          textMonthFontSize: 20,
-          textDayHeaderFontSize: 14,
-          backgroundColor: theme.colors.surface,
-          calendarBackground: theme.colors.surface,
-        }}>
+        showTodayButton={true}
+        disabledOpacity={0.5}>
         <ExpandableCalendar
-          firstDay={1} // Monday first
           markedDates={markedDates}
           markingType={"multi-dot"}
-          hideKnob={false}
-          initialPosition="closed"
-          calendarStyle={[styles.calendar, { backgroundColor: theme.colors.surface }]}
-          headerStyle={[styles.calendarHeader, { backgroundColor: theme.colors.surface }]}
+          initialPosition={ExpandableCalendar.positions.OPEN}
+          disablePan={true}
+          hideKnob={true}
+          theme={{
+            backgroundColor: theme.colors.background,
+            calendarBackground: theme.colors.background,
+            textSectionTitleColor: theme.colors.scrim,
+            textSectionTitleDisabledColor: theme.colors.onSurfaceDisabled,
+            selectedDayBackgroundColor: theme.colors.secondary,
+            selectedDayTextColor: theme.colors.onSecondary,
+            todayTextColor: theme.colors.secondary,
+            dayTextColor: theme.colors.onSurface,
+            textDisabledColor: theme.colors.onSurfaceDisabled,
+            arrowColor: theme.colors.secondary,
+            disabledArrowColor: theme.colors.onSurfaceDisabled,
+            monthTextColor: theme.colors.primary,
+            indicatorColor: theme.colors.primary,
+            textMonthFontSize: 18,
+            textMonthFontWeight: "500",
+            textDayFontWeight: "400",
+          }}
         />
 
         <ScrollView
@@ -172,19 +235,31 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
   },
-  calendar: {
-    paddingLeft: SPACING.md,
-    paddingRight: SPACING.md,
+  centerContainer: {
+    flex: 1,
+    justifyContent: "center",
+    alignItems: "center",
+    paddingHorizontal: SPACING.lg,
   },
-  calendarHeader: {
-    paddingLeft: SPACING.md,
-    paddingRight: SPACING.md,
+  indicatorText: {
+    fontSize: 16,
+    textAlign: "center",
+    lineHeight: 24,
+    paddingBottom: SPACING.xl * 4,
+    paddingHorizontal: SPACING.md,
+  },
+  retryText: {
+    fontSize: 16,
+    textAlign: "center",
+    lineHeight: 24,
+    marginTop: SPACING.md,
+    textDecorationLine: "underline",
   },
   tasksList: {
     flex: 1,
   },
   tasksContent: {
-    paddingBottom: 160, // Account for bottom navigation
+    flex: 1,
   },
   tasksContainer: {
     paddingTop: SPACING.md,
