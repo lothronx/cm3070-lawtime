@@ -12,7 +12,7 @@ const LogoutSection: React.FC<LogoutSectionProps> = ({ onLogout }) => {
 
   return (
     <Surface style={[styles.section, { backgroundColor: theme.colors.surface }]} elevation={1}>
-      <Text style={[styles.sectionTitle, { color: theme.colors.onSurface }]}>Account</Text>
+      <Text style={[styles.sectionTitle, { color: theme.colors.primary }]}>Account</Text>
 
       <Button
         mode="contained"

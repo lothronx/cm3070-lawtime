@@ -9,28 +9,28 @@ const customColors = {
   // Primary colors - Dark Blue (#013364) for authority and trust
   primary: "#013364", // Dark blue - primary brand color
   primaryContainer: "#e3f2fd", // Very light blue container
-  onPrimary: "#ffffff", // White text on dark blue
+  onPrimary: "#fcfcfd", // White text on dark blue
   onPrimaryContainer: "#013364", // Dark blue text on light blue
   
   // Secondary colors - Light Blue (#428bca) for secondary actions
   secondary: "#428bca", // Light blue for secondary elements - complements primary blue
   secondaryContainer: "#e3f2fd", // Very light blue container
-  onSecondary: "#ffffff", // White text on light blue
+  onSecondary: "#fcfcfd", // White text on light blue
   onSecondaryContainer: "#1976d2", // Dark blue text on light blue container
   
   // Surface colors for clean look
-  surface: "#fefeffff", // Pure white for main surfaces
+  surface: "#fcfcfd", // Pure white for main surfaces
   surfaceVariant: "#fafafa", // Neutral light gray for variant surfaces
-  onSurface: "#013364", // Dark blue text on white
+  onSurface: "#212223ff", // Dark text on white
   onSurfaceVariant: "#37474f", // Dark blue-gray text on light surfaces
   
   // Background colors
-  background: "#ffffff", // Pure white background
+  background: "#fcfcfd", // Pure white background
   onBackground: "#013364", // Dark blue text on white background
   
   // Error colors - Red (#d32f2f) for clear error indication
   error: "#d32f2f", // Standard red for errors - clear and recognizable
-  onError: "#ffffff", // White text on red
+  onError: "#fcfcfd", // White text on red
   errorContainer: "#ffebee", // Very light red container
   onErrorContainer: "#c62828", // Dark red text on light container
   
@@ -39,10 +39,10 @@ const customColors = {
   outlineVariant: "#90caf9", // Lighter blue for subtle outlines - complements secondary color
   
   // Other semantic colors
-  shadow: "#000000", // Black shadow
+  shadow: "#2a2c2e", // Black shadow
   scrim: "rgba(1, 51, 100, 0.6)", // Dark blue scrim with transparency
   inverseSurface: "#013364", // Dark blue inverse surface
-  inverseOnSurface: "#ffffff", // White on dark blue
+  inverseOnSurface: "#fcfcfd", // White on dark blue
   inversePrimary: "#64b5f6", // Light blue as inverse primary
   
   // Elevation levels with neutral tints
@@ -65,7 +65,7 @@ const customDarkColors = {
   // Primary colors - Brighter blue for dark mode contrast
   primary: "#2196f3", // Brighter blue for dark mode
   primaryContainer: "#0d47a1", // Dark blue container
-  onPrimary: "#ffffff", // White text on blue
+  onPrimary: "#fcfcfd", // White text on blue
   onPrimaryContainer: "#bbdefb", // Light blue text on dark container
   
   // Secondary colors - Light Blue for dark mode
@@ -77,16 +77,16 @@ const customDarkColors = {
   // Surface colors for dark mode
   surface: "#1e1e1e", // Dark surface
   surfaceVariant: "#424242", // Dark gray variant surface
-  onSurface: "#ffffff", // White text on dark surface
+  onSurface: "#fcfcfd", // White text on dark surface
   onSurfaceVariant: "#e0e0e0", // Light gray text on dark variant
   
   // Background colors for dark mode
   background: "#121212", // Pure dark background
-  onBackground: "#ffffff", // White text on dark background
+  onBackground: "#fcfcfd", // White text on dark background
   
   // Error colors for dark mode - Red for clear error indication
   error: "#ef5350", // Bright red for dark mode errors
-  onError: "#ffffff", // White text on red
+  onError: "#fcfcfd", // White text on red
   errorContainer: "#b71c1c", // Dark red container
   onErrorContainer: "#ffcdd2", // Light red text on dark container
   
@@ -97,7 +97,7 @@ const customDarkColors = {
   // Other semantic colors for dark mode
   shadow: "#000000", // Black shadow
   scrim: "rgba(0, 0, 0, 0.8)", // Dark scrim
-  inverseSurface: "#ffffff", // White inverse surface
+  inverseSurface: "#fcfcfd", // White inverse surface
   inverseOnSurface: "#013364", // Dark blue text on light surface
   inversePrimary: "#013364", // Original dark blue as inverse primary
   placeholder: "rgba(0, 0, 0, 0.6)",

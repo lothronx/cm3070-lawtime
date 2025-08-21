@@ -25,7 +25,7 @@ export default function AttachmentsSection({
   return (
     <View>
       <View style={styles.sectionLabelContainer}>
-        <Text variant="labelLarge" style={styles.sectionLabel}>
+        <Text variant="labelLarge" style={[styles.sectionLabel, { color: theme.colors.primary }]}>
           Attachments
         </Text>
 

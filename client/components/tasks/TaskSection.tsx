@@ -4,6 +4,7 @@ import { List } from "react-native-paper";
 import { SPACING } from "@/theme/ThemeProvider";
 import { TaskWithClient } from "@/types";
 import TaskItem from "./TaskItem";
+import { theme } from "@/theme/Theme";
 
 interface TaskSectionProps {
   title: string;
@@ -33,7 +34,7 @@ const TaskSection: React.FC<TaskSectionProps> = ({
   return (
     <List.Accordion
       title={`${title} (${tasks.length})`}
-      titleStyle={styles.title}
+      titleStyle={[styles.title, { color: theme.colors.primary }]}
       expanded={expanded}
       onPress={() => setExpanded(!expanded)}>
       <View>

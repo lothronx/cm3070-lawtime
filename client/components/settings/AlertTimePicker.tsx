@@ -56,7 +56,7 @@ const AlertTimePicker: React.FC<AlertTimePickerProps> = ({
         },
       ]}
       elevation={1}>
-      <Text style={[styles.sectionTitle, { color: theme.colors.onSurface }]}>
+      <Text style={[styles.sectionTitle, { color: theme.colors.primary }]}>
         Notification Preferences
       </Text>
 

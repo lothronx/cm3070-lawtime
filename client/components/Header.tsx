@@ -76,7 +76,7 @@ const Header: React.FC<HeaderProps> = ({ title, variant, stackIndex, stackTotal 
       ]}>
       <View style={styles.row}>
         <View style={styles.leftGroup}>
-          <Text style={[styles.title, { color: theme.colors.onSurface }]}>{title}</Text>
+          <Text style={[styles.title, { color: theme.colors.primary }]}>{title}</Text>
           {showStack && (
             <View style={[styles.stackBadge, { backgroundColor: theme.colors.secondary }]}>
               <Text style={[styles.stackText, { color: theme.colors.onSecondary }]}>
@@ -96,7 +96,7 @@ const Header: React.FC<HeaderProps> = ({ title, variant, stackIndex, stackTotal 
               press.value = withTiming(0, { duration: 100 });
             }}
             style={styles.pressableFill}>
-            <Ionicons name={rightIconName} size={rightIconSize} color={theme.colors.onSurface} />
+            <Ionicons name={rightIconName} size={rightIconSize} color={theme.colors.primary} />
           </Pressable>
         </Animated.View>
       </View>

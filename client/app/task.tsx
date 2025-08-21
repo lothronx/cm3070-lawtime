@@ -299,7 +299,9 @@ export default function Task() {
           contentInsetAdjustmentBehavior="automatic">
           {/* Essential Information Section */}
           <View style={styles.formSection}>
-            <Text variant="labelLarge" style={styles.sectionLabel}>
+            <Text
+              variant="labelLarge"
+              style={[styles.sectionLabel, { color: theme.colors.primary }]}>
               Task Information
             </Text>
 
@@ -313,7 +315,9 @@ export default function Task() {
 
           {/* Schedule Section */}
           <View style={styles.formSection}>
-            <Text variant="labelLarge" style={styles.sectionLabel}>
+            <Text
+              variant="labelLarge"
+              style={[styles.sectionLabel, { color: theme.colors.primary }]}>
               Time & Location
             </Text>
 
@@ -324,7 +328,9 @@ export default function Task() {
 
           {/* Details Section */}
           <View style={styles.formSection}>
-            <Text variant="labelLarge" style={styles.sectionLabel}>
+            <Text
+              variant="labelLarge"
+              style={[styles.sectionLabel, { color: theme.colors.primary }]}>
               Additional Details
             </Text>
 

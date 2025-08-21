@@ -35,7 +35,7 @@ export default function TermsAndConditionsCheckbox({
         size={14}
       />
       <View style={styles.termsTextContainer}>
-        <Text style={[styles.checkboxText, { color: theme.colors.onSurface }]}>
+        <Text style={[styles.checkboxText, { color: theme.colors.primary }]}>
           I accept the{" "}
         </Text>
         <TouchableOpacity onPress={handleTermsPress}>
@@ -43,7 +43,7 @@ export default function TermsAndConditionsCheckbox({
             Terms of Service
           </Text>
         </TouchableOpacity>
-        <Text style={[styles.checkboxText, { color: theme.colors.onSurface }]}>
+        <Text style={[styles.checkboxText, { color: theme.colors.primary }]}>
           {" "}
           and{" "}
         </Text>
@@ -52,7 +52,7 @@ export default function TermsAndConditionsCheckbox({
             Privacy Policy
           </Text>
         </TouchableOpacity>
-        <Text style={[styles.checkboxText, { color: theme.colors.onSurface }]}>
+        <Text style={[styles.checkboxText, { color: theme.colors.primary }]}>
           .
         </Text>
       </View>
