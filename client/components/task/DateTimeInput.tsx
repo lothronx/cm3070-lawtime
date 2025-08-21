@@ -57,6 +57,40 @@ const DateTimeInput: React.FC<DateTimeInputProps> = ({ control, name, error }) =
     },
   });
 
+  // Update form value whenever date or time changes
+  const updateFormValue = useCallback(
+    (currentDateValue: string, currentTimeValue: string) => {
+      try {
+        // If both fields are empty, set form value to null
+        if (!currentDateValue && !currentTimeValue) {
+          onChange(null);
+          return;
+        }
+
+        // If only date is provided, create ISO string with time as 09:00 (9am)
+        if (currentDateValue && !currentTimeValue) {
+          const isoString = DateTimeUtils.formatUserInputToISO(currentDateValue, "0900");
+          onChange(isoString);
+          return;
+        }
+
+        // If both date and time are provided, combine them
+        if (currentDateValue && currentTimeValue) {
+          const isoString = DateTimeUtils.formatUserInputToISO(currentDateValue, currentTimeValue);
+          onChange(isoString);
+          return;
+        }
+
+        // If only time is provided without date, don't update form (invalid state)
+        // This maintains the existing form value
+      } catch (error) {
+        console.warn("DateTimeInput: Error updating form value", error);
+        onChange(null);
+      }
+    },
+    [onChange]
+  );
+
   // Centralized blur handler to avoid code duplication
   const handleFieldBlur = useCallback(
     (field: "date" | "time") => {
@@ -73,6 +107,17 @@ const DateTimeInput: React.FC<DateTimeInputProps> = ({ control, name, error }) =
             setTimeDisplayValue(timeStr);
           }
         }
+
+        // Update form value after normalization using the current state
+        const currentDate =
+          field === "date" && dateDisplayValue
+            ? DateTimeUtils.parseDate(dateDisplayValue) || dateDisplayValue
+            : dateDisplayValue;
+        const currentTime =
+          field === "time" && timeDisplayValue
+            ? DateTimeUtils.parseTime(timeDisplayValue) || timeDisplayValue
+            : timeDisplayValue;
+        updateFormValue(currentDate, currentTime);
       } catch (error) {
         console.warn("DateTimeInput: Error processing field blur", error);
         onChange(null);
@@ -80,23 +125,25 @@ const DateTimeInput: React.FC<DateTimeInputProps> = ({ control, name, error }) =
         onBlur();
       }
     },
-    [dateDisplayValue, timeDisplayValue, onChange, onBlur]
+    [dateDisplayValue, timeDisplayValue, onChange, onBlur, updateFormValue]
   );
 
   const hasError = Boolean(error);
 
-  // Initialize display values from form value (ISO string)
+  // Initialize display values from form value (ISO string) - only on initial load
+  const [initialized, setInitialized] = useState(false);
   useEffect(() => {
-    if (value && DateTimeUtils.isValidISOString(value)) {
-      // Only set display values if they're empty (initial load)
-      setDateDisplayValue((prev) => prev || DateTimeUtils.extractDateFromISO(value));
-      setTimeDisplayValue((prev) => prev || DateTimeUtils.extractTimeFromISO(value));
-    } else if (value === null) {
-      // If form value is explicitly null, clear both display values
-      setDateDisplayValue("");
-      setTimeDisplayValue("");
+    if (!initialized) {
+      if (value && DateTimeUtils.isValidISOString(value)) {
+        setDateDisplayValue(DateTimeUtils.extractDateFromISO(value));
+        setTimeDisplayValue(DateTimeUtils.extractTimeFromISO(value));
+      } else {
+        setDateDisplayValue("");
+        setTimeDisplayValue("");
+      }
+      setInitialized(true);
     }
-  }, [value]);
+  }, [value, initialized]);
 
   return (
     <View style={styles.container}>
@@ -110,6 +157,14 @@ const DateTimeInput: React.FC<DateTimeInputProps> = ({ control, name, error }) =
             onChangeText={(text) => {
               const formatted = DateTimeUtils.formatDateInput(text);
               setDateDisplayValue(formatted);
+              
+              // If date is cleared, also clear the time field
+              if (!formatted) {
+                setTimeDisplayValue("");
+                updateFormValue("", "");
+              } else {
+                updateFormValue(formatted, timeDisplayValue);
+              }
             }}
             onBlur={() => handleFieldBlur("date")}
             mode="outlined"
@@ -132,9 +187,11 @@ const DateTimeInput: React.FC<DateTimeInputProps> = ({ control, name, error }) =
             placeholder="1400"
             placeholderTextColor={theme.colors.backdrop}
             value={timeDisplayValue}
+            disabled={!dateDisplayValue}
             onChangeText={(text) => {
               const formatted = DateTimeUtils.formatTimeInput(text);
               setTimeDisplayValue(formatted);
+              updateFormValue(dateDisplayValue, formatted);
             }}
             onBlur={() => handleFieldBlur("time")}
             mode="outlined"
@@ -146,7 +203,11 @@ const DateTimeInput: React.FC<DateTimeInputProps> = ({ control, name, error }) =
             autoCorrect={false}
             style={{ backgroundColor: theme.colors.surface }}
             accessibilityLabel="Time input field"
-            accessibilityHint="Enter time in 24-hour format, for example 1400 for 2 PM"
+            accessibilityHint={
+              dateDisplayValue
+                ? "Enter time in 24-hour format, for example 1400 for 2 PM"
+                : "Please enter a date first to enable time input"
+            }
           />
         </View>
       </View>
