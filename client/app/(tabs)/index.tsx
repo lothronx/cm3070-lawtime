@@ -183,8 +183,8 @@ export default function Calendar() {
 
         <ScrollView
           style={styles.tasksList}
-          contentContainerStyle={[styles.tasksContent, { marginBottom: insets.bottom }]}
-          showsVerticalScrollIndicator={false}>
+          contentContainerStyle={[styles.tasksContent, { paddingBottom: insets.bottom + 90 }]}
+          showsVerticalScrollIndicator={true}>
           {selectedDateTasks.length > 0 ? (
             <View style={styles.tasksContainer}>
               <Text
@@ -261,7 +261,7 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   tasksContent: {
-    flex: 1,
+    flexGrow: 1,
   },
   tasksContainer: {
     paddingTop: SPACING.md,
@@ -273,10 +273,10 @@ const styles = StyleSheet.create({
   },
   emptyState: {
     flex: 1,
-    justifyContent: "center",
+    justifyContent: "flex-start",
     alignItems: "center",
     paddingHorizontal: SPACING.xl,
-    paddingBottom: SPACING.xl * 4,
+    paddingTop: SPACING.xxl,
   },
   emptyTitle: {
     textAlign: "center",
