@@ -117,7 +117,6 @@ export default function Tasks() {
         <TaskSection
           title="Unscheduled"
           tasks={unscheduledTasks}
-          color={theme.colors.secondary}
           onToggleComplete={handleToggleComplete}
           onEdit={handleTaskEdit}
           onDelete={handleDeleteTask}
@@ -127,7 +126,6 @@ export default function Tasks() {
         <TaskSection
           title="Upcoming"
           tasks={upcomingTasks}
-          color={theme.colors.primary}
           onToggleComplete={handleToggleComplete}
           onEdit={handleTaskEdit}
           onDelete={handleDeleteTask}
@@ -137,7 +135,6 @@ export default function Tasks() {
         <TaskSection
           title="Completed"
           tasks={completedTasks}
-          color={theme.colors.onSurfaceDisabled}
           defaultExpanded={false}
           onToggleComplete={handleToggleComplete}
           onEdit={handleTaskEdit}

@@ -1,15 +1,13 @@
 import React, { useState } from "react";
 import { View, StyleSheet } from "react-native";
 import { List } from "react-native-paper";
-import { SPACING } from "@/theme/ThemeProvider";
+import { useAppTheme, SPACING } from "@/theme/ThemeProvider";
 import { TaskWithClient } from "@/types";
 import TaskItem from "./TaskItem";
-import { theme } from "@/theme/Theme";
 
 interface TaskSectionProps {
   title: string;
   tasks: TaskWithClient[];
-  color: string;
   defaultExpanded?: boolean;
   onToggleComplete: (taskId: number, completedAt: string | null) => void;
   onEdit: (task: TaskWithClient) => void;
@@ -19,17 +17,42 @@ interface TaskSectionProps {
 const TaskSection: React.FC<TaskSectionProps> = ({
   title,
   tasks,
-  color,
   defaultExpanded = true,
   onToggleComplete,
   onEdit,
   onDelete,
 }) => {
+  const { theme } = useAppTheme();
   const [expanded, setExpanded] = useState(defaultExpanded);
 
   if (tasks.length === 0) {
     return null;
   }
+
+  // Function to get task color - handles all color logic internally
+  const getTaskColor = (task: TaskWithClient) => {
+    // Completed tasks are always muted
+    if (task.completed_at) {
+      return theme.colors.onSurfaceDisabled;
+    }
+    
+    // Overdue tasks are always red
+    if (task.event_time && new Date(task.event_time) < new Date()) {
+      return theme.colors.error;
+    }
+    
+    // Default colors based on section type
+    switch (title) {
+      case "Unscheduled":
+        return theme.colors.secondary;
+      case "Upcoming":
+        return theme.colors.primary;
+      case "Completed":
+        return theme.colors.onSurfaceDisabled;
+      default:
+        return theme.colors.primary;
+    }
+  };
 
   return (
     <List.Accordion
@@ -42,7 +65,7 @@ const TaskSection: React.FC<TaskSectionProps> = ({
           <TaskItem
             key={task.id}
             task={task}
-            color={color}
+            color={getTaskColor(task)}
             onToggleComplete={onToggleComplete}
             onEdit={onEdit}
             onDelete={onDelete}
