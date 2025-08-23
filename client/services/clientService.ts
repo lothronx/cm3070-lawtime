@@ -6,6 +6,7 @@
 
 import { supabase } from '@/utils/supabase';
 import { DbClient } from '@/types';
+import { useAuthStore } from '@/stores/useAuthStore';
 
 export const clientService = {
   /**
@@ -33,16 +34,24 @@ export const clientService = {
    * @returns Promise<DbClient> - The created client object
    */
   async createClient(clientName: string): Promise<DbClient> {
+    // Get current authenticated user from auth store
+    const { session } = useAuthStore.getState();
+
+    if (!session?.user) {
+      throw new Error('Authentication required. Please log in again.');
+    }
+
     // Validate and sanitize input
     const trimmedName = clientName.trim();
     if (!trimmedName) {
       throw new Error('Client name cannot be empty');
     }
 
-    // Create new client - RLS policies automatically set user_id
+    // Create new client with explicit user_id
     const { data, error } = await supabase
       .from('clients')
       .insert({
+        user_id: session.user.id,
         client_name: trimmedName,
       })
       .select()
@@ -50,32 +59,6 @@ export const clientService = {
 
     if (error) {
       throw new Error(`Failed to create client: ${error.message}`);
-    }
-
-    return data;
-  },
-
-  /**
-   * Find a client by exact name match (case-insensitive)
-   * Useful for client resolution during task creation
-   * @param clientName - Name to search for
-   * @returns Promise<DbClient | null> - Found client or null
-   */
-  async findClientByName(clientName: string): Promise<DbClient | null> {
-    if (!clientName?.trim()) {
-      return null;
-    }
-
-    // Case-insensitive search using ILIKE
-    const { data, error } = await supabase
-      .from('clients')
-      .select('*')
-      .ilike('client_name', clientName.trim())
-      .limit(1)
-      .maybeSingle(); // Returns null if no match, single record if found
-
-    if (error) {
-      throw new Error(`Failed to find client: ${error.message}`);
     }
 
     return data;

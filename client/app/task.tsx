@@ -17,7 +17,6 @@ import DeleteButton from "@/components/task/DeleteButton";
 import { useAppTheme, SPACING } from "@/theme/ThemeProvider";
 import { TaskWithClient, TaskFile } from "@/types";
 import { useTasks } from "@/hooks/useTasks";
-import { taskService } from "@/services/taskService";
 
 export default function Task() {
   const { theme } = useAppTheme();
@@ -30,10 +29,15 @@ export default function Task() {
   }>();
   const [snackbarVisible, setSnackbarVisible] = useState(false);
   const [snackbarMessage, setSnackbarMessage] = useState("");
-  const [isLoading, setIsLoading] = useState(false);
 
-  // Use the tasks hook for cache invalidation
-  const { refetch: refetchTasks } = useTasks();
+  // Use the tasks hook for all task operations with proper cache invalidation
+  const { 
+    createTask, 
+    updateTask, 
+    deleteTask,
+    getTaskById,
+    isLoading: tasksLoading
+  } = useTasks();
 
   // Refs for scroll control
   const scrollViewRef = useRef<ScrollView>(null);
@@ -101,49 +105,44 @@ export default function Task() {
     mode: "onBlur", // Only validate after user leaves field
   });
 
-  // Load existing task data for edit mode
+  // Load existing task data for edit mode using cache-first approach
   useEffect(() => {
-    const loadTaskData = async () => {
-      if (isEditMode && taskId) {
-        setIsLoading(true);
-        try {
-          const task = await taskService.getTaskById(parseInt(taskId, 10));
-          if (task) {
-            reset({
-              title: task.title,
-              client_name: task.client_name || "",
-              event_time: task.event_time,
-              location: task.location || "",
-              note: task.note || "",
-            });
-          }
-        } catch (error) {
-          console.error("Failed to load task:", error);
-          setSnackbarMessage("Failed to load task data");
+    if (isEditMode && taskId) {
+      try {
+        const task = getTaskById(parseInt(taskId, 10));
+        if (task) {
+          reset({
+            title: task.title,
+            client_name: task.client_name || "",
+            event_time: task.event_time,
+            location: task.location || "",
+            note: task.note || "",
+          });
+        } else {
+          // Task not found in cache - this shouldn't happen if user navigated from task list
+          console.warn("Task not found in cache:", taskId);
+          setSnackbarMessage("Task not found");
           setSnackbarVisible(true);
-        } finally {
-          setIsLoading(false);
         }
+      } catch (error) {
+        console.error("Failed to load task:", error);
+        setSnackbarMessage("Failed to load task data");
+        setSnackbarVisible(true);
       }
-    };
-
-    loadTaskData();
-  }, [isEditMode, taskId, reset]);
+    }
+  }, [isEditMode, taskId, reset, getTaskById]);
 
   const onSubmit = async (data: TaskWithClient) => {
     console.log("Form submitted:", data);
 
     try {
       if (isEditMode && taskId) {
-        // Update existing task
-        await taskService.updateTask(parseInt(taskId, 10), data);
+        // Update existing task using hook with proper cache invalidation
+        await updateTask(parseInt(taskId, 10), data);
       } else {
-        // Create new task
-        await taskService.createTask(data);
+        // Create new task using hook with proper cache invalidation
+        await createTask(data);
       }
-
-      // Invalidate tasks cache to refresh the tasks list
-      await refetchTasks();
 
       // Success - handle different flow types
       if (isAIFlow) {
@@ -211,10 +210,8 @@ export default function Task() {
     console.log("Deleting task:", taskId);
 
     try {
-      await taskService.deleteTask(parseInt(taskId, 10));
-
-      // Invalidate tasks cache to refresh the tasks list
-      await refetchTasks();
+      // Delete task using hook with proper cache invalidation
+      await deleteTask(parseInt(taskId, 10));
 
       setSnackbarMessage("Task deleted successfully");
       setSnackbarVisible(true);
@@ -285,7 +282,7 @@ export default function Task() {
         stackTotal={isAIFlow ? totalTasks : undefined}
       />
 
-      {isLoading ? (
+      {tasksLoading ? (
         <LoadingComponent message="Loading task data..." />
       ) : (
         <ScrollView

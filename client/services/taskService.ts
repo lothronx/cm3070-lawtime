@@ -5,8 +5,7 @@
  */
 
 import { supabase } from '@/utils/supabase';
-import { TaskInsert, TaskUpdate, TaskWithClient } from '@/types';
-import { clientService } from './clientService';
+import { TaskInsert, TaskWithClient } from '@/types';
 import { useAuthStore } from '@/stores/useAuthStore';
 
 export const taskService = {
@@ -40,8 +39,7 @@ export const taskService = {
 
   /**
    * Create a new task for the current authenticated user
-   * Handles client resolution (find existing or create new)
-   * @param taskData - Task data with client_name for resolution
+   * @param taskData - Task data with resolved client_id
    * @returns Promise<TaskWithClient> - The created task with client information
    */
   async createTask(taskData: TaskWithClient): Promise<TaskWithClient> {
@@ -52,26 +50,10 @@ export const taskService = {
       throw new Error('Authentication required. Please log in again.');
     }
 
-    // Resolve client ID from client name
-    let clientId: number | null = null;
-    
-    if (taskData.client_name?.trim()) {
-      // Try to find existing client first
-      const existingClient = await clientService.findClientByName(taskData.client_name);
-      
-      if (existingClient) {
-        clientId = existingClient.id;
-      } else {
-        // Create new client if not found
-        const newClient = await clientService.createClient(taskData.client_name);
-        clientId = newClient.id;
-      }
-    }
-
     // Prepare task insert data with explicit user_id
     const insertData: TaskInsert = {
       user_id: session.user.id,
-      client_id: clientId,
+      client_id: taskData.client_id || null,
       title: taskData.title,
       event_time: taskData.event_time,
       location: taskData.location || null,
@@ -105,7 +87,7 @@ export const taskService = {
   /**
    * Update an existing task
    * @param taskId - ID of task to update
-   * @param updates - Partial task data to update
+   * @param updates - Partial task data to update (with resolved client_id)
    * @returns Promise<TaskWithClient> - The updated task with client information
    */
   async updateTask(taskId: number, updates: Partial<TaskWithClient>): Promise<TaskWithClient> {
@@ -115,11 +97,8 @@ export const taskService = {
       throw new Error('Authentication required. Please log in again.');
     }
 
-    // Resolve client changes if needed
-    const resolvedClientId = await this._resolveClientForUpdate(updates);
-    
-    // Build final update data
-    const updateData = this._buildUpdateData(updates, resolvedClientId);
+    // Remove client_name from updates (not a database field)
+    const { client_name, ...updateData } = updates;
 
     // Execute update
     const { data, error } = await supabase
@@ -143,57 +122,6 @@ export const taskService = {
       ...data,
       client_name: data.clients?.client_name || null,
     };
-  },
-
-  /**
-   * Helper: Resolve client ID based on update data
-   * @private
-   */
-  async _resolveClientForUpdate(updates: Partial<TaskWithClient>): Promise<number | null | undefined> {
-    // If client_name is explicitly provided, resolve it
-    if (updates.client_name !== undefined) {
-      return updates.client_name?.trim() 
-        ? await this._findOrCreateClient(updates.client_name)
-        : null; // Empty string = clear client
-    }
-    
-    // If client_id is explicitly provided, use it
-    if (updates.client_id !== undefined) {
-      return updates.client_id;
-    }
-    
-    // No client changes requested
-    return undefined;
-  },
-
-  /**
-   * Helper: Find existing client or create new one
-   * @private
-   */
-  async _findOrCreateClient(clientName: string): Promise<number> {
-    const existingClient = await clientService.findClientByName(clientName);
-    if (existingClient) {
-      return existingClient.id;
-    }
-    
-    const newClient = await clientService.createClient(clientName);
-    return newClient.id;
-  },
-
-  /**
-   * Helper: Build final update data object
-   * @private
-   */
-  _buildUpdateData(updates: Partial<TaskWithClient>, clientId: number | null | undefined): TaskUpdate {
-    // Remove client_name (not a database field) and build base update
-    const { client_name, ...baseUpdate } = updates;
-    
-    // Only include client_id if it should be changed
-    if (clientId !== undefined) {
-      return { ...baseUpdate, client_id: clientId };
-    }
-    
-    return baseUpdate;
   },
 
   /**

@@ -6,25 +6,31 @@ import { useAppTheme, SPACING } from "@/theme/ThemeProvider";
 import Header from "@/components/Header";
 import TaskSection from "@/components/tasks/TaskSection";
 import { useTasks } from "@/hooks/useTasks";
-import { taskService } from "@/services/taskService";
 import { TaskWithClient } from "@/types";
 
 export default function Tasks() {
   const { theme } = useAppTheme();
   const router = useRouter();
-  const { tasks, isLoading, isError, error, refetch } = useTasks();
+  const {
+    tasks,
+    isLoading,
+    isError,
+    error,
+    refetch,
+    completeTask,
+    uncompleteTask,
+    deleteTask,
+  } = useTasks();
 
   const handleToggleComplete = async (taskId: number, completedAt: string | null) => {
     try {
       if (completedAt) {
-        // Mark as completed
-        await taskService.completeTask(taskId);
+        // Mark as completed using hook with proper cache invalidation
+        await completeTask(taskId);
       } else {
-        // Mark as incomplete
-        await taskService.uncompleteTask(taskId);
+        // Mark as incomplete using hook with proper cache invalidation
+        await uncompleteTask(taskId);
       }
-      // Refetch tasks to update the UI
-      refetch();
     } catch (err) {
       Alert.alert("Error", "Failed to update task status. Please try again.");
       console.error("Error updating task:", err);
@@ -38,9 +44,8 @@ export default function Tasks() {
 
   const handleDeleteTask = async (taskId: number) => {
     try {
-      await taskService.deleteTask(taskId);
-      // Refetch tasks to update the UI
-      refetch();
+      // Delete task using hook with proper cache invalidation
+      await deleteTask(taskId);
     } catch (err) {
       Alert.alert("Error", "Failed to delete task. Please try again.");
       console.error("Error deleting task:", err);
