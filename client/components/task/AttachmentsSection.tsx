@@ -11,6 +11,7 @@ interface AttachmentsSectionProps {
   onAddAttachment: () => void;
   onPreviewAttachment?: (id: TaskFile['id']) => void;
   loading?: boolean;
+  error?: boolean;
 }
 
 export default function AttachmentsSection({
@@ -19,6 +20,7 @@ export default function AttachmentsSection({
   onAddAttachment,
   onPreviewAttachment,
   loading = false,
+  error = false,
 }: AttachmentsSectionProps) {
   const { theme } = useAppTheme();
 
@@ -46,11 +48,19 @@ export default function AttachmentsSection({
         </Button>
       </View>
 
-      <AttachmentList
-        attachments={attachments}
-        onDeleteAttachment={onDeleteAttachment}
-        onPreviewAttachment={onPreviewAttachment}
-      />
+      {error ? (
+        <View style={[styles.errorContainer, { backgroundColor: theme.colors.errorContainer }]}>
+          <Text variant="bodyMedium" style={{ color: theme.colors.onErrorContainer }}>
+            Failed to load attachments. Pull to refresh or try again.
+          </Text>
+        </View>
+      ) : (
+        <AttachmentList
+          attachments={attachments}
+          onDeleteAttachment={onDeleteAttachment}
+          onPreviewAttachment={onPreviewAttachment}
+        />
+      )}
     </View>
   );
 }
@@ -73,5 +83,10 @@ const styles = StyleSheet.create({
   addButtonLabel: {
     fontWeight: "600",
     letterSpacing: 0.5,
+  },
+  errorContainer: {
+    padding: SPACING.md,
+    borderRadius: BORDER_RADIUS.md,
+    marginTop: SPACING.sm,
   },
 });

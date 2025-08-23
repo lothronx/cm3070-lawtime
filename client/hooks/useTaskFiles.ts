@@ -34,6 +34,48 @@ export const useTaskFiles = (taskId: number | null) => {
     return () => subscription.unsubscribe();
   }, [queryCacheManager]);
 
+  /**
+   * Delete a task file and update cache
+   * @param fileId - ID of the file to delete
+   */
+  const deleteTaskFile = async (fileId: number) => {
+    try {
+      await taskFileService.deleteTaskFile(fileId);
+
+      // Optimistically update the cache by removing the deleted file
+      queryCacheManager.setQueryData(['task-files', taskId], (old: TaskFile[] = []) =>
+        old.filter(file => file.id !== fileId)
+      );
+
+      // Also invalidate to ensure consistency
+      queryCacheManager.invalidateQueries({ queryKey: ['task-files', taskId] });
+    } catch (error) {
+      console.error('Failed to delete task file:', error);
+      // Re-fetch to ensure consistency after error
+      queryCacheManager.invalidateQueries({ queryKey: ['task-files', taskId] });
+      throw error;
+    }
+  };
+
+  /**
+   * Add new task files to the cache after creation
+   * @param newFiles - Array of newly created TaskFile objects
+   */
+  const addTaskFiles = (newFiles: TaskFile[]) => {
+    queryCacheManager.setQueryData(['task-files', taskId], (old: TaskFile[] = []) =>
+      [...old, ...newFiles].sort((a, b) =>
+        new Date(a.created_at || '').getTime() - new Date(b.created_at || '').getTime()
+      )
+    );
+  };
+
+  /**
+   * Invalidate and refetch task files cache
+   */
+  const invalidateTaskFiles = () => {
+    queryCacheManager.invalidateQueries({ queryKey: ['task-files', taskId] });
+  };
+
   return {
     files: taskFilesQuery.data || [], // Array of TaskFile records from database
     isLoading: taskFilesQuery.isLoading,
@@ -41,5 +83,10 @@ export const useTaskFiles = (taskId: number | null) => {
     error: taskFilesQuery.error,
     refetch: taskFilesQuery.refetch,
     isRefetching: taskFilesQuery.isRefetching,
+
+    // Actions
+    deleteTaskFile,
+    addTaskFiles,
+    invalidateTaskFiles,
   };
 };

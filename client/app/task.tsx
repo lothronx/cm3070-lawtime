@@ -15,8 +15,9 @@ import SaveButton from "@/components/task/SaveButton";
 import DiscardButton from "@/components/task/DiscardButton";
 import DeleteButton from "@/components/task/DeleteButton";
 import { useAppTheme, SPACING } from "@/theme/ThemeProvider";
-import { TaskWithClient, TaskFile } from "@/types";
+import { TaskWithClient } from "@/types";
 import { useTasks } from "@/hooks/useTasks";
+import { useTaskFiles } from "@/hooks/useTaskFiles";
 
 export default function Task() {
   const { theme } = useAppTheme();
@@ -31,13 +32,21 @@ export default function Task() {
   const [snackbarMessage, setSnackbarMessage] = useState("");
 
   // Use the tasks hook for all task operations with proper cache invalidation
-  const { 
-    createTask, 
-    updateTask, 
+  const {
+    createTask,
+    updateTask,
     deleteTask,
     tasks,
     isLoading: tasksLoading
   } = useTasks();
+
+  // Use the task files hook for file operations
+  const {
+    files: taskFiles,
+    isLoading: taskFilesLoading,
+    isError: taskFilesError,
+    deleteTaskFile
+  } = useTaskFiles(taskId ? parseInt(taskId, 10) : null);
 
   // Refs for scroll control
   const scrollViewRef = useRef<ScrollView>(null);
@@ -50,43 +59,6 @@ export default function Task() {
   );
   const [totalTasks] = useState(stackTotal ? parseInt(stackTotal, 10) : 1);
 
-  // Mock attachment data - only for edit mode
-  const [attachments, setAttachments] = useState<TaskFile[]>(
-    isEditMode
-      ? [
-          {
-            id: 301,
-            task_id: 5001,
-            user_id: "123e4567-e89b-12d3-a456-426614174000",
-            file_name: "court-notice-p1.jpg",
-            mime_type: "image/jpeg",
-            role: "source",
-            storage_path: "user-id/5001/uuid1.jpg",
-            created_at: "2025-08-17T11:01:00+08:00",
-          },
-          {
-            id: 302,
-            task_id: 5001,
-            user_id: "123e4567-e89b-12d3-a456-426614174000",
-            file_name: "related-exhibit.pdf",
-            mime_type: "application/pdf",
-            role: "attachment",
-            storage_path: "user-id/5001/uuid2.pdf",
-            created_at: "2025-08-18T14:20:00+08:00",
-          },
-          {
-            id: 303,
-            task_id: 5001,
-            user_id: "123e4567-e89b-12d3-a456-426614174000",
-            file_name: "Client-Email.eml",
-            mime_type: "message/rfc822",
-            role: "attachment",
-            storage_path: "user-id/5001/uuid3.eml",
-            created_at: "2025-08-18T16:05:00+08:00",
-          },
-        ]
-      : []
-  );
 
   const {
     control,
@@ -270,12 +242,18 @@ export default function Task() {
     // TODO: Open device file picker
   };
 
-  const handleDeleteAttachment = (id: string | number) => {
+  const handleDeleteAttachment = async (id: string | number) => {
     console.log("Delete attachment:", id);
-    setAttachments((prev) => prev.filter((attachment) => attachment.id !== id));
-    setSnackbarMessage("Attachment deleted");
-    setSnackbarVisible(true);
-    // TODO: Add API call to delete file from storage
+
+    try {
+      await deleteTaskFile(Number(id));
+      setSnackbarMessage("Attachment deleted successfully");
+      setSnackbarVisible(true);
+    } catch (error) {
+      console.error("Failed to delete attachment:", error);
+      setSnackbarMessage("Failed to delete attachment. Please try again.");
+      setSnackbarVisible(true);
+    }
   };
 
   const handlePreviewAttachment = (id: string | number) => {
@@ -352,11 +330,12 @@ export default function Task() {
           </View>
 
           <AttachmentsSection
-            attachments={attachments}
+            attachments={taskFiles}
             onDeleteAttachment={handleDeleteAttachment}
             onAddAttachment={handleAddAttachment}
             onPreviewAttachment={handlePreviewAttachment}
-            loading={isSubmitting}
+            loading={isSubmitting || taskFilesLoading}
+            error={taskFilesError}
           />
 
           <View style={isAIFlow ? styles.buttonRow : styles.buttonSingle}>
