@@ -35,7 +35,7 @@ export default function Task() {
     createTask, 
     updateTask, 
     deleteTask,
-    getTaskById,
+    tasks,
     isLoading: tasksLoading
   } = useTasks();
 
@@ -105,12 +105,23 @@ export default function Task() {
     mode: "onBlur", // Only validate after user leaves field
   });
 
-  // Load existing task data for edit mode using cache-first approach
+  // Load existing task data for edit mode using cache-first approach  
   useEffect(() => {
-    if (isEditMode && taskId) {
+    if (isEditMode && taskId && !tasksLoading) {
       try {
-        const task = getTaskById(parseInt(taskId, 10));
+        // Find task directly from tasks array to avoid function dependency issues
+        const task = tasks.find(t => t.id === parseInt(taskId, 10));
+        console.log("Loading task data:", { taskId, tasks: tasks.length, foundTask: !!task, task });
+        
         if (task) {
+          console.log("Resetting form with task data:", {
+            title: task.title,
+            client_name: task.client_name,
+            event_time: task.event_time,
+            location: task.location,
+            note: task.note,
+          });
+          
           reset({
             title: task.title,
             client_name: task.client_name || "",
@@ -118,19 +129,20 @@ export default function Task() {
             location: task.location || "",
             note: task.note || "",
           });
-        } else {
-          // Task not found in cache - this shouldn't happen if user navigated from task list
-          console.warn("Task not found in cache:", taskId);
+        } else if (tasks.length > 0) {
+          // Tasks are loaded but specific task not found
+          console.warn("Task not found in cache:", taskId, "Available tasks:", tasks.map(t => t.id));
           setSnackbarMessage("Task not found");
           setSnackbarVisible(true);
         }
+        // If tasks.length === 0, we're still waiting for data to load
       } catch (error) {
         console.error("Failed to load task:", error);
         setSnackbarMessage("Failed to load task data");
         setSnackbarVisible(true);
       }
     }
-  }, [isEditMode, taskId, reset, getTaskById]);
+  }, [isEditMode, taskId, tasks, tasksLoading, reset]);
 
   const onSubmit = async (data: TaskWithClient) => {
     console.log("Form submitted:", data);

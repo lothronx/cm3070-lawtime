@@ -130,10 +130,12 @@ const DateTimeInput: React.FC<DateTimeInputProps> = ({ control, name, error }) =
 
   const hasError = Boolean(error);
 
-  // Initialize display values from form value (ISO string) - only on initial load
-  const [initialized, setInitialized] = useState(false);
+  // Initialize display values from form value (ISO string) - react to value changes
+  const [lastProcessedValue, setLastProcessedValue] = useState<string | null>(null);
   useEffect(() => {
-    if (!initialized) {
+    // Only update if the value has actually changed (to avoid infinite loops)
+    if (value !== lastProcessedValue) {
+      console.log("DateTimeInput updating from value:", value);
       if (value && DateTimeUtils.isValidISOString(value)) {
         setDateDisplayValue(DateTimeUtils.extractDateFromISO(value));
         setTimeDisplayValue(DateTimeUtils.extractTimeFromISO(value));
@@ -141,9 +143,9 @@ const DateTimeInput: React.FC<DateTimeInputProps> = ({ control, name, error }) =
         setDateDisplayValue("");
         setTimeDisplayValue("");
       }
-      setInitialized(true);
+      setLastProcessedValue(value);
     }
-  }, [value, initialized]);
+  }, [value, lastProcessedValue]);
 
   return (
     <View style={styles.container}>
