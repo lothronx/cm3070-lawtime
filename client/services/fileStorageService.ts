@@ -1,6 +1,6 @@
 /**
- * File storage service for Supabase Storage operations
- * Handles file uploads, downloads, and storage management
+ * File storage service - Simple CRUD operations for Supabase Storage
+ * No business logic, no retry, no validation - just basic storage operations
  */
 
 import { supabase } from '@/utils/supabase';
@@ -13,263 +13,88 @@ export interface UploadResult {
 
 export const fileStorageService = {
   /**
-   * Upload a single file to temporary storage
-   * @param file File URI and metadata
-   * @param uploadBatchId Unique batch identifier for grouping
-   * @returns Promise<UploadResult> Storage path and public URL
+   * Upload file to temp_uploads bucket
    */
-  async uploadToTempStorage(
-    file: { uri: string; fileName: string; mimeType: string },
-    uploadBatchId: string
-  ): Promise<UploadResult> {
+  async uploadToTemp(file: { uri: string; fileName: string; mimeType: string }, batchId: string): Promise<UploadResult> {
     const { session } = useAuthStore.getState();
-    
-    if (!session?.user) {
-      throw new Error('Authentication required. Please log in again.');
-    }
+    if (!session?.user) throw new Error('Not authenticated');
 
-    const tempPath = `${session.user.id}/temp/${uploadBatchId}/${file.fileName}`;
-    
-    // Convert URI to ArrayBuffer for upload
+    const path = `${session.user.id}/temp/${batchId}/${file.fileName}`;
+
     const response = await fetch(file.uri);
-    if (!response.ok) {
-      throw new Error(`Failed to fetch file: ${response.status} ${response.statusText}`);
-    }
-    
     const arrayBuffer = await response.arrayBuffer();
-    if (arrayBuffer.byteLength === 0) {
-      throw new Error(`File is empty or could not be read: ${file.fileName}`);
-    }
 
-    // Upload to Supabase Storage using ArrayBuffer
     const { error } = await supabase.storage
       .from('temp_uploads')
-      .upload(tempPath, arrayBuffer, {
-        contentType: file.mimeType,
-        upsert: false
-      });
+      .upload(path, arrayBuffer, { contentType: file.mimeType });
 
-    if (error) {
-      throw new Error(`Failed to upload ${file.fileName}: ${error.message}`);
-    }
+    if (error) throw error;
 
-    // Get public URL for temp files (no signing needed for public bucket)
-    const publicUrl = this.retrievePublicUrl(tempPath);
-
-    return { path: tempPath, publicUrl };
+    return {
+      path,
+      publicUrl: supabase.storage.from('temp_uploads').getPublicUrl(path).data.publicUrl
+    };
   },
 
   /**
-   * Upload multiple files to temporary storage
-   * @param files Array of file objects
-   * @param uploadBatchId Unique batch identifier
-   * @returns Promise<UploadResult[]> Array of upload results
+   * Move file from temp to task_files
    */
-  async uploadMultipleToTempStorage(
-    files: { uri: string; fileName: string; mimeType: string }[],
-    uploadBatchId: string
-  ): Promise<UploadResult[]> {
-    const results: UploadResult[] = [];
-    
-    for (const file of files) {
-      const result = await this.uploadToTempStorage(file, uploadBatchId);
-      results.push(result);
-    }
-    
-    return results;
-  },
-
-  /**
-   * Clean up temporary files
-   * @param uploadBatchId Batch to clean up
-   */
-  async cleanupTempFiles(uploadBatchId: string): Promise<void> {
+  async moveToTaskFiles(tempPath: string, taskId: number, fileName: string): Promise<UploadResult> {
     const { session } = useAuthStore.getState();
-    
-    if (!session?.user) {
-      return;
-    }
+    if (!session?.user) throw new Error('Not authenticated');
 
-    try {
-      const tempDir = `${session.user.id}/temp/${uploadBatchId}`;
-      const { data: files, error: listError } = await supabase.storage
-        .from('temp_uploads')
-        .list(tempDir);
+    const permanentPath = `${session.user.id}/${taskId}/${Date.now()}-${fileName}`;
 
-      if (listError || !files || files.length === 0) {
-        return;
-      }
-
-      const filePaths = files.map(file => `${tempDir}/${file.name}`);
-      
-      const { error: deleteError } = await supabase.storage
-        .from('temp_uploads')
-        .remove(filePaths);
-
-      if (deleteError) {
-        console.warn('Failed to clean up temp files:', deleteError.message);
-      }
-    } catch (error) {
-      console.warn('Error during temp file cleanup:', error);
-    }
-  },
-
-  /**
-   * Get public URL for a file in temp storage
-   * @param filePath Path to the file in storage
-   * @param bucket Bucket name (default: 'temp_uploads' for temporary files)
-   * @returns string Public URL for the file
-   */
-  retrievePublicUrl(filePath: string, bucket: string = 'temp_uploads'): string {
-    const { data } = supabase.storage
-      .from(bucket)
-      .getPublicUrl(filePath);
-
-    return data.publicUrl;
-  },
-
-  /**
-   * List files in a user's temp folder
-   */
-  async listTempFiles(uploadBatchId?: string): Promise<any[]> {
-    const { session } = useAuthStore.getState();
-    
-    if (!session?.user) {
-      throw new Error('User not authenticated');
-    }
-    
-    let folderPath = `${session.user.id}/temp`;
-    if (uploadBatchId) {
-      folderPath += `/${uploadBatchId}`;
-    }
-    
-    const { data, error } = await supabase.storage
+    // Download from temp
+    const { data: fileData, error: downloadError } = await supabase.storage
       .from('temp_uploads')
-      .list(folderPath, {
-        limit: 100,
-        sortBy: { column: 'created_at', order: 'desc' }
-      });
+      .download(tempPath);
 
-    if (error) {
-      throw new Error(`Failed to list files: ${error.message}`);
-    }
+    if (downloadError) throw downloadError;
 
-    return data || [];
+    // Upload to permanent
+    const { error: uploadError } = await supabase.storage
+      .from('task_files')
+      .upload(permanentPath, fileData);
+
+    if (uploadError) throw uploadError;
+
+    // Cleanup temp file
+    await supabase.storage.from('temp_uploads').remove([tempPath]);
+
+    return {
+      path: permanentPath,
+      publicUrl: supabase.storage.from('task_files').getPublicUrl(permanentPath).data.publicUrl
+    };
   },
 
   /**
-   * Upload a file to permanent task_files storage
-   * @param file File URI and metadata
-   * @param taskId Task ID for organizing files
-   * @param fileName File name for storage
-   * @returns Promise<UploadResult> Storage path and public URL
+   * Delete from temp_uploads
    */
-  async uploadToTaskFiles(
-    file: { uri: string; fileName: string; mimeType: string },
-    taskId: number,
-    fileName: string
-  ): Promise<UploadResult> {
+  async deleteFromTemp(paths: string[]): Promise<void> {
+    const { error } = await supabase.storage.from('temp_uploads').remove(paths);
+    if (error) throw error;
+  },
+
+  /**
+   * Delete from task_files
+   */
+  async deleteFromTaskFiles(path: string): Promise<void> {
+    const { error } = await supabase.storage.from('task_files').remove([path]);
+    if (error) throw error;
+  },
+
+  /**
+   * List temp files for cleanup
+   */
+  async listTempBatches(): Promise<string[]> {
     const { session } = useAuthStore.getState();
-    
-    if (!session?.user) {
-      throw new Error('Authentication required. Please log in again.');
-    }
+    if (!session?.user) return [];
 
-    const filePath = `${session.user.id}/${taskId}/${fileName}`;
-    
-    // Convert URI to ArrayBuffer for upload
-    const response = await fetch(file.uri);
-    if (!response.ok) {
-      throw new Error(`Failed to fetch file: ${response.status} ${response.statusText}`);
-    }
-    
-    const arrayBuffer = await response.arrayBuffer();
-    if (arrayBuffer.byteLength === 0) {
-      throw new Error(`File is empty or could not be read: ${file.fileName}`);
-    }
+    const { data } = await supabase.storage
+      .from('temp_uploads')
+      .list(`${session.user.id}/temp`);
 
-    // Upload to Supabase Storage using ArrayBuffer
-    const { error } = await supabase.storage
-      .from('task_files')
-      .upload(filePath, arrayBuffer, {
-        contentType: file.mimeType,
-        upsert: false
-      });
-
-    if (error) {
-      throw new Error(`Failed to upload ${file.fileName}: ${error.message}`);
-    }
-
-    // Get public URL (though task_files is private, this gets the URL structure)
-    const publicUrl = this.retrievePublicUrl(filePath, 'task_files');
-
-    return { path: filePath, publicUrl };
-  },
-
-  /**
-   * Download a file from task_files storage
-   * @param filePath Path to the file in storage
-   * @returns Promise<Blob> File content as blob
-   */
-  async downloadFromTaskFiles(filePath: string): Promise<Blob> {
-    const { data, error } = await supabase.storage
-      .from('task_files')
-      .download(filePath);
-
-    if (error) {
-      throw new Error(`Failed to download file: ${error.message}`);
-    }
-
-    if (!data) {
-      throw new Error(`No file data returned for: ${filePath}`);
-    }
-
-    return data;
-  },
-
-  /**
-   * Delete a file from task_files storage
-   * @param filePath Path to the file in storage
-   * @returns Promise<void>
-   */
-  async deleteFromTaskFiles(filePath: string): Promise<void> {
-    const { error } = await supabase.storage
-      .from('task_files')
-      .remove([filePath]);
-
-    if (error) {
-      throw new Error(`Failed to delete file: ${error.message}`);
-    }
-  },
-
-  /**
-   * List files in a user's task folder
-   * @param taskId Optional task ID to filter by
-   * @returns Promise<any[]> Array of file objects
-   */
-  async listTaskFiles(taskId?: number): Promise<any[]> {
-    const { session } = useAuthStore.getState();
-    
-    if (!session?.user) {
-      throw new Error('User not authenticated');
-    }
-    
-    let folderPath = `${session.user.id}`;
-    if (taskId) {
-      folderPath += `/${taskId}`;
-    }
-    
-    const { data, error } = await supabase.storage
-      .from('task_files')
-      .list(folderPath, {
-        limit: 100,
-        sortBy: { column: 'created_at', order: 'desc' }
-      });
-
-    if (error) {
-      throw new Error(`Failed to list task files: ${error.message}`);
-    }
-
-    return data || [];
+    return data?.map(item => item.name) || [];
   },
 };

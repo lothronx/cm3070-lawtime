@@ -32,10 +32,10 @@ export const taskFileService = {
 
   /**
    * Create a new task file record
-   * @param fileData - Task file data to create
+   * @param fileData - Task file data to create (user_id handled internally)
    * @returns Promise<TaskFile> - The created task file object
    */
-  async createTaskFile(fileData: TaskFileInsert): Promise<TaskFile> {
+  async createTaskFile(fileData: Omit<TaskFileInsert, 'user_id'>): Promise<TaskFile> {
     // Get current authenticated user from auth store
     const { session } = useAuthStore.getState();
     
@@ -43,12 +43,11 @@ export const taskFileService = {
       throw new Error('Authentication required. Please log in again.');
     }
 
-    // Create new task file - RLS policies automatically enforce user_id
     const { data, error } = await supabase
       .from('task_files')
       .insert({
         ...fileData,
-        user_id: session.user.id, // Explicitly set user_id for clarity
+        user_id: session.user.id, 
       })
       .select()
       .single();
@@ -86,10 +85,10 @@ export const taskFileService = {
   /**
    * Create multiple task file records in a single batch operation
    * @param taskId - ID of the task to associate files with
-   * @param filesData - Array of task file data to create
+   * @param filesData - Array of task file data to create (user_id handled internally)
    * @returns Promise<TaskFile[]> - Array of created task file objects
    */
-  async createMultipleTaskFiles(taskId: number, filesData: TaskFileInsert[]): Promise<TaskFile[]> {
+  async createMultipleTaskFiles(taskId: number, filesData: Omit<TaskFileInsert, 'user_id' | 'task_id'>[]): Promise<TaskFile[]> {
     // Get current authenticated user from auth store
     const { session } = useAuthStore.getState();
     

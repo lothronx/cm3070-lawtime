@@ -1,92 +1,208 @@
-import { useEffect } from 'react';
-import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { useState, useEffect, useCallback } from 'react';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { taskFileService } from '@/services/taskFileService';
+import { fileStorageService } from '@/services/fileStorageService';
 import { supabase } from '@/utils/supabase';
 import { TaskFile } from '@/types';
+import { generateUploadBatchId, processPickerFile } from '@/utils/fileUploadUtils';
+
+interface TempFile {
+  uri: string;
+  fileName: string;
+  originalName: string;
+  mimeType: string;
+  size: number;
+  path?: string;
+  publicUrl?: string;
+  isUploading?: boolean;
+}
 
 /**
- * Custom hook for fetching and caching task files using TanStack Query
- * Manages file attachments and source documents for tasks
+ * Main business logic hook for task file management
+ * Handles both permanent files and temporary upload workflow
  */
 export const useTaskFiles = (taskId: number | null) => {
-  const queryCacheManager = useQueryClient();
+  const queryClient = useQueryClient();
+  const [tempFiles, setTempFiles] = useState<TempFile[]>([]);
+  const [uploadBatchId] = useState(() => generateUploadBatchId());
+  const [isUploading, setIsUploading] = useState(false);
 
+  // Query for permanent task files
   const taskFilesQuery = useQuery({
     queryKey: ['task-files', taskId],
-    queryFn: () => {
-      if (!taskId) {
-        return Promise.resolve([]);
-      }
-      return taskFileService.getTaskFiles(taskId);
-    },
-    enabled: !!taskId, // Only run query when taskId is provided
+    queryFn: () => taskId ? taskFileService.getTaskFiles(taskId) : [],
+    enabled: !!taskId,
   });
 
-  // Invalidate task files cache when auth state changes
+  // Auth state changes
   useEffect(() => {
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event) => {
       if (event === 'SIGNED_IN' || event === 'SIGNED_OUT' || event === 'TOKEN_REFRESHED') {
-        // Invalidate and refetch task files when auth state changes
-        queryCacheManager.invalidateQueries({ queryKey: ['task-files'] });
+        queryClient.invalidateQueries({ queryKey: ['task-files'] });
       }
     });
 
     return () => subscription.unsubscribe();
-  }, [queryCacheManager]);
+  }, [queryClient]);
 
-  /**
-   * Delete a task file and update cache
-   * @param fileId - ID of the file to delete
-   */
-  const deleteTaskFile = async (fileId: number) => {
+  // Upload to temp storage
+  const uploadToTemp = useCallback(async (files: { uri: string; fileName?: string | null; mimeType?: string | null; fileSize?: number | null }[]) => {
+    if (files.length === 0) return;
+
+    setIsUploading(true);
+    const processedFiles = files.map(processPickerFile);
+
+    // Update UI immediately with uploading state
+    setTempFiles(prev => [...prev, ...processedFiles.map(f => ({ ...f, isUploading: true }))]);
+
     try {
-      await taskFileService.deleteTaskFile(fileId);
+      // Upload files sequentially to avoid overwhelming API
+      for (let i = 0; i < processedFiles.length; i++) {
+        const file = processedFiles[i];
 
-      // Optimistically update the cache by removing the deleted file
-      queryCacheManager.setQueryData(['task-files', taskId], (old: TaskFile[] = []) =>
-        old.filter(file => file.id !== fileId)
+        try {
+          const result = await fileStorageService.uploadToTemp(file, uploadBatchId);
+
+          // Update this specific file's state
+          setTempFiles(prev => prev.map(tf =>
+            tf.fileName === file.fileName ? { ...tf, ...result, isUploading: false } : tf
+          ));
+        } catch (error) {
+          console.error(`Upload failed for ${file.originalName}:`, error);
+
+          // Remove failed file from temp files
+          setTempFiles(prev => prev.filter(tf => tf.fileName !== file.fileName));
+          throw new Error(`Failed to upload ${file.originalName}`);
+        }
+      }
+    } finally {
+      setIsUploading(false);
+    }
+  }, [uploadBatchId]);
+
+  // Move temp files to permanent when saving task
+  const commitTempFiles = useCallback(async (taskId: number): Promise<TaskFile[]> => {
+    if (tempFiles.length === 0) return [];
+
+    const tempFilesToMove = tempFiles.filter(f => !f.isUploading && f.path);
+    if (tempFilesToMove.length === 0) return [];
+
+    const createdFiles: TaskFile[] = [];
+
+    try {
+      // Move files and create DB records
+      for (const tempFile of tempFilesToMove) {
+        if (!tempFile.path) continue;
+
+        // Move file to permanent storage
+        const permanentResult = await fileStorageService.moveToTaskFiles(
+          tempFile.path,
+          taskId,
+          tempFile.originalName
+        );
+
+        // Create database record (user_id handled by service)
+        const dbRecord = await taskFileService.createTaskFile({
+          task_id: taskId,
+          file_name: tempFile.originalName,
+          storage_path: permanentResult.path,
+          mime_type: tempFile.mimeType,
+          role: 'attachment'
+        });
+
+        createdFiles.push(dbRecord);
+      }
+
+      // Clear temp files after successful commit
+      setTempFiles([]);
+
+      // Update cache with new files
+      queryClient.setQueryData(['task-files', taskId], (old: TaskFile[] = []) =>
+        [...old, ...createdFiles]
       );
 
-      // Also invalidate to ensure consistency
-      queryCacheManager.invalidateQueries({ queryKey: ['task-files', taskId] });
+      return createdFiles;
     } catch (error) {
-      console.error('Failed to delete task file:', error);
-      // Re-fetch to ensure consistency after error
-      queryCacheManager.invalidateQueries({ queryKey: ['task-files', taskId] });
+      // Clean up any uploaded temp files on error
+      try {
+        const pathsToClean = tempFilesToMove.map(f => f.path!).filter(Boolean);
+        if (pathsToClean.length > 0) {
+          await fileStorageService.deleteFromTemp(pathsToClean);
+        }
+      } catch (cleanupError) {
+        console.warn('Cleanup failed:', cleanupError);
+      }
+
       throw error;
     }
-  };
+  }, [tempFiles, queryClient]);
 
-  /**
-   * Add new task files to the cache after creation
-   * @param newFiles - Array of newly created TaskFile objects
-   */
-  const addTaskFiles = (newFiles: TaskFile[]) => {
-    queryCacheManager.setQueryData(['task-files', taskId], (old: TaskFile[] = []) =>
-      [...old, ...newFiles].sort((a, b) =>
-        new Date(a.created_at || '').getTime() - new Date(b.created_at || '').getTime()
-      )
-    );
-  };
+  // Delete permanent file
+  const deleteTaskFile = useMutation({
+    mutationFn: async (fileId: number) => {
+      const file = taskFilesQuery.data?.find(f => f.id === fileId);
+      if (!file) throw new Error('File not found');
 
-  /**
-   * Invalidate and refetch task files cache
-   */
-  const invalidateTaskFiles = () => {
-    queryCacheManager.invalidateQueries({ queryKey: ['task-files', taskId] });
-  };
+      await taskFileService.deleteTaskFile(fileId);
+      if (file.storage_path) {
+        await fileStorageService.deleteFromTaskFiles(file.storage_path);
+      }
+    },
+    onSuccess: (_, fileId) => {
+      queryClient.setQueryData(['task-files', taskId], (old: TaskFile[] = []) =>
+        old.filter(f => f.id !== fileId)
+      );
+    },
+    onError: () => {
+      queryClient.invalidateQueries({ queryKey: ['task-files', taskId] });
+    }
+  });
+
+  // Delete temp file
+  const deleteTempFile = useCallback((fileName: string) => {
+    setTempFiles(prev => prev.filter(f => f.fileName !== fileName));
+  }, []);
+
+  // Clear temp files
+  const clearTempFiles = useCallback(async () => {
+    const pathsToClean = tempFiles.map(f => f.path).filter(Boolean) as string[];
+    if (pathsToClean.length > 0) {
+      try {
+        await fileStorageService.deleteFromTemp(pathsToClean);
+      } catch (error) {
+        console.warn('Failed to clean temp files:', error);
+      }
+    }
+    setTempFiles([]);
+  }, [tempFiles]);
+
+  // Combined files for display
+  const allFiles = [
+    ...(taskFilesQuery.data || []).map(f => ({ ...f, isTemporary: false })),
+    ...tempFiles.map(f => ({ ...f, id: 0, isTemporary: true, created_at: new Date().toISOString() }))
+  ];
 
   return {
-    files: taskFilesQuery.data || [], // Array of TaskFile records from database
-    isLoading: taskFilesQuery.isLoading,
+    // Data
+    files: taskFilesQuery.data || [],
+    tempFiles,
+    allFiles, // Combined for display
+
+    // State
+    isLoading: taskFilesQuery.isLoading || isUploading,
     isError: taskFilesQuery.isError,
     error: taskFilesQuery.error,
-    refetch: taskFilesQuery.refetch,
-    isRefetching: taskFilesQuery.isRefetching,
+    isUploading,
+    hasTempFiles: tempFiles.length > 0,
 
     // Actions
-    deleteTaskFile,
-    addTaskFiles,
-    invalidateTaskFiles,
+    uploadToTemp,
+    commitTempFiles,
+    deleteTaskFile: deleteTaskFile.mutate,
+    deleteTempFile,
+    clearTempFiles,
+
+    // Utils
+    refetch: taskFilesQuery.refetch,
   };
 };
