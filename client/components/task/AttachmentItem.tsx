@@ -8,75 +8,84 @@ interface AttachmentItemProps {
   mime_type: string | null;
   onDelete: (id: string | number) => void;
   onPreview?: (id: string | number) => void;
+  isDeleting: boolean;
+  isUploading: boolean;
 }
 
 const getFileIcon = (mimeType: string | null): string => {
   if (!mimeType) return "file";
   if (mimeType.startsWith("image/")) return "image";
+  if (mimeType.startsWith("video/")) return "video";
+  if (mimeType.startsWith("audio/")) return "music";
   if (mimeType === "application/pdf") return "file-pdf-box";
   if (mimeType.startsWith("text/")) return "file-document";
   if (mimeType.includes("word")) return "file-word-box";
   if (mimeType.includes("excel") || mimeType.includes("spreadsheet")) return "file-excel-box";
-  if (mimeType === "message/rfc822") return "email";
   return "file";
 };
 
 const getFileIconColor = (mimeType: string | null, theme: any): string => {
   if (!mimeType) return theme.colors.onSurfaceVariant;
   if (mimeType.startsWith("image/")) return "#4CAF50";
+  if (mimeType.startsWith("video/")) return "#E91E63";
+  if (mimeType.startsWith("audio/")) return "#9C27B0";
   if (mimeType === "application/pdf") return "#F44336";
   if (mimeType.startsWith("text/")) return theme.colors.primary;
   if (mimeType.includes("word")) return "#2196F3";
   if (mimeType.includes("excel") || mimeType.includes("spreadsheet")) return "#4CAF50";
-  if (mimeType === "message/rfc822") return "#FF9800";
   return theme.colors.onSurfaceVariant;
 };
 
 const getUserFriendlyFileType = (mimeType: string | null, fileName: string): string => {
   if (!mimeType) {
-    // Extract extension from filename as fallback
     const ext = fileName.split('.').pop()?.toLowerCase();
     return ext ? `${ext.toUpperCase()} file` : 'Unknown type';
   }
-  
+
   if (mimeType.startsWith("image/")) return "Image";
+  if (mimeType.startsWith("video/")) return "Video";
+  if (mimeType.startsWith("audio/")) return "Audio";
   if (mimeType === "application/pdf") return "PDF document";
   if (mimeType.startsWith("text/")) return "Text file";
   if (mimeType.includes("word")) return "Word document";
   if (mimeType.includes("excel") || mimeType.includes("spreadsheet")) return "Spreadsheet";
-  if (mimeType === "message/rfc822") return "Email";
-  if (mimeType.startsWith("audio/")) return "Audio file";
-  if (mimeType.startsWith("video/")) return "Video file";
-  
-  // Extract file extension as fallback
+
   const ext = fileName.split('.').pop()?.toLowerCase();
   return ext ? `${ext.toUpperCase()} file` : 'Document';
 };
 
-export default function AttachmentItem({
+function AttachmentItem({
   id,
   file_name,
   mime_type,
   onDelete,
   onPreview,
+  isDeleting,
+  isUploading,
 }: AttachmentItemProps) {
   const { theme } = useAppTheme();
 
+  const isDisabled = isUploading || isDeleting;
+
   return (
-    <TouchableOpacity 
-      style={[styles.container, { 
-        backgroundColor: theme.colors.surface,
-      }]}
-      activeOpacity={0.7}
-      onPress={() => onPreview?.(id)}>
+    <TouchableOpacity
+      style={[
+        styles.container,
+        { backgroundColor: theme.colors.surface },
+        isDisabled && { opacity: 0.7 }
+      ]}
+      activeOpacity={isDisabled ? 1 : 0.7}
+      onPress={() => !isDisabled && onPreview?.(id)}
+      disabled={isDisabled}>
+
       <View style={styles.fileInfo}>
-        <View style={[styles.iconContainer, { 
+        <View style={[styles.iconContainer, {
           backgroundColor: getFileIconColor(mime_type, theme) + '20',
         }]}>
           <IconButton
-            icon={getFileIcon(mime_type)}
+            icon={isUploading ? "upload" : getFileIcon(mime_type)}
             size={20}
-            iconColor={getFileIconColor(mime_type, theme)}
+            iconColor={isUploading ? theme.colors.primary : getFileIconColor(mime_type, theme)}
             style={styles.fileIcon}
           />
         </View>
@@ -91,18 +100,22 @@ export default function AttachmentItem({
           <Text
             variant="bodySmall"
             style={[styles.fileType, { color: theme.colors.onSurfaceVariant }]}>
-            {getUserFriendlyFileType(mime_type, file_name)}
+            {isUploading
+              ? "Uploading..."
+              : getUserFriendlyFileType(mime_type, file_name)
+            }
           </Text>
         </View>
       </View>
       <IconButton
-        icon="close"
+        icon={isDeleting ? "loading" : "close"}
         size={20}
         iconColor={theme.colors.error}
-        onPress={() => onDelete(id)}
-        style={styles.deleteButton}
-        accessibilityLabel="Delete attachment"
-        accessibilityHint={`Delete ${file_name}`}
+        onPress={() => !isDeleting && onDelete(id)}
+        style={[styles.deleteButton, isDeleting && { opacity: 0.5 }]}
+        disabled={isDeleting}
+        accessibilityLabel={isDeleting ? "Deleting attachment..." : "Delete attachment"}
+        accessibilityHint={isDeleting ? `Deleting ${file_name}...` : `Delete ${file_name}`}
       />
     </TouchableOpacity>
   );
@@ -158,3 +171,5 @@ const styles = StyleSheet.create({
     height: 44,
   },
 });
+
+export default React.memo(AttachmentItem);

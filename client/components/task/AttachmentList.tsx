@@ -9,12 +9,16 @@ interface AttachmentListProps {
   attachments: Attachment[];
   onDeleteAttachment: (id: string | number) => void;
   onPreviewAttachment?: (id: string | number) => void;
+  isAttachmentDeleting: (id: string | number) => boolean;
+  isAttachmentUploading: (id: string | number) => boolean;
 }
 
 export default function AttachmentList({
   attachments,
   onDeleteAttachment,
   onPreviewAttachment,
+  isAttachmentDeleting,
+  isAttachmentUploading,
 }: AttachmentListProps) {
   const { theme } = useAppTheme();
 
@@ -38,6 +42,8 @@ export default function AttachmentList({
           mime_type={attachment.mime_type}
           onDelete={onDeleteAttachment}
           onPreview={onPreviewAttachment}
+          isDeleting={isAttachmentDeleting(attachment.id)}
+          isUploading={isAttachmentUploading(attachment.id)}
         />
       ))}
     </View>

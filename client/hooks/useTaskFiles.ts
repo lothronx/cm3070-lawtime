@@ -27,6 +27,7 @@ export const useTaskFiles = (taskId: number | null) => {
   const [tempFiles, setTempFiles] = useState<TempFile[]>([]);
   const [uploadBatchId] = useState(() => generateUploadBatchId());
   const [isUploading, setIsUploading] = useState(false);
+  const [deletingIds, setDeletingIds] = useState<Set<string | number>>(new Set());
 
   // Query for permanent task files
   const taskFilesQuery = useQuery({
@@ -144,24 +145,45 @@ export const useTaskFiles = (taskId: number | null) => {
       const file = taskFilesQuery.data?.find(f => f.id === fileId);
       if (!file) throw new Error('File not found');
 
+      setDeletingIds(prev => new Set(prev).add(fileId));
+
       await taskFileService.deleteTaskFile(fileId);
       if (file.storage_path) {
         await fileStorageService.deleteFromTaskFiles(file.storage_path);
       }
     },
     onSuccess: (_, fileId) => {
+      setDeletingIds(prev => {
+        const next = new Set(prev);
+        next.delete(fileId);
+        return next;
+      });
       queryClient.setQueryData(['task-files', taskId], (old: TaskFile[] = []) =>
         old.filter(f => f.id !== fileId)
       );
     },
-    onError: () => {
+    onError: (_, fileId) => {
+      setDeletingIds(prev => {
+        const next = new Set(prev);
+        next.delete(fileId);
+        return next;
+      });
       queryClient.invalidateQueries({ queryKey: ['task-files', taskId] });
     }
   });
 
   // Delete temp file
   const deleteTempFile = useCallback((fileName: string) => {
+    setDeletingIds(prev => new Set(prev).add(fileName));
+
+    // Remove immediately for temp files (instant operation)
     setTempFiles(prev => prev.filter(f => f.fileName !== fileName));
+
+    setDeletingIds(prev => {
+      const next = new Set(prev);
+      next.delete(fileName);
+      return next;
+    });
   }, []);
 
   // Clear temp files
@@ -176,6 +198,25 @@ export const useTaskFiles = (taskId: number | null) => {
     }
     setTempFiles([]);
   }, [tempFiles]);
+
+  // Get preview URL for attachment (business logic in hook)
+  const getPreviewUrl = useCallback(async (attachment: Attachment): Promise<string> => {
+    if (attachment.isTemporary) {
+      // Temp files use public URLs
+      const tempAttachment = attachment as TempAttachment;
+      if (!tempAttachment.publicUrl) {
+        throw new Error('Public URL not available for temporary file');
+      }
+      return tempAttachment.publicUrl;
+    } else {
+      // Permanent files use signed URLs
+      const permAttachment = attachment as PermanentAttachment;
+      if (!permAttachment.storage_path) {
+        throw new Error('Storage path not available for permanent file');
+      }
+      return await fileStorageService.getSignedUrl(permAttachment.storage_path);
+    }
+  }, []);
 
   // Combined files for display - properly typed as Attachment[]
   const allFiles: Attachment[] = [
@@ -202,6 +243,16 @@ export const useTaskFiles = (taskId: number | null) => {
     } as TempAttachment))
   ];
 
+  // Helper functions to check attachment states
+  const isAttachmentDeleting = useCallback((id: string | number) => {
+    return deletingIds.has(id);
+  }, [deletingIds]);
+
+  const isAttachmentUploading = useCallback((id: string | number) => {
+    const tempFile = tempFiles.find(f => f.fileName === id);
+    return tempFile?.isUploading || false;
+  }, [tempFiles]);
+
   return {
     // Data
     files: taskFilesQuery.data || [],
@@ -215,12 +266,17 @@ export const useTaskFiles = (taskId: number | null) => {
     isUploading,
     hasTempFiles: tempFiles.length > 0,
 
+    // Per-attachment state helpers
+    isAttachmentDeleting,
+    isAttachmentUploading,
+
     // Actions
     uploadToTemp,
     commitTempFiles,
     deleteTaskFile: deleteTaskFile.mutate,
     deleteTempFile,
     clearTempFiles,
+    getPreviewUrl,
 
     // Utils
     refetch: taskFilesQuery.refetch,

@@ -12,6 +12,8 @@ interface AttachmentsSectionProps {
   onPreviewAttachment?: (id: string | number) => void;
   loading?: boolean;
   error?: boolean;
+  isAttachmentDeleting: (id: string | number) => boolean;
+  isAttachmentUploading: (id: string | number) => boolean;
 }
 
 export default function AttachmentsSection({
@@ -21,6 +23,8 @@ export default function AttachmentsSection({
   onPreviewAttachment,
   loading = false,
   error = false,
+  isAttachmentDeleting,
+  isAttachmentUploading,
 }: AttachmentsSectionProps) {
   const { theme } = useAppTheme();
 
@@ -59,6 +63,8 @@ export default function AttachmentsSection({
           attachments={attachments}
           onDeleteAttachment={onDeleteAttachment}
           onPreviewAttachment={onPreviewAttachment}
+          isAttachmentDeleting={isAttachmentDeleting}
+          isAttachmentUploading={isAttachmentUploading}
         />
       )}
     </View>

@@ -97,4 +97,18 @@ export const fileStorageService = {
 
     return data?.map(item => item.name) || [];
   },
+
+  /**
+   * Generate signed URL for permanent file access
+   */
+  async getSignedUrl(path: string, expiresIn: number = 3600): Promise<string> {
+    const { data, error } = await supabase.storage
+      .from('task_files')
+      .createSignedUrl(path, expiresIn);
+
+    if (error) throw error;
+
+    return data.signedUrl;
+  },
+
 };

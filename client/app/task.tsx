@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from "react";
-import { View, ScrollView, StyleSheet } from "react-native";
+import { View, ScrollView, StyleSheet, Linking } from "react-native";
 import { Snackbar, Text } from "react-native-paper";
 import { useForm } from "react-hook-form";
 import { useRouter, useLocalSearchParams } from "expo-router";
@@ -12,6 +12,7 @@ import NoteInput from "@/components/task/NoteInput";
 import AttachmentsSection from "@/components/task/AttachmentsSection";
 import * as ImagePicker from 'expo-image-picker';
 import { Alert } from 'react-native';
+import { processAndValidatePickerFile } from '@/utils/fileUploadUtils';
 import DateTimeInput from "@/components/task/DateTimeInput";
 import SaveButton from "@/components/task/SaveButton";
 import DiscardButton from "@/components/task/DiscardButton";
@@ -51,6 +52,9 @@ export default function Task() {
     deleteTaskFile,
     uploadToTemp,
     deleteTempFile,
+    getPreviewUrl,
+    isAttachmentDeleting,
+    isAttachmentUploading,
   } = useTaskFiles(taskId ? parseInt(taskId, 10) : null);
 
   // Refs for scroll control
@@ -268,10 +272,39 @@ export default function Task() {
         return;
       }
 
-      // Upload files to temp storage using useTaskFiles hook
-      await uploadToTemp(result.assets);
+      // Validate and upload files to temp storage
+      const validFiles = [];
+      const invalidFiles = [];
 
-      setSnackbarMessage(`${result.assets.length} photo(s) added successfully`);
+      // Process and validate each file
+      for (const asset of result.assets) {
+        const { file, validation } = processAndValidatePickerFile(asset);
+        if (validation.isValid) {
+          validFiles.push(file);
+        } else {
+          invalidFiles.push({ fileName: asset.fileName || 'unknown', error: validation.error });
+        }
+      }
+
+      // Show validation errors if any
+      if (invalidFiles.length > 0) {
+        const errorMessage = `${invalidFiles.length} file(s) were skipped:\n${invalidFiles.map(f => `• ${f.fileName}: ${f.error}`).join('\n')}`;
+        Alert.alert('File Validation Error', errorMessage, [{ text: 'OK' }]);
+
+        // If no valid files, return early
+        if (validFiles.length === 0) {
+          return;
+        }
+      }
+
+      // Upload valid files
+      await uploadToTemp(validFiles);
+
+      const successMessage = validFiles.length === 1
+        ? '1 photo added successfully'
+        : `${validFiles.length} photos added successfully`;
+
+      setSnackbarMessage(successMessage);
       setSnackbarVisible(true);
 
     } catch (error) {
@@ -287,21 +320,45 @@ export default function Task() {
   const handleDeleteAttachment = async (id: string | number) => {
     console.log("Delete attachment:", id);
 
-    try {
-      // Find the attachment in allFiles to determine its type
-      const attachment = allFiles.find(att => att.id === id);
-      if (!attachment) {
-        console.warn("Attachment not found:", id);
-        return;
-      }
+    // Find the attachment to get its name for confirmation
+    const attachment = allFiles.find(att => att.id === id);
+    if (!attachment) {
+      console.warn("Attachment not found:", id);
+      setSnackbarMessage("Attachment not found");
+      setSnackbarVisible(true);
+      return;
+    }
 
+    // Show confirmation dialog for permanent files
+    const isPermanent = isPermanentAttachment(attachment);
+    if (isPermanent) {
+      Alert.alert(
+        "Delete Attachment",
+        `Are you sure you want to delete "${attachment.file_name}"? This action cannot be undone.`,
+        [
+          { text: "Cancel", style: "cancel" },
+          {
+            text: "Delete",
+            style: "destructive",
+            onPress: () => performDeleteAttachment(id, attachment)
+          }
+        ]
+      );
+    } else {
+      // Temp files can be deleted without confirmation
+      performDeleteAttachment(id, attachment);
+    }
+  };
+
+  const performDeleteAttachment = async (_id: string | number, attachment: any) => {
+    try {
       if (isTempAttachment(attachment)) {
-        // This is a temporary file - delete from temp storage
+        // This is a temporary file - delete from temp storage (instant)
         deleteTempFile(attachment.fileName);
         setSnackbarMessage("Attachment removed successfully");
         setSnackbarVisible(true);
       } else if (isPermanentAttachment(attachment)) {
-        // This is a permanent file - delete from database and storage
+        // This is a permanent file - delete from database and storage (async)
         await deleteTaskFile(attachment.id);
         setSnackbarMessage("Attachment deleted successfully");
         setSnackbarVisible(true);
@@ -313,11 +370,37 @@ export default function Task() {
     }
   };
 
-  const handlePreviewAttachment = (id: string | number) => {
+  const handlePreviewAttachment = async (id: string | number) => {
     console.log("Preview attachment:", id);
-    setSnackbarMessage("File preview would open here");
-    setSnackbarVisible(true);
-    // TODO: Implement file preview functionality
+
+    try {
+      // Find the attachment in allFiles
+      const attachment = allFiles.find(att => att.id === id);
+      if (!attachment) {
+        console.warn("Attachment not found:", id);
+        setSnackbarMessage("File not found");
+        setSnackbarVisible(true);
+        return;
+      }
+
+      // Get unified preview URL from hook (handles both temp and permanent files)
+      const previewUrl = await getPreviewUrl(attachment);
+
+      console.log("Opening file via URL:", previewUrl);
+
+      // Attempt to open the URL
+      const supported = await Linking.canOpenURL(previewUrl);
+      if (supported) {
+        await Linking.openURL(previewUrl);
+      } else {
+        setSnackbarMessage("Cannot open this file type on your device");
+        setSnackbarVisible(true);
+      }
+    } catch (error) {
+      console.error("Failed to preview attachment:", error);
+      setSnackbarMessage("Failed to open file. Please try again.");
+      setSnackbarVisible(true);
+    }
   };
 
   return (
@@ -393,6 +476,8 @@ export default function Task() {
             onPreviewAttachment={handlePreviewAttachment}
             loading={isSubmitting || taskFilesLoading || isUploading}
             error={taskFilesError}
+            isAttachmentDeleting={isAttachmentDeleting}
+            isAttachmentUploading={isAttachmentUploading}
           />
 
           <View style={isAIFlow ? styles.buttonRow : styles.buttonSingle}>
