@@ -10,12 +10,14 @@ import ClientAutocompleteInput from "@/components/task/ClientAutocompleteInput";
 import LocationInput from "@/components/task/LocationInput";
 import NoteInput from "@/components/task/NoteInput";
 import AttachmentsSection from "@/components/task/AttachmentsSection";
+import * as ImagePicker from 'expo-image-picker';
+import { Alert } from 'react-native';
 import DateTimeInput from "@/components/task/DateTimeInput";
 import SaveButton from "@/components/task/SaveButton";
 import DiscardButton from "@/components/task/DiscardButton";
 import DeleteButton from "@/components/task/DeleteButton";
 import { useAppTheme, SPACING } from "@/theme/ThemeProvider";
-import { TaskWithClient } from "@/types";
+import { TaskWithClient, isPermanentAttachment, isTempAttachment } from "@/types";
 import { useTasks } from "@/hooks/useTasks";
 import { useTaskFiles } from "@/hooks/useTaskFiles";
 
@@ -42,10 +44,13 @@ export default function Task() {
 
   // Use the task files hook for file operations
   const {
-    files: taskFiles,
+    allFiles,
     isLoading: taskFilesLoading,
     isError: taskFilesError,
-    deleteTaskFile
+    isUploading,
+    deleteTaskFile,
+    uploadToTemp,
+    deleteTempFile,
   } = useTaskFiles(taskId ? parseInt(taskId, 10) : null);
 
   // Refs for scroll control
@@ -235,20 +240,72 @@ export default function Task() {
     handleSubmit(onSubmit)();
   };
 
-  const handleAddAttachment = () => {
+  const handleAddAttachment = async () => {
     console.log("Add attachment pressed");
-    setSnackbarMessage("File picker would open here");
-    setSnackbarVisible(true);
-    // TODO: Open device file picker
+
+    try {
+      // Request permission to access media library
+      const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+
+      if (status !== 'granted') {
+        Alert.alert(
+          'Permission Required',
+          'Please grant access to your photo library to add images.',
+          [{ text: 'OK' }]
+        );
+        return;
+      }
+
+      // Launch image picker with multiple selection
+      const result = await ImagePicker.launchImageLibraryAsync({
+        mediaTypes: ["images"],
+        allowsMultipleSelection: true,
+        quality: 0.8,
+        exif: false,
+      });
+
+      if (result.canceled || !result.assets || result.assets.length === 0) {
+        return;
+      }
+
+      // Upload files to temp storage using useTaskFiles hook
+      await uploadToTemp(result.assets);
+
+      setSnackbarMessage(`${result.assets.length} photo(s) added successfully`);
+      setSnackbarVisible(true);
+
+    } catch (error) {
+      console.error('Photo selection error:', error);
+      Alert.alert(
+        'Upload Failed',
+        'Failed to add photos. Please try again.',
+        [{ text: 'OK' }]
+      );
+    }
   };
 
   const handleDeleteAttachment = async (id: string | number) => {
     console.log("Delete attachment:", id);
 
     try {
-      await deleteTaskFile(Number(id));
-      setSnackbarMessage("Attachment deleted successfully");
-      setSnackbarVisible(true);
+      // Find the attachment in allFiles to determine its type
+      const attachment = allFiles.find(att => att.id === id);
+      if (!attachment) {
+        console.warn("Attachment not found:", id);
+        return;
+      }
+
+      if (isTempAttachment(attachment)) {
+        // This is a temporary file - delete from temp storage
+        deleteTempFile(attachment.fileName);
+        setSnackbarMessage("Attachment removed successfully");
+        setSnackbarVisible(true);
+      } else if (isPermanentAttachment(attachment)) {
+        // This is a permanent file - delete from database and storage
+        await deleteTaskFile(attachment.id);
+        setSnackbarMessage("Attachment deleted successfully");
+        setSnackbarVisible(true);
+      }
     } catch (error) {
       console.error("Failed to delete attachment:", error);
       setSnackbarMessage("Failed to delete attachment. Please try again.");
@@ -330,11 +387,11 @@ export default function Task() {
           </View>
 
           <AttachmentsSection
-            attachments={taskFiles}
+            attachments={allFiles}
             onDeleteAttachment={handleDeleteAttachment}
             onAddAttachment={handleAddAttachment}
             onPreviewAttachment={handlePreviewAttachment}
-            loading={isSubmitting || taskFilesLoading}
+            loading={isSubmitting || taskFilesLoading || isUploading}
             error={taskFilesError}
           />
 

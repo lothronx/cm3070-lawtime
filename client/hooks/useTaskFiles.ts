@@ -3,9 +3,10 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { taskFileService } from '@/services/taskFileService';
 import { fileStorageService } from '@/services/fileStorageService';
 import { supabase } from '@/utils/supabase';
-import { TaskFile } from '@/types';
+import { TaskFile, Attachment, PermanentAttachment, TempAttachment } from '@/types';
 import { generateUploadBatchId, processPickerFile } from '@/utils/fileUploadUtils';
 
+// Internal temp file interface for hook state management
 interface TempFile {
   uri: string;
   fileName: string;
@@ -176,10 +177,29 @@ export const useTaskFiles = (taskId: number | null) => {
     setTempFiles([]);
   }, [tempFiles]);
 
-  // Combined files for display
-  const allFiles = [
-    ...(taskFilesQuery.data || []).map(f => ({ ...f, isTemporary: false })),
-    ...tempFiles.map(f => ({ ...f, id: 0, isTemporary: true, created_at: new Date().toISOString() }))
+  // Combined files for display - properly typed as Attachment[]
+  const allFiles: Attachment[] = [
+    // Permanent files
+    ...(taskFilesQuery.data || []).map(f => ({
+      ...f,
+      isTemporary: false as const
+    } as PermanentAttachment)),
+
+    // Temp files
+    ...tempFiles.map(f => ({
+      id: f.fileName, // Use fileName as temp ID
+      file_name: f.originalName, // Display original name to user
+      mime_type: f.mimeType,
+      created_at: new Date().toISOString(),
+      fileName: f.fileName, // Keep for operations
+      originalName: f.originalName,
+      uri: f.uri,
+      size: f.size,
+      path: f.path,
+      publicUrl: f.publicUrl,
+      isUploading: f.isUploading,
+      isTemporary: true as const
+    } as TempAttachment))
   ];
 
   return {

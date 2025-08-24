@@ -3,12 +3,12 @@ import { View, StyleSheet } from "react-native";
 import { Text } from "react-native-paper";
 import { useAppTheme, SPACING } from "@/theme/ThemeProvider";
 import AttachmentItem from "./AttachmentItem";
-import { TaskFile } from "@/types";
+import { Attachment } from "@/types";
 
 interface AttachmentListProps {
-  attachments: TaskFile[];
-  onDeleteAttachment: (id: TaskFile['id']) => void;
-  onPreviewAttachment?: (id: TaskFile['id']) => void;
+  attachments: Attachment[];
+  onDeleteAttachment: (id: string | number) => void;
+  onPreviewAttachment?: (id: string | number) => void;
 }
 
 export default function AttachmentList({
@@ -30,9 +30,9 @@ export default function AttachmentList({
 
   return (
     <View style={styles.container}>
-      {attachments.map((attachment) => (
+      {attachments.map((attachment, index) => (
         <AttachmentItem
-          key={attachment.id}
+          key={`${attachment.isTemporary ? 'temp' : 'perm'}-${attachment.id}`}
           id={attachment.id}
           file_name={attachment.file_name}
           mime_type={attachment.mime_type}

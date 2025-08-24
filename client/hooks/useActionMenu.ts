@@ -4,7 +4,7 @@ import * as ImagePicker from 'expo-image-picker';
 import * as DocumentPicker from 'expo-document-picker';
 import { Alert } from 'react-native';
 import { fileStorageService } from '@/services/fileStorageService';
-import { generateUploadBatchId, extractFileInfo, generateUniqueFileName } from '@/utils/fileUploadUtils';
+import { generateUploadBatchId, processPickerFile, generateUniqueFileName } from '@/utils/fileUploadUtils';
 
 export interface ActionMenuHandlers {
   onPhotoLibrary: () => void;
@@ -63,12 +63,16 @@ export function useActionMenu(): ActionMenuHandlers {
       setIsUploading(true);
       setUploadProgress(`Uploading ${result.assets.length} file(s)...`);
 
-      // Generate batch ID and extract file info
+      // Generate batch ID and process files
       const uploadBatchId = generateUploadBatchId();
-      const files = result.assets.map(extractFileInfo);
+      const files = result.assets.map(processPickerFile);
 
-      // Upload files to temporary storage
-      const uploadResults = await fileStorageService.uploadMultipleToTempStorage(files, uploadBatchId);
+      // Upload files to temporary storage sequentially
+      const uploadResults = [];
+      for (const file of files) {
+        const result = await fileStorageService.uploadToTemp(file, uploadBatchId);
+        uploadResults.push(result);
+      }
       
       setUploadProgress('Processing images...');
 
@@ -80,7 +84,7 @@ export function useActionMenu(): ActionMenuHandlers {
           source: 'ocr',
           uploadBatchId,
           fileCount: files.length.toString(),
-          tempUrls: uploadResults.map(r => r.publicUrl).join(',')
+          tempUrls: uploadResults.map((r: { publicUrl: string }) => r.publicUrl).join(',')
         }
       });
 
@@ -127,12 +131,16 @@ export function useActionMenu(): ActionMenuHandlers {
       setIsUploading(true);
       setUploadProgress('Uploading photo...');
 
-      // Generate batch ID and extract file info
+      // Generate batch ID and process files
       const uploadBatchId = generateUploadBatchId();
-      const files = result.assets.map(extractFileInfo);
+      const files = result.assets.map(processPickerFile);
 
       // Upload file to temporary storage
-      const uploadResults = await fileStorageService.uploadMultipleToTempStorage(files, uploadBatchId);
+      const uploadResults = [];
+      for (const file of files) {
+        const result = await fileStorageService.uploadToTemp(file, uploadBatchId);
+        uploadResults.push(result);
+      }
 
       setUploadProgress('Processing photo...');
 
@@ -181,19 +189,20 @@ export function useActionMenu(): ActionMenuHandlers {
 
       // Generate batch ID and convert document picker results
       const uploadBatchId = generateUploadBatchId();
-      const files = result.assets.map(asset => {
-        const { storageFileName, originalFileName } = generateUniqueFileName(asset.name);
-        return {
-          uri: asset.uri,
-          fileName: storageFileName,
-          mimeType: asset.mimeType || 'application/octet-stream',
-          size: asset.size,
-          originalFileName
-        };
-      });
+      const files = result.assets.map(asset => ({
+        uri: asset.uri,
+        fileName: generateUniqueFileName(asset.name),
+        originalName: asset.name,
+        mimeType: asset.mimeType || 'application/octet-stream',
+        size: asset.size || 0,
+      }));
 
       // Upload files to temporary storage
-      const uploadResults = await fileStorageService.uploadMultipleToTempStorage(files, uploadBatchId);
+      const uploadResults = [];
+      for (const file of files) {
+        const result = await fileStorageService.uploadToTemp(file, uploadBatchId);
+        uploadResults.push(result);
+      }
 
       setUploadProgress('Processing files...');
 
@@ -205,7 +214,7 @@ export function useActionMenu(): ActionMenuHandlers {
           source: 'ocr',
           uploadBatchId,
           fileCount: files.length.toString(),
-          tempUrls: uploadResults.map(r => r.publicUrl).join(',')
+          tempUrls: uploadResults.map((r: { publicUrl: string }) => r.publicUrl).join(',')
         }
       });
 
