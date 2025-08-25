@@ -48,11 +48,12 @@ export const useTaskFiles = (taskId: number | null) => {
   }, [queryClient]);
 
   // Upload to temp storage
-  const uploadToTemp = useCallback(async (files: { uri: string; fileName?: string | null; mimeType?: string | null; fileSize?: number | null }[]) => {
+  const uploadToTemp = useCallback(async (files: { uri: string; fileName: string; originalName: string; mimeType: string; size: number }[]) => {
     if (files.length === 0) return;
 
     setIsUploading(true);
-    const processedFiles = files.map(processPickerFile);
+    // Files are already processed, no need to process again
+    const processedFiles = files;
 
     // Update UI immediately with uploading state
     setTempFiles(prev => [...prev, ...processedFiles.map(f => ({ ...f, isUploading: true }))]);

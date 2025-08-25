@@ -34,7 +34,7 @@ export default function AttachmentList({
 
   return (
     <View style={styles.container}>
-      {attachments.map((attachment, index) => (
+      {attachments.map((attachment) => (
         <AttachmentItem
           key={`${attachment.isTemporary ? 'temp' : 'perm'}-${attachment.id}`}
           id={attachment.id}
