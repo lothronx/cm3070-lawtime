@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from "react";
-import { View, ScrollView, StyleSheet, Linking } from "react-native";
+import { View, ScrollView, StyleSheet, Linking, Alert } from "react-native";
 import { Snackbar, Text } from "react-native-paper";
 import { useForm } from "react-hook-form";
 import { useRouter, useLocalSearchParams } from "expo-router";
@@ -10,15 +10,14 @@ import ClientAutocompleteInput from "@/components/task/ClientAutocompleteInput";
 import LocationInput from "@/components/task/LocationInput";
 import NoteInput from "@/components/task/NoteInput";
 import AttachmentsSection from "@/components/task/AttachmentsSection";
-import * as ImagePicker from 'expo-image-picker';
-import { Alert } from 'react-native';
-import { processAndValidatePickerFile } from '@/utils/fileUploadUtils';
+import * as ImagePicker from "expo-image-picker";
+import { processAndValidatePickerFile } from "@/utils/fileUploadUtils";
 import DateTimeInput from "@/components/task/DateTimeInput";
 import SaveButton from "@/components/task/SaveButton";
 import DiscardButton from "@/components/task/DiscardButton";
 import DeleteButton from "@/components/task/DeleteButton";
 import { useAppTheme, SPACING } from "@/theme/ThemeProvider";
-import { TaskWithClient, isPermanentAttachment, isTempAttachment } from "@/types";
+import { TaskWithClient, isPermanentAttachment } from "@/types";
 import { useTasks } from "@/hooks/useTasks";
 import { useTaskFiles } from "@/hooks/useTaskFiles";
 
@@ -35,26 +34,19 @@ export default function Task() {
   const [snackbarMessage, setSnackbarMessage] = useState("");
 
   // Use the tasks hook for all task operations with proper cache invalidation
-  const {
-    createTask,
-    updateTask,
-    deleteTask,
-    tasks,
-    isLoading: tasksLoading
-  } = useTasks();
+  const { createTask, updateTask, deleteTask, tasks, isLoading: tasksLoading } = useTasks();
 
   // Use the task files hook for file operations
   const {
-    allFiles,
+    attachments,
     isLoading: taskFilesLoading,
-    isError: taskFilesError,
-    isUploading,
-    deleteTaskFile,
-    uploadToTemp,
-    deleteTempFile,
-    getPreviewUrl,
-    isAttachmentDeleting,
-    isAttachmentUploading,
+    error: taskFilesError,
+    uploading,
+    upload,
+    delete: deleteAttachment,
+    preview,
+    isDeleting,
+    isUploading: isAttachmentUploading,
   } = useTaskFiles(taskId ? parseInt(taskId, 10) : null);
 
   // Refs for scroll control
@@ -67,7 +59,6 @@ export default function Task() {
     stackIndex ? parseInt(stackIndex, 10) : 1
   );
   const [totalTasks] = useState(stackTotal ? parseInt(stackTotal, 10) : 1);
-
 
   const {
     control,
@@ -86,14 +77,14 @@ export default function Task() {
     mode: "onBlur", // Only validate after user leaves field
   });
 
-  // Load existing task data for edit mode using cache-first approach  
+  // Load existing task data for edit mode using cache-first approach
   useEffect(() => {
     if (isEditMode && taskId && !tasksLoading) {
       try {
         // Find task directly from tasks array to avoid function dependency issues
-        const task = tasks.find(t => t.id === parseInt(taskId, 10));
+        const task = tasks.find((t) => t.id === parseInt(taskId, 10));
         console.log("Loading task data:", { taskId, tasks: tasks.length, foundTask: !!task, task });
-        
+
         if (task) {
           console.log("Resetting form with task data:", {
             title: task.title,
@@ -102,7 +93,7 @@ export default function Task() {
             location: task.location,
             note: task.note,
           });
-          
+
           reset({
             title: task.title,
             client_name: task.client_name || "",
@@ -112,7 +103,12 @@ export default function Task() {
           });
         } else if (tasks.length > 0) {
           // Tasks are loaded but specific task not found
-          console.warn("Task not found in cache:", taskId, "Available tasks:", tasks.map(t => t.id));
+          console.warn(
+            "Task not found in cache:",
+            taskId,
+            "Available tasks:",
+            tasks.map((t) => t.id)
+          );
           setSnackbarMessage("Task not found");
           setSnackbarVisible(true);
         }
@@ -251,11 +247,11 @@ export default function Task() {
       // Request permission to access media library
       const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
 
-      if (status !== 'granted') {
+      if (status !== "granted") {
         Alert.alert(
-          'Permission Required',
-          'Please grant access to your photo library to add images.',
-          [{ text: 'OK' }]
+          "Permission Required",
+          "Please grant access to your photo library to add images.",
+          [{ text: "OK" }]
         );
         return;
       }
@@ -282,14 +278,16 @@ export default function Task() {
         if (validation.isValid) {
           validFiles.push(file);
         } else {
-          invalidFiles.push({ fileName: asset.fileName || 'unknown', error: validation.error });
+          invalidFiles.push({ fileName: asset.fileName || "unknown", error: validation.error });
         }
       }
 
       // Show validation errors if any
       if (invalidFiles.length > 0) {
-        const errorMessage = `${invalidFiles.length} file(s) were skipped:\n${invalidFiles.map(f => `• ${f.fileName}: ${f.error}`).join('\n')}`;
-        Alert.alert('File Validation Error', errorMessage, [{ text: 'OK' }]);
+        const errorMessage = `${invalidFiles.length} file(s) were skipped:\n${invalidFiles
+          .map((f) => `• ${f.fileName}: ${f.error}`)
+          .join("\n")}`;
+        Alert.alert("File Validation Error", errorMessage, [{ text: "OK" }]);
 
         // If no valid files, return early
         if (validFiles.length === 0) {
@@ -298,22 +296,18 @@ export default function Task() {
       }
 
       // Upload valid files
-      await uploadToTemp(validFiles);
+      await upload(validFiles);
 
-      const successMessage = validFiles.length === 1
-        ? '1 photo added successfully'
-        : `${validFiles.length} photos added successfully`;
+      const successMessage =
+        validFiles.length === 1
+          ? "1 photo added successfully"
+          : `${validFiles.length} photos added successfully`;
 
       setSnackbarMessage(successMessage);
       setSnackbarVisible(true);
-
     } catch (error) {
-      console.error('Photo selection error:', error);
-      Alert.alert(
-        'Upload Failed',
-        'Failed to add photos. Please try again.',
-        [{ text: 'OK' }]
-      );
+      console.error("Photo selection error:", error);
+      Alert.alert("Upload Failed", "Failed to add photos. Please try again.", [{ text: "OK" }]);
     }
   };
 
@@ -321,7 +315,7 @@ export default function Task() {
     console.log("Delete attachment:", id);
 
     // Find the attachment to get its name for confirmation
-    const attachment = allFiles.find(att => att.id === id);
+    const attachment = attachments.find((att) => att.id === id);
     if (!attachment) {
       console.warn("Attachment not found:", id);
       setSnackbarMessage("Attachment not found");
@@ -340,33 +334,13 @@ export default function Task() {
           {
             text: "Delete",
             style: "destructive",
-            onPress: () => performDeleteAttachment(id, attachment)
-          }
+            onPress: () => deleteAttachment(id),
+          },
         ]
       );
     } else {
       // Temp files can be deleted without confirmation
-      performDeleteAttachment(id, attachment);
-    }
-  };
-
-  const performDeleteAttachment = async (_id: string | number, attachment: any) => {
-    try {
-      if (isTempAttachment(attachment)) {
-        // This is a temporary file - delete from temp storage (instant)
-        deleteTempFile(attachment.fileName);
-        setSnackbarMessage("Attachment removed successfully");
-        setSnackbarVisible(true);
-      } else if (isPermanentAttachment(attachment)) {
-        // This is a permanent file - delete from database and storage (async)
-        await deleteTaskFile(attachment.id);
-        setSnackbarMessage("Attachment deleted successfully");
-        setSnackbarVisible(true);
-      }
-    } catch (error) {
-      console.error("Failed to delete attachment:", error);
-      setSnackbarMessage("Failed to delete attachment. Please try again.");
-      setSnackbarVisible(true);
+      deleteAttachment(id);
     }
   };
 
@@ -374,8 +348,8 @@ export default function Task() {
     console.log("Preview attachment:", id);
 
     try {
-      // Find the attachment in allFiles
-      const attachment = allFiles.find(att => att.id === id);
+      // Find the attachment in attachments
+      const attachment = attachments.find((att) => att.id === id);
       if (!attachment) {
         console.warn("Attachment not found:", id);
         setSnackbarMessage("File not found");
@@ -384,7 +358,7 @@ export default function Task() {
       }
 
       // Get unified preview URL from hook (handles both temp and permanent files)
-      const previewUrl = await getPreviewUrl(attachment);
+      const previewUrl = await preview(attachment);
 
       console.log("Opening file via URL:", previewUrl);
 
@@ -470,27 +444,29 @@ export default function Task() {
           </View>
 
           <AttachmentsSection
-            attachments={allFiles}
+            attachments={attachments}
             onDeleteAttachment={handleDeleteAttachment}
             onAddAttachment={handleAddAttachment}
             onPreviewAttachment={handlePreviewAttachment}
-            loading={isSubmitting || taskFilesLoading || isUploading}
-            error={taskFilesError}
-            isAttachmentDeleting={isAttachmentDeleting}
+            loading={isSubmitting || taskFilesLoading || uploading}
+            error={!!taskFilesError}
+            isAttachmentDeleting={isDeleting}
             isAttachmentUploading={isAttachmentUploading}
           />
 
           <View style={isAIFlow ? styles.buttonRow : styles.buttonSingle}>
             <SaveButton
               onPress={handleSavePress}
-              loading={isSubmitting}
+              loading={isSubmitting || uploading}
               title={isEditMode ? "Update" : "Save"}
             />
-            {isAIFlow && <DiscardButton onPress={handleDiscardPress} loading={isSubmitting} />}
+            {isAIFlow && (
+              <DiscardButton onPress={handleDiscardPress} loading={isSubmitting || uploading} />
+            )}
           </View>
           {isEditMode && (
             <View style={styles.deleteButtonContainer}>
-              <DeleteButton onPress={handleDeletePress} loading={isSubmitting} />
+              <DeleteButton onPress={handleDeletePress} loading={isSubmitting || uploading} />
             </View>
           )}
         </ScrollView>

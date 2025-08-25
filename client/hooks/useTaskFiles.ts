@@ -1,10 +1,10 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { taskFileService } from '@/services/taskFileService';
 import { fileStorageService } from '@/services/fileStorageService';
 import { supabase } from '@/utils/supabase';
 import { TaskFile, Attachment, PermanentAttachment, TempAttachment } from '@/types';
-import { generateUploadBatchId, processPickerFile } from '@/utils/fileUploadUtils';
+import { generateUploadBatchId } from '@/utils/fileUploadUtils';
 
 // Internal temp file interface for hook state management
 interface TempFile {
@@ -140,6 +140,31 @@ export const useTaskFiles = (taskId: number | null) => {
     }
   }, [tempFiles, queryClient]);
 
+  // Combined files for display - properly typed as Attachment[]
+  const allFiles: Attachment[] = useMemo(() => [
+    // Permanent files
+    ...(taskFilesQuery.data || []).map(f => ({
+      ...f,
+      isTemporary: false as const
+    } as PermanentAttachment)),
+
+    // Temp files
+    ...tempFiles.map(f => ({
+      id: f.fileName, // Use fileName as temp ID
+      file_name: f.originalName, // Display original name to user
+      mime_type: f.mimeType,
+      created_at: new Date().toISOString(),
+      fileName: f.fileName, // Keep for operations
+      originalName: f.originalName,
+      uri: f.uri,
+      size: f.size,
+      path: f.path,
+      publicUrl: f.publicUrl,
+      isUploading: f.isUploading,
+      isTemporary: true as const
+    } as TempAttachment))
+  ], [taskFilesQuery.data, tempFiles]);
+
   // Delete permanent file
   const deleteTaskFile = useMutation({
     mutationFn: async (fileId: number) => {
@@ -187,6 +212,18 @@ export const useTaskFiles = (taskId: number | null) => {
     });
   }, []);
 
+ // Unified delete action that handles both temp and permanent files
+  const deleteAttachment = useCallback((id: string | number) => {
+    const attachment = allFiles.find(att => att.id === id);
+    if (!attachment) return;
+
+    if (attachment.isTemporary) {
+      deleteTempFile((attachment as TempAttachment).fileName);
+    } else {
+      deleteTaskFile.mutate(id as number);
+    }
+  }, [allFiles, deleteTempFile, deleteTaskFile]);
+
   // Clear temp files
   const clearTempFiles = useCallback(async () => {
     const pathsToClean = tempFiles.map(f => f.path).filter(Boolean) as string[];
@@ -219,31 +256,6 @@ export const useTaskFiles = (taskId: number | null) => {
     }
   }, []);
 
-  // Combined files for display - properly typed as Attachment[]
-  const allFiles: Attachment[] = [
-    // Permanent files
-    ...(taskFilesQuery.data || []).map(f => ({
-      ...f,
-      isTemporary: false as const
-    } as PermanentAttachment)),
-
-    // Temp files
-    ...tempFiles.map(f => ({
-      id: f.fileName, // Use fileName as temp ID
-      file_name: f.originalName, // Display original name to user
-      mime_type: f.mimeType,
-      created_at: new Date().toISOString(),
-      fileName: f.fileName, // Keep for operations
-      originalName: f.originalName,
-      uri: f.uri,
-      size: f.size,
-      path: f.path,
-      publicUrl: f.publicUrl,
-      isUploading: f.isUploading,
-      isTemporary: true as const
-    } as TempAttachment))
-  ];
-
   // Helper functions to check attachment states
   const isAttachmentDeleting = useCallback((id: string | number) => {
     return deletingIds.has(id);
@@ -255,31 +267,26 @@ export const useTaskFiles = (taskId: number | null) => {
   }, [tempFiles]);
 
   return {
-    // Data
-    files: taskFilesQuery.data || [],
-    tempFiles,
-    allFiles, // Combined for display
+    // Core data - single source of truth
+    attachments: allFiles,
 
-    // State
+    // Essential state
     isLoading: taskFilesQuery.isLoading || isUploading,
-    isError: taskFilesQuery.isError,
-    error: taskFilesQuery.error,
-    isUploading,
-    hasTempFiles: tempFiles.length > 0,
+    error: taskFilesQuery.isError ? taskFilesQuery.error : null,
+    uploading: isUploading, // Separate boolean for upload state
 
-    // Per-attachment state helpers
-    isAttachmentDeleting,
-    isAttachmentUploading,
+    // Core actions - simplified method names
+    upload: uploadToTemp,
+    delete: deleteAttachment,
+    preview: getPreviewUrl,
 
-    // Actions
-    uploadToTemp,
-    commitTempFiles,
-    deleteTaskFile: deleteTaskFile.mutate,
-    deleteTempFile,
-    clearTempFiles,
-    getPreviewUrl,
+    // State helpers - consolidated functions
+    isDeleting: isAttachmentDeleting,
+    isUploading: isAttachmentUploading,
 
-    // Utils
+    // Complex operations
+    commitTempFiles: commitTempFiles,
+    clearTempFiles: clearTempFiles,
     refetch: taskFilesQuery.refetch,
   };
 };
