@@ -1,6 +1,6 @@
 /**
- * File storage service - Simple CRUD operations for Supabase Storage
- * No business logic, no retry, no validation - just basic storage operations
+ * File storage service - Single bucket operations with folder-based security
+ * Uses atomic move operations within file_storage bucket for maximum efficiency
  */
 
 import { supabase } from '@/utils/supabase';
@@ -13,74 +13,68 @@ export interface UploadResult {
 
 export const fileStorageService = {
   /**
-   * Upload file to temp_uploads bucket
+   * Upload file to temp/ folder in file_storage bucket
+   * Files in temp/ folder have public read access for AI API processing
    */
   async uploadToTemp(file: { uri: string; fileName: string; mimeType: string }, batchId: string): Promise<UploadResult> {
     const { session } = useAuthStore.getState();
     if (!session?.user) throw new Error('Not authenticated');
 
-    const path = `${session.user.id}/temp/${batchId}/${file.fileName}`;
+    // New path structure: temp/{user_id}/{batch_id}/{filename}
+    const path = `temp/${session.user.id}/${batchId}/${file.fileName}`;
 
     const response = await fetch(file.uri);
     const arrayBuffer = await response.arrayBuffer();
 
     const { error } = await supabase.storage
-      .from('temp_uploads')
+      .from('file_storage')
       .upload(path, arrayBuffer, { contentType: file.mimeType });
 
     if (error) throw error;
 
     return {
       path,
-      publicUrl: supabase.storage.from('temp_uploads').getPublicUrl(path).data.publicUrl
+      publicUrl: supabase.storage.from('file_storage').getPublicUrl(path).data.publicUrl
     };
   },
 
   /**
-   * Move file from temp to task_files
+   * Copy file from temp/ to perm/ folder (preserves temp file)
+   * Uses atomic copy operation within same bucket - no bandwidth overhead!
    */
-  async moveToTaskFiles(tempPath: string, taskId: number, fileName: string): Promise<UploadResult> {
+  async copyToPerm(tempPath: string, taskId: number, fileName: string): Promise<UploadResult> {
     const { session } = useAuthStore.getState();
     if (!session?.user) throw new Error('Not authenticated');
 
-    const permanentPath = `${session.user.id}/${taskId}/${Date.now()}-${fileName}`;
+    // New path structure: perm/{user_id}/{task_id}/{timestamp}-{filename}
+    const permanentPath = `perm/${session.user.id}/${taskId}/${Date.now()}-${fileName}`;
 
-    // Download from temp
-    const { data: fileData, error: downloadError } = await supabase.storage
-      .from('temp_uploads')
-      .download(tempPath);
+    // Atomic copy operation within same bucket - instant metadata update!
+    const { error } = await supabase.storage
+      .from('file_storage')
+      .copy(tempPath, permanentPath);
 
-    if (downloadError) throw downloadError;
-
-    // Upload to permanent
-    const { error: uploadError } = await supabase.storage
-      .from('task_files')
-      .upload(permanentPath, fileData);
-
-    if (uploadError) throw uploadError;
-
-    // Cleanup temp file
-    await supabase.storage.from('temp_uploads').remove([tempPath]);
+    if (error) throw error;
 
     return {
       path: permanentPath,
-      publicUrl: supabase.storage.from('task_files').getPublicUrl(permanentPath).data.publicUrl
+      publicUrl: supabase.storage.from('file_storage').getPublicUrl(permanentPath).data.publicUrl
     };
   },
 
   /**
-   * Delete from temp_uploads
+   * Delete from temp/ folder in file_storage bucket
    */
   async deleteFromTemp(paths: string[]): Promise<void> {
-    const { error } = await supabase.storage.from('temp_uploads').remove(paths);
+    const { error } = await supabase.storage.from('file_storage').remove(paths);
     if (error) throw error;
   },
 
   /**
-   * Delete from task_files
+   * Delete from perm/ folder in file_storage bucket
    */
-  async deleteFromTaskFiles(path: string): Promise<void> {
-    const { error } = await supabase.storage.from('task_files').remove([path]);
+  async deleteFromPerm(path: string): Promise<void> {
+    const { error } = await supabase.storage.from('file_storage').remove([path]);
     if (error) throw error;
   },
 
@@ -92,8 +86,8 @@ export const fileStorageService = {
     if (!session?.user) return [];
 
     const { data } = await supabase.storage
-      .from('temp_uploads')
-      .list(`${session.user.id}/temp`);
+      .from('file_storage')
+      .list(`temp/${session.user.id}`);
 
     return data?.map(item => item.name) || [];
   },
@@ -103,7 +97,7 @@ export const fileStorageService = {
    */
   async getSignedUrl(path: string, expiresIn: number = 3600): Promise<string> {
     const { data, error } = await supabase.storage
-      .from('task_files')
+      .from('file_storage')
       .createSignedUrl(path, expiresIn);
 
     if (error) throw error;

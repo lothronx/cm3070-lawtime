@@ -42,11 +42,14 @@ export default function Task() {
     isLoading: taskFilesLoading,
     error: taskFilesError,
     uploading,
+    committing,
     upload,
     delete: deleteAttachment,
     preview,
     isDeleting,
     isUploading: isAttachmentUploading,
+    commitTempFiles,
+    clearTempFiles,
   } = useTaskFiles(taskId ? parseInt(taskId, 10) : null);
 
   // Refs for scroll control
@@ -121,16 +124,54 @@ export default function Task() {
     }
   }, [isEditMode, taskId, tasks, tasksLoading, reset]);
 
+  // Clean up temp files on component unmount (e.g., navigation away without save)
+  useEffect(() => {
+    return () => {
+      // Only clean up temp files in these cases:
+      // 1. Manual new task (not edit mode AND not AI flow)
+      // 2. AI flow last task (not edit mode AND AI flow last task)
+      // 3. Edit mode (always clear temp files when leaving edit mode)
+      const doNotCleanupOnUnmount = isAIFlow && currentTaskIndex !== totalTasks;
+
+      if (doNotCleanupOnUnmount) {
+        clearTempFiles().catch((error) => {
+          console.warn("Failed to clear temp files on unmount:", error);
+        });
+      }
+    };
+  }, [clearTempFiles, isAIFlow, currentTaskIndex, totalTasks]);
+
   const onSubmit = async (data: TaskWithClient) => {
     console.log("Form submitted:", data);
 
     try {
+      let savedTaskId: number;
+
       if (isEditMode && taskId) {
         // Update existing task using hook with proper cache invalidation
         await updateTask(parseInt(taskId, 10), data);
+        savedTaskId = parseInt(taskId, 10);
       } else {
         // Create new task using hook with proper cache invalidation
-        await createTask(data);
+        const newTask = await createTask(data);
+        savedTaskId = newTask.id;
+      }
+
+      // Commit temp files to permanent storage after successful task save
+      try {
+        // In AI flow, only clear temp files on the last task
+        // In manual entry, always clear temp files
+        const shouldClearTempFiles = !isAIFlow || currentTaskIndex === totalTasks;
+        await commitTempFiles(savedTaskId, shouldClearTempFiles);
+        console.log("Temp files committed successfully for task:", savedTaskId);
+      } catch (fileError) {
+        console.error("File commitment failed:", fileError);
+        // Task was saved but files failed - show warning instead of hard error
+        setSnackbarMessage(
+          "Task saved but some files failed to attach. Please try re-uploading them."
+        );
+        setSnackbarVisible(true);
+        return; // Exit early to show the error message
       }
 
       // Success - handle different flow types
@@ -144,6 +185,13 @@ export default function Task() {
           // TODO: Load next AI-proposed task data
         } else {
           setSnackbarMessage("All tasks saved successfully!");
+          // Clear temp files when completing the entire AI flow
+          try {
+            await clearTempFiles();
+            console.log("Temp files cleared after completing AI flow");
+          } catch (error) {
+            console.warn("Failed to clear temp files after AI flow completion:", error);
+          }
           router.back();
         }
       } else {
@@ -164,8 +212,23 @@ export default function Task() {
     }
   };
 
-  const handleDiscardPress = () => {
+  const handleDiscardPress = async () => {
     console.log("Task discarded");
+
+    // Only clean up temp files in these cases:
+    // 1. Not an AI flow (manual entry)
+    // 2. Last task in AI flow
+    const shouldCleanupTempFiles = !isAIFlow || currentTaskIndex === totalTasks;
+
+    if (shouldCleanupTempFiles) {
+      try {
+        await clearTempFiles();
+        console.log("Temp files cleared on discard");
+      } catch (error) {
+        console.warn("Failed to clear temp files on discard:", error);
+        // Don't block the discard flow for cleanup failures
+      }
+    }
 
     if (isAIFlow) {
       // AI flow: move to next task or finish
@@ -200,7 +263,17 @@ export default function Task() {
 
     try {
       // Delete task using hook with proper cache invalidation
+      // This automatically deletes associated permanent task files via database cascading
       await deleteTask(parseInt(taskId, 10));
+
+      // Clean up any temp files as per business logic requirement
+      try {
+        await clearTempFiles();
+        console.log("Temp files cleared after task deletion");
+      } catch (error) {
+        console.warn("Failed to clear temp files after task deletion:", error);
+        // Don't block the delete flow for temp cleanup failures
+      }
 
       setSnackbarMessage("Task deleted successfully");
       setSnackbarVisible(true);
@@ -448,7 +521,7 @@ export default function Task() {
             onDeleteAttachment={handleDeleteAttachment}
             onAddAttachment={handleAddAttachment}
             onPreviewAttachment={handlePreviewAttachment}
-            loading={isSubmitting || taskFilesLoading || uploading}
+            loading={isSubmitting || taskFilesLoading || uploading || committing}
             error={!!taskFilesError}
             isAttachmentDeleting={isDeleting}
             isAttachmentUploading={isAttachmentUploading}
@@ -457,16 +530,22 @@ export default function Task() {
           <View style={isAIFlow ? styles.buttonRow : styles.buttonSingle}>
             <SaveButton
               onPress={handleSavePress}
-              loading={isSubmitting || uploading}
+              loading={isSubmitting || uploading || committing}
               title={isEditMode ? "Update" : "Save"}
             />
             {isAIFlow && (
-              <DiscardButton onPress={handleDiscardPress} loading={isSubmitting || uploading} />
+              <DiscardButton
+                onPress={handleDiscardPress}
+                loading={isSubmitting || uploading || committing}
+              />
             )}
           </View>
           {isEditMode && (
             <View style={styles.deleteButtonContainer}>
-              <DeleteButton onPress={handleDeletePress} loading={isSubmitting || uploading} />
+              <DeleteButton
+                onPress={handleDeletePress}
+                loading={isSubmitting || uploading || committing}
+              />
             </View>
           )}
         </ScrollView>

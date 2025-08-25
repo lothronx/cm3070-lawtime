@@ -125,18 +125,47 @@ export const taskService = {
   },
 
   /**
-   * Delete a task by ID
+   * Delete a task by ID and all associated files
    * @param taskId - ID of task to delete
    * @returns Promise<void>
    */
   async deleteTask(taskId: number): Promise<void> {
     // Get current authenticated user from auth store
     const { session } = useAuthStore.getState();
-    
+
     if (!session?.user) {
       throw new Error('Authentication required. Please log in again.');
     }
 
+    // First, get all task files to delete them from storage
+    const { data: taskFiles, error: fetchError } = await supabase
+      .from('task_files')
+      .select('storage_path')
+      .eq('task_id', taskId);
+
+    if (fetchError) {
+      throw new Error(`Failed to fetch task files: ${fetchError.message}`);
+    }
+
+    // Delete physical files from storage
+    if (taskFiles && taskFiles.length > 0) {
+      const storagePaths = taskFiles
+        .map(file => file.storage_path)
+        .filter(Boolean) as string[];
+
+      if (storagePaths.length > 0) {
+        const { error: storageError } = await supabase.storage
+          .from('user_files')
+          .remove(storagePaths);
+
+        if (storageError) {
+          console.warn('Failed to delete some storage files:', storageError);
+          // Don't throw here - continue with database deletion even if storage cleanup fails
+        }
+      }
+    }
+
+    // Delete the task (this will cascade delete task_files records due to ON DELETE CASCADE)
     const { error } = await supabase
       .from('tasks')
       .delete()
