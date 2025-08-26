@@ -122,7 +122,7 @@ export default function Task() {
         setSnackbarVisible(true);
       }
     }
-  }, [isEditMode, taskId, tasks, tasksLoading, reset]);
+  }, [isEditMode, taskId, tasks, tasksLoading]);
 
   // Clean up temp files on component unmount (e.g., navigation away without save)
   useEffect(() => {
