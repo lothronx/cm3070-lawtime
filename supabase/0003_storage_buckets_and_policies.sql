@@ -13,7 +13,7 @@
 -- - temp/ folder: Public read access for AI API processing
 -- - perm/ folder: Private access for permanent user files
 INSERT INTO storage.buckets (id, name, public)
-SELECT 'file_storage', 'file_storage', false
+SELECT 'file_storage', 'file_storage', true
 WHERE NOT EXISTS (
     SELECT 1 FROM storage.buckets WHERE id = 'file_storage'
 );
