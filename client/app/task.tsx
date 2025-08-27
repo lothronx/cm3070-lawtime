@@ -32,6 +32,7 @@ export default function Task() {
   }>();
   const [snackbarVisible, setSnackbarVisible] = useState(false);
   const [snackbarMessage, setSnackbarMessage] = useState("");
+  const [hasUploadedFiles, setHasUploadedFiles] = useState(false);
 
   // Use the tasks hook for all task operations with proper cache invalidation
   const { createTask, updateTask, deleteTask, tasks, isLoading: tasksLoading } = useTasks();
@@ -66,7 +67,7 @@ export default function Task() {
   const {
     control,
     handleSubmit,
-    formState: { errors, isSubmitting },
+    formState: { errors, isSubmitting, isDirty },
     trigger,
     reset,
   } = useForm<TaskWithClient>({
@@ -104,6 +105,9 @@ export default function Task() {
             location: task.location || "",
             note: task.note || "",
           });
+
+          // Reset file upload state since we're loading existing data
+          setHasUploadedFiles(false);
         } else if (tasks.length > 0) {
           // Tasks are loaded but specific task not found
           console.warn(
@@ -122,7 +126,7 @@ export default function Task() {
         setSnackbarVisible(true);
       }
     }
-  }, [isEditMode, taskId, tasks, tasksLoading]);
+  }, [isEditMode, taskId, tasks, tasksLoading, reset]);
 
   // Clean up temp files on component unmount (e.g., navigation away without save)
   useEffect(() => {
@@ -173,6 +177,9 @@ export default function Task() {
         setSnackbarVisible(true);
         return; // Exit early to show the error message
       }
+
+      // Clear unsaved changes flags on successful save
+      setHasUploadedFiles(false);
 
       // Success - handle different flow types
       if (isAIFlow) {
@@ -251,6 +258,35 @@ export default function Task() {
     }
 
     setSnackbarVisible(true);
+  };
+
+  const handleCloseWithUnsavedChanges = () => {
+    // Check if there are unsaved changes (form dirty or uploaded files)
+    const hasUnsavedChanges = isDirty || hasUploadedFiles;
+
+    if (hasUnsavedChanges) {
+      Alert.alert(
+        "Unsaved Changes",
+        "You have unsaved changes that will be lost. Are you sure you want to close?",
+        [
+          {
+            text: "Cancel",
+            style: "cancel"
+          },
+          {
+            text: "Close Without Saving",
+            style: "destructive",
+            onPress: () => {
+              // Handle cleanup before closing
+              handleDiscardPress();
+            }
+          }
+        ]
+      );
+    } else {
+      // No unsaved changes, close normally
+      router.back();
+    }
   };
 
   const handleDeletePress = async () => {
@@ -371,6 +407,9 @@ export default function Task() {
       // Upload valid files
       await upload(validFiles);
 
+      // Mark that files have been uploaded (unsaved changes)
+      setHasUploadedFiles(true);
+
       const successMessage =
         validFiles.length === 1
           ? "1 photo added successfully"
@@ -457,6 +496,7 @@ export default function Task() {
         variant="modal"
         stackIndex={isAIFlow ? currentTaskIndex : undefined}
         stackTotal={isAIFlow ? totalTasks : undefined}
+        onClose={handleCloseWithUnsavedChanges}
       />
 
       {tasksLoading ? (

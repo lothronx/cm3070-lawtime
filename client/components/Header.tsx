@@ -18,6 +18,7 @@ interface HeaderProps {
   variant: HeaderVariant;
   stackIndex?: number; // 1-based index
   stackTotal?: number; // total items in stack
+  onClose?: () => void; // Optional custom close handler
 }
 
 /**
@@ -26,7 +27,7 @@ interface HeaderProps {
  * - Task & Settings screens: title left, close icon right.
  * - Task screen can also display a stack indicator (e.g., 1/3) when provided.
  */
-const Header: React.FC<HeaderProps> = ({ title, variant, stackIndex, stackTotal }) => {
+const Header: React.FC<HeaderProps> = ({ title, variant, stackIndex, stackTotal, onClose }) => {
   const insets = useSafeAreaInsets();
   const { theme } = useAppTheme();
   const router = useRouter();
@@ -45,6 +46,9 @@ const Header: React.FC<HeaderProps> = ({ title, variant, stackIndex, stackTotal 
   const handlePress = () => {
     if (isSettingsVariant) {
       router.push("/settings");
+    } else if (onClose) {
+      // Use custom close handler if provided
+      onClose();
     } else {
       // Default behavior: go back
       if (router.canGoBack()) {
