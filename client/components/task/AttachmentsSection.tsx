@@ -1,11 +1,11 @@
 import React from "react";
 import { View, StyleSheet, Linking, Alert } from "react-native";
 import { Text, Button } from "react-native-paper";
-import * as ImagePicker from "expo-image-picker";
 import { useAppTheme, SPACING, BORDER_RADIUS } from "@/theme/ThemeProvider";
-import { processAndValidatePickerFile } from "@/utils/fileUploadUtils";
 import { isPermanentAttachment, TaskFile } from "@/types";
-import { useTaskFiles } from "@/hooks/useTaskFiles";
+import { useTaskFilesData } from "@/hooks/useTaskFilesData";
+import { useFileOperations } from "@/hooks/useFileOperations";
+import { useFilePicker } from "@/hooks/useFilePicker";
 import AttachmentList from "./AttachmentList";
 
 interface AttachmentsSectionProps {
@@ -21,6 +21,14 @@ interface AttachmentsSectionProps {
   }) => void;
 }
 
+/**
+ * Simplified AttachmentsSection focused on UI rendering
+ * Responsibilities:
+ * - Component structure and styling
+ * - Event delegation to hooks
+ * - Error display
+ * - Parent communication
+ */
 export default function AttachmentsSection({
   taskId,
   onFileUpload,
@@ -30,114 +38,62 @@ export default function AttachmentsSection({
 }: AttachmentsSectionProps) {
   const { theme } = useAppTheme();
 
-  // Use the task files hook for file operations
+  // Data layer
+  const {
+    taskFiles,
+    isLoading: dataLoading,
+    isError: dataError,
+    createTaskFiles,
+    deleteTaskFile,
+  } = useTaskFilesData(taskId || null);
+
+  // Business logic layer
   const {
     attachments,
-    isLoading: taskFilesLoading,
-    error: taskFilesError,
-    uploading,
-    committing,
-    upload,
-    delete: deleteAttachment,
-    preview,
-    isDeleting,
-    isUploading: isAttachmentUploading,
+    isUploading,
+    isCommitting,
+    uploadToTemp,
     commitTempFiles,
     clearTempFiles,
-  } = useTaskFiles(taskId || null);
+    deleteAttachment,
+    getPreviewUrl,
+    isAttachmentDeleting,
+    isAttachmentUploading,
+  } = useFileOperations({
+    taskFiles,
+    onCreateTaskFiles: createTaskFiles,
+    onDeleteTaskFile: deleteTaskFile,
+  });
 
-  const loading = externalLoading || taskFilesLoading || uploading || committing;
+  // UI interaction layer
+  const { openImagePicker } = useFilePicker({
+    onFilesSelected: async (files) => {
+      await uploadToTemp(files);
+      onFileUpload?.();
+    },
+    onSuccess: (message) => onSnackbar?.(message),
+    onError: (message) => onSnackbar?.(message),
+  });
+
+  const loading = externalLoading || dataLoading || isUploading || isCommitting;
 
   // Memoize the hooks object to prevent unnecessary re-renders
   const hooksObject = React.useMemo(() => ({
     commitTempFiles,
     clearTempFiles,
-    uploading,
-    committing,
-  }), [commitTempFiles, clearTempFiles, uploading, committing]);
+    uploading: isUploading,
+    committing: isCommitting,
+  }), [commitTempFiles, clearTempFiles, isUploading, isCommitting]);
 
   // Notify parent component when hooks change
   React.useEffect(() => {
     onHooksChange?.(hooksObject);
   }, [hooksObject, onHooksChange]);
 
-  const handleAddAttachment = async () => {
-    console.log("Add attachment pressed");
-
-    try {
-      // Request permission to access media library
-      const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
-
-      if (status !== "granted") {
-        Alert.alert(
-          "Permission Required",
-          "Please grant access to your photo library to add images.",
-          [{ text: "OK" }]
-        );
-        return;
-      }
-
-      // Launch image picker with multiple selection
-      const result = await ImagePicker.launchImageLibraryAsync({
-        mediaTypes: ["images"],
-        allowsMultipleSelection: true,
-        quality: 0.8,
-        exif: false,
-      });
-
-      if (result.canceled || !result.assets || result.assets.length === 0) {
-        return;
-      }
-
-      // Validate and upload files to temp storage
-      const validFiles = [];
-      const invalidFiles = [];
-
-      // Process and validate each file
-      for (const asset of result.assets) {
-        const { file, validation } = processAndValidatePickerFile(asset);
-        if (validation.isValid) {
-          validFiles.push(file);
-        } else {
-          invalidFiles.push({ fileName: asset.fileName || "unknown", error: validation.error });
-        }
-      }
-
-      // Show validation errors if any
-      if (invalidFiles.length > 0) {
-        const errorMessage = `${invalidFiles.length} file(s) were skipped:\n${invalidFiles
-          .map((f) => `• ${f.fileName}: ${f.error}`)
-          .join("\n")}`;
-        Alert.alert("File Validation Error", errorMessage, [{ text: "OK" }]);
-
-        // If no valid files, return early
-        if (validFiles.length === 0) {
-          return;
-        }
-      }
-
-      // Upload valid files
-      await upload(validFiles);
-
-      // Notify parent about file upload
-      onFileUpload?.();
-
-      const successMessage =
-        validFiles.length === 1
-          ? "1 photo added successfully"
-          : `${validFiles.length} photos added successfully`;
-
-      onSnackbar?.(successMessage);
-    } catch (error) {
-      console.error("Photo selection error:", error);
-      Alert.alert("Upload Failed", "Failed to add photos. Please try again.", [{ text: "OK" }]);
-    }
-  };
-
+  // Handle delete with confirmation for permanent files
   const handleDeleteAttachment = async (id: string | number) => {
     console.log("Delete attachment:", id);
 
-    // Find the attachment to get its name for confirmation
     const attachment = attachments.find((att) => att.id === id);
     if (!attachment) {
       console.warn("Attachment not found:", id);
@@ -146,8 +102,7 @@ export default function AttachmentsSection({
     }
 
     // Show confirmation dialog for permanent files
-    const isPermanent = isPermanentAttachment(attachment);
-    if (isPermanent) {
+    if (isPermanentAttachment(attachment)) {
       Alert.alert(
         "Delete Attachment",
         `Are you sure you want to delete "${attachment.file_name}"? This action cannot be undone.`,
@@ -166,11 +121,11 @@ export default function AttachmentsSection({
     }
   };
 
+  // Handle preview
   const handlePreviewAttachment = async (id: string | number) => {
     console.log("Preview attachment:", id);
 
     try {
-      // Find the attachment in attachments
       const attachment = attachments.find((att) => att.id === id);
       if (!attachment) {
         console.warn("Attachment not found:", id);
@@ -178,12 +133,9 @@ export default function AttachmentsSection({
         return;
       }
 
-      // Get unified preview URL from hook (handles both temp and permanent files)
-      const previewUrl = await preview(attachment);
-
+      const previewUrl = await getPreviewUrl(attachment);
       console.log("Opening file via URL:", previewUrl);
 
-      // Attempt to open the URL
       const supported = await Linking.canOpenURL(previewUrl);
       if (supported) {
         await Linking.openURL(previewUrl);
@@ -205,7 +157,7 @@ export default function AttachmentsSection({
 
         <Button
           mode="contained"
-          onPress={handleAddAttachment}
+          onPress={openImagePicker}
           disabled={loading}
           icon="plus"
           compact
@@ -220,7 +172,7 @@ export default function AttachmentsSection({
         </Button>
       </View>
 
-      {taskFilesError ? (
+      {dataError ? (
         <View style={[styles.errorContainer, { backgroundColor: theme.colors.errorContainer }]}>
           <Text variant="bodyMedium" style={{ color: theme.colors.onErrorContainer }}>
             Failed to load attachments. Pull to refresh or try again.
@@ -231,7 +183,7 @@ export default function AttachmentsSection({
           attachments={attachments}
           onDeleteAttachment={handleDeleteAttachment}
           onPreviewAttachment={handlePreviewAttachment}
-          isAttachmentDeleting={isDeleting}
+          isAttachmentDeleting={isAttachmentDeleting}
           isAttachmentUploading={isAttachmentUploading}
         />
       )}
