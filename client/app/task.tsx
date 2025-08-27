@@ -1,22 +1,18 @@
 import React, { useState, useRef, useEffect, useCallback } from "react";
 import { View, ScrollView, StyleSheet, Alert } from "react-native";
-import { Snackbar, Text } from "react-native-paper";
-import { useForm } from "react-hook-form";
+import { Snackbar } from "react-native-paper";
 import { useRouter, useLocalSearchParams } from "expo-router";
 import Header from "@/components/Header";
 import LoadingComponent from "@/components/LoadingComponent";
-import TitleInput from "@/components/task/TitleInput";
-import ClientAutocompleteInput from "@/components/task/ClientAutocompleteInput";
-import LocationInput from "@/components/task/LocationInput";
-import NoteInput from "@/components/task/NoteInput";
+import TaskFormSection from "@/components/task/TaskFormSection";
 import AttachmentsSection from "@/components/task/AttachmentsSection";
-import DateTimeInput from "@/components/task/DateTimeInput";
 import SaveButton from "@/components/task/SaveButton";
 import DiscardButton from "@/components/task/DiscardButton";
 import DeleteButton from "@/components/task/DeleteButton";
 import { useAppTheme, SPACING } from "@/theme/ThemeProvider";
 import { TaskWithClient, TaskFile } from "@/types";
 import { useTasks } from "@/hooks/useTasks";
+import { useTaskLoading } from "@/hooks/useTaskLoading";
 
 export default function Task() {
   const { theme } = useAppTheme();
@@ -33,6 +29,17 @@ export default function Task() {
 
   // Use the tasks hook for all task operations with proper cache invalidation
   const { createTask, updateTask, deleteTask, tasks, isLoading: tasksLoading } = useTasks();
+
+  // Form operations will be handled by TaskFormSection component
+  const [formState, setFormState] = useState<{
+    control: any;
+    handleSubmit: any;
+    errors: any;
+    isSubmitting: boolean;
+    isDirty: boolean;
+    trigger: any;
+    reset: any;
+  } | null>(null);
 
   // Attachment operations will be handled by AttachmentsSection component
   const [attachmentHooks, setAttachmentHooks] = useState<{
@@ -53,86 +60,21 @@ export default function Task() {
   );
   const [totalTasks] = useState(stackTotal ? parseInt(stackTotal, 10) : 1);
 
-  const {
-    control,
-    handleSubmit,
-    formState: { errors, isSubmitting, isDirty },
-    trigger,
-    reset,
-  } = useForm<TaskWithClient>({
-    defaultValues: {
-      title: "",
-      client_name: "",
-      event_time: null,
-      location: null,
-      note: null,
-    },
-    mode: "onBlur", // Only validate after user leaves field
-  });
-
-  // Load existing task data for edit mode using cache-first approach
+  // Clean up temp files on component unmount
   useEffect(() => {
-    if (isEditMode && taskId && !tasksLoading) {
-      try {
-        // Find task directly from tasks array to avoid function dependency issues
-        const task = tasks.find((t) => t.id === parseInt(taskId, 10));
-        console.log("Loading task data:", { taskId, tasks: tasks.length, foundTask: !!task, task });
+    const clearTempFilesRef = attachmentHooks?.clearTempFiles;
 
-        if (task) {
-          console.log("Resetting form with task data:", {
-            title: task.title,
-            client_name: task.client_name,
-            event_time: task.event_time,
-            location: task.location,
-            note: task.note,
-          });
-
-          reset({
-            title: task.title,
-            client_name: task.client_name || "",
-            event_time: task.event_time,
-            location: task.location || "",
-            note: task.note || "",
-          });
-
-          // Reset file upload state since we're loading existing data
-          setHasUploadedFiles(false);
-        } else if (tasks.length > 0) {
-          // Tasks are loaded but specific task not found
-          console.warn(
-            "Task not found in cache:",
-            taskId,
-            "Available tasks:",
-            tasks.map((t) => t.id)
-          );
-          setSnackbarMessage("Task not found");
-          setSnackbarVisible(true);
-        }
-        // If tasks.length === 0, we're still waiting for data to load
-      } catch (error) {
-        console.error("Failed to load task:", error);
-        setSnackbarMessage("Failed to load task data");
-        setSnackbarVisible(true);
-      }
-    }
-  }, [isEditMode, taskId, tasks, tasksLoading, reset]);
-
-  // Clean up temp files on component unmount (e.g., navigation away without save)
-  useEffect(() => {
     return () => {
-      // Only clean up temp files in these cases:
-      // 1. Manual new task (not edit mode AND not AI flow)
-      // 2. AI flow last task (not edit mode AND AI flow last task)
-      // 3. Edit mode (always clear temp files when leaving edit mode)
+      // Do not clean up temp files if there are more AI proposed tasks to handle
       const doNotCleanupOnUnmount = isAIFlow && currentTaskIndex !== totalTasks;
 
-      if (doNotCleanupOnUnmount && attachmentHooks?.clearTempFiles) {
-        attachmentHooks.clearTempFiles().catch((error) => {
+      if (!doNotCleanupOnUnmount && clearTempFilesRef) {
+        clearTempFilesRef().catch((error) => {
           console.warn("Failed to clear temp files on unmount:", error);
         });
       }
     };
-  }, [attachmentHooks, isAIFlow, currentTaskIndex, totalTasks]);
+  }, [isAIFlow, currentTaskIndex, totalTasks]);
 
   const onSubmit = async (data: TaskWithClient) => {
     console.log("Form submitted:", data);
@@ -255,7 +197,7 @@ export default function Task() {
 
   const handleCloseWithUnsavedChanges = () => {
     // Check if there are unsaved changes (form dirty or uploaded files)
-    const hasUnsavedChanges = isDirty || hasUploadedFiles;
+    const hasUnsavedChanges = formState?.isDirty || hasUploadedFiles;
 
     if (hasUnsavedChanges) {
       Alert.alert(
@@ -264,7 +206,7 @@ export default function Task() {
         [
           {
             text: "Cancel",
-            style: "cancel"
+            style: "cancel",
           },
           {
             text: "Close Without Saving",
@@ -272,8 +214,8 @@ export default function Task() {
             onPress: () => {
               // Handle cleanup before closing
               handleDiscardPress();
-            }
-          }
+            },
+          },
         ]
       );
     } else {
@@ -319,21 +261,18 @@ export default function Task() {
     }
   };
 
-  const handleNoteInputFocus = () => {
-    const scrollY = 350;
-    scrollViewRef.current?.scrollTo({
-      y: scrollY,
-      animated: true,
-    });
-  };
-
   const handleSavePress = async () => {
+    if (!formState) {
+      console.warn("Form state not available");
+      return;
+    }
+
     // Trigger validation on all fields
-    const isValid = await trigger();
+    const isValid = await formState.trigger();
 
     if (!isValid) {
       // Show first error message in snackbar
-      const firstError = Object.values(errors)[0];
+      const firstError = Object.values(formState.errors)[0] as any;
       const errorMessage = firstError?.message || "Please fix the errors above";
       setSnackbarMessage(errorMessage);
       setSnackbarVisible(true);
@@ -341,7 +280,7 @@ export default function Task() {
     }
 
     // If valid, submit the form
-    handleSubmit(onSubmit)();
+    formState.handleSubmit(onSubmit)();
   };
 
   // Snackbar handler for child components
@@ -350,15 +289,37 @@ export default function Task() {
     setSnackbarVisible(true);
   };
 
+  // Handler for form state changes from child component
+  const handleFormStateChange = useCallback(
+    (newFormState: {
+      control: any;
+      handleSubmit: any;
+      errors: any;
+      isSubmitting: boolean;
+      isDirty: boolean;
+      trigger: any;
+      reset: any;
+    }) => {
+      setFormState(newFormState);
+    },
+    []
+  );
+
   // Handler for attachment hooks changes from child component
-  const handleAttachmentHooksChange = useCallback((hooks: {
-    commitTempFiles: (taskId: number, clearTempAfterCommit?: boolean) => Promise<TaskFile[]>;
-    clearTempFiles: () => Promise<void>;
-    uploading: boolean;
-    committing: boolean;
-  }) => {
-    setAttachmentHooks(hooks);
-  }, []);
+  const handleAttachmentHooksChange = useCallback(
+    (hooks: {
+      commitTempFiles: (taskId: number, clearTempAfterCommit?: boolean) => Promise<TaskFile[]>;
+      clearTempFiles: () => Promise<void>;
+      uploading: boolean;
+      committing: boolean;
+    }) => {
+      setAttachmentHooks(hooks);
+    },
+    []
+  );
+
+  // Consolidate all loading states using custom hook
+  const { isLoading } = useTaskLoading({ formState, attachmentHooks });
 
   return (
     <View style={[styles.container, { backgroundColor: theme.colors.background }]}>
@@ -382,78 +343,35 @@ export default function Task() {
           keyboardDismissMode="on-drag"
           automaticallyAdjustKeyboardInsets={true}
           contentInsetAdjustmentBehavior="automatic">
-          {/* Essential Information Section */}
-          <View style={styles.formSection}>
-            <Text
-              variant="labelLarge"
-              style={[styles.sectionLabel, { color: theme.colors.primary }]}>
-              Task Information
-            </Text>
-
-            <TitleInput control={control} name="title" error={errors.title} />
-            <ClientAutocompleteInput
-              control={control}
-              name="client_name"
-              error={errors.client_name}
-            />
-          </View>
-
-          {/* Schedule Section */}
-          <View style={styles.formSection}>
-            <Text
-              variant="labelLarge"
-              style={[styles.sectionLabel, { color: theme.colors.primary }]}>
-              Time & Location
-            </Text>
-
-            <DateTimeInput control={control} name="event_time" error={errors.event_time} />
-
-            <LocationInput control={control} name="location" error={errors.location} />
-          </View>
-
-          {/* Details Section */}
-          <View style={styles.formSection}>
-            <Text
-              variant="labelLarge"
-              style={[styles.sectionLabel, { color: theme.colors.primary }]}>
-              Additional Details
-            </Text>
-
-            <NoteInput
-              control={control}
-              name="note"
-              error={errors.note}
-              onFocus={handleNoteInputFocus}
-            />
-          </View>
+          <TaskFormSection
+            taskId={taskId}
+            tasks={tasks}
+            tasksLoading={tasksLoading}
+            isEditMode={isEditMode}
+            scrollViewRef={scrollViewRef}
+            onFormStateChange={handleFormStateChange}
+            onSnackbar={handleSnackbar}
+          />
 
           <AttachmentsSection
             taskId={taskId ? parseInt(taskId, 10) : undefined}
             onFileUpload={() => setHasUploadedFiles(true)}
             onSnackbar={handleSnackbar}
             onHooksChange={handleAttachmentHooksChange}
-            externalLoading={isSubmitting}
+            externalLoading={formState?.isSubmitting || false}
           />
 
           <View style={isAIFlow ? styles.buttonRow : styles.buttonSingle}>
             <SaveButton
               onPress={handleSavePress}
-              loading={isSubmitting || (attachmentHooks?.uploading || attachmentHooks?.committing)}
+              loading={isLoading}
               title={isEditMode ? "Update" : "Save"}
             />
-            {isAIFlow && (
-              <DiscardButton
-                onPress={handleDiscardPress}
-                loading={isSubmitting || (attachmentHooks?.uploading || attachmentHooks?.committing)}
-              />
-            )}
+            {isAIFlow && <DiscardButton onPress={handleDiscardPress} loading={isLoading} />}
           </View>
           {isEditMode && (
             <View style={styles.deleteButtonContainer}>
-              <DeleteButton
-                onPress={handleDeletePress}
-                loading={isSubmitting || (attachmentHooks?.uploading || attachmentHooks?.committing)}
-              />
+              <DeleteButton onPress={handleDeletePress} loading={isLoading} />
             </View>
           )}
         </ScrollView>
@@ -486,14 +404,6 @@ const styles = StyleSheet.create({
   },
   scrollContent: {
     padding: SPACING.lg,
-  },
-  formSection: {
-    marginBottom: SPACING.md,
-  },
-  sectionLabel: {
-    padding: SPACING.xs,
-    fontWeight: "600",
-    letterSpacing: 0.5,
   },
   buttonRow: {
     flexDirection: "row",
