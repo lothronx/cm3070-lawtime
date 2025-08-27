@@ -106,7 +106,7 @@ export const useTaskFiles = (taskId: number | null) => {
         if (!tempFile.path) continue;
 
         // Always copy files to permanent storage - temp cleanup handled separately
-        const permanentResult = await fileStorageService.copyToPerm(tempFile.path, taskId, tempFile.originalName);
+        const permanentResult = await fileStorageService.copyToPerm(tempFile.path, taskId);
 
         copiedFiles.push({
           tempFile,

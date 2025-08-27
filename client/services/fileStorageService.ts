@@ -42,12 +42,13 @@ export const fileStorageService = {
    * Copy file from temp/ to perm/ folder (preserves temp file)
    * Uses atomic copy operation within same bucket - no bandwidth overhead!
    */
-  async copyToPerm(tempPath: string, taskId: number, fileName: string): Promise<UploadResult> {
+  async copyToPerm(tempPath: string, taskId: number): Promise<UploadResult> {
     const { session } = useAuthStore.getState();
     if (!session?.user) throw new Error('Not authenticated');
 
-    // New path structure: perm/{user_id}/{task_id}/{timestamp}-{filename}
-    const permanentPath = `perm/${session.user.id}/${taskId}/${Date.now()}-${fileName}`;
+    // Extract filename from temp path (already unique and safe)
+    const fileName = tempPath.split('/').pop()!;
+    const permanentPath = `perm/${session.user.id}/${taskId}/${fileName}`;
 
     // Atomic copy operation within same bucket - instant metadata update!
     const { error } = await supabase.storage
