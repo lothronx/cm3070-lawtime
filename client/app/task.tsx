@@ -1,5 +1,5 @@
-import React, { useState, useRef, useEffect } from "react";
-import { View, ScrollView, StyleSheet, Linking, Alert } from "react-native";
+import React, { useState, useRef, useEffect, useCallback } from "react";
+import { View, ScrollView, StyleSheet, Alert } from "react-native";
 import { Snackbar, Text } from "react-native-paper";
 import { useForm } from "react-hook-form";
 import { useRouter, useLocalSearchParams } from "expo-router";
@@ -10,16 +10,13 @@ import ClientAutocompleteInput from "@/components/task/ClientAutocompleteInput";
 import LocationInput from "@/components/task/LocationInput";
 import NoteInput from "@/components/task/NoteInput";
 import AttachmentsSection from "@/components/task/AttachmentsSection";
-import * as ImagePicker from "expo-image-picker";
-import { processAndValidatePickerFile } from "@/utils/fileUploadUtils";
 import DateTimeInput from "@/components/task/DateTimeInput";
 import SaveButton from "@/components/task/SaveButton";
 import DiscardButton from "@/components/task/DiscardButton";
 import DeleteButton from "@/components/task/DeleteButton";
 import { useAppTheme, SPACING } from "@/theme/ThemeProvider";
-import { TaskWithClient, isPermanentAttachment } from "@/types";
+import { TaskWithClient, TaskFile } from "@/types";
 import { useTasks } from "@/hooks/useTasks";
-import { useTaskFiles } from "@/hooks/useTaskFiles";
 
 export default function Task() {
   const { theme } = useAppTheme();
@@ -37,21 +34,13 @@ export default function Task() {
   // Use the tasks hook for all task operations with proper cache invalidation
   const { createTask, updateTask, deleteTask, tasks, isLoading: tasksLoading } = useTasks();
 
-  // Use the task files hook for file operations
-  const {
-    attachments,
-    isLoading: taskFilesLoading,
-    error: taskFilesError,
-    uploading,
-    committing,
-    upload,
-    delete: deleteAttachment,
-    preview,
-    isDeleting,
-    isUploading: isAttachmentUploading,
-    commitTempFiles,
-    clearTempFiles,
-  } = useTaskFiles(taskId ? parseInt(taskId, 10) : null);
+  // Attachment operations will be handled by AttachmentsSection component
+  const [attachmentHooks, setAttachmentHooks] = useState<{
+    commitTempFiles: (taskId: number, clearTempAfterCommit?: boolean) => Promise<TaskFile[]>;
+    clearTempFiles: () => Promise<void>;
+    uploading: boolean;
+    committing: boolean;
+  } | null>(null);
 
   // Refs for scroll control
   const scrollViewRef = useRef<ScrollView>(null);
@@ -137,13 +126,13 @@ export default function Task() {
       // 3. Edit mode (always clear temp files when leaving edit mode)
       const doNotCleanupOnUnmount = isAIFlow && currentTaskIndex !== totalTasks;
 
-      if (doNotCleanupOnUnmount) {
-        clearTempFiles().catch((error) => {
+      if (doNotCleanupOnUnmount && attachmentHooks?.clearTempFiles) {
+        attachmentHooks.clearTempFiles().catch((error) => {
           console.warn("Failed to clear temp files on unmount:", error);
         });
       }
     };
-  }, [clearTempFiles, isAIFlow, currentTaskIndex, totalTasks]);
+  }, [attachmentHooks, isAIFlow, currentTaskIndex, totalTasks]);
 
   const onSubmit = async (data: TaskWithClient) => {
     console.log("Form submitted:", data);
@@ -162,20 +151,22 @@ export default function Task() {
       }
 
       // Commit temp files to permanent storage after successful task save
-      try {
-        // In AI flow, only clear temp files on the last task
-        // In manual entry, always clear temp files
-        const shouldClearTempFiles = !isAIFlow || currentTaskIndex === totalTasks;
-        await commitTempFiles(savedTaskId, shouldClearTempFiles);
-        console.log("Temp files committed successfully for task:", savedTaskId);
-      } catch (fileError) {
-        console.error("File commitment failed:", fileError);
-        // Task was saved but files failed - show warning instead of hard error
-        setSnackbarMessage(
-          "Task saved but some files failed to attach. Please try re-uploading them."
-        );
-        setSnackbarVisible(true);
-        return; // Exit early to show the error message
+      if (attachmentHooks?.commitTempFiles) {
+        try {
+          // In AI flow, only clear temp files on the last task
+          // In manual entry, always clear temp files
+          const shouldClearTempFiles = !isAIFlow || currentTaskIndex === totalTasks;
+          await attachmentHooks.commitTempFiles(savedTaskId, shouldClearTempFiles);
+          console.log("Temp files committed successfully for task:", savedTaskId);
+        } catch (fileError) {
+          console.error("File commitment failed:", fileError);
+          // Task was saved but files failed - show warning instead of hard error
+          setSnackbarMessage(
+            "Task saved but some files failed to attach. Please try re-uploading them."
+          );
+          setSnackbarVisible(true);
+          return; // Exit early to show the error message
+        }
       }
 
       // Clear unsaved changes flags on successful save
@@ -193,11 +184,13 @@ export default function Task() {
         } else {
           setSnackbarMessage("All tasks saved successfully!");
           // Clear temp files when completing the entire AI flow
-          try {
-            await clearTempFiles();
-            console.log("Temp files cleared after completing AI flow");
-          } catch (error) {
-            console.warn("Failed to clear temp files after AI flow completion:", error);
+          if (attachmentHooks?.clearTempFiles) {
+            try {
+              await attachmentHooks.clearTempFiles();
+              console.log("Temp files cleared after completing AI flow");
+            } catch (error) {
+              console.warn("Failed to clear temp files after AI flow completion:", error);
+            }
           }
           router.back();
         }
@@ -227,9 +220,9 @@ export default function Task() {
     // 2. Last task in AI flow
     const shouldCleanupTempFiles = !isAIFlow || currentTaskIndex === totalTasks;
 
-    if (shouldCleanupTempFiles) {
+    if (shouldCleanupTempFiles && attachmentHooks?.clearTempFiles) {
       try {
-        await clearTempFiles();
+        await attachmentHooks.clearTempFiles();
         console.log("Temp files cleared on discard");
       } catch (error) {
         console.warn("Failed to clear temp files on discard:", error);
@@ -303,12 +296,14 @@ export default function Task() {
       await deleteTask(parseInt(taskId, 10));
 
       // Clean up any temp files as per business logic requirement
-      try {
-        await clearTempFiles();
-        console.log("Temp files cleared after task deletion");
-      } catch (error) {
-        console.warn("Failed to clear temp files after task deletion:", error);
-        // Don't block the delete flow for temp cleanup failures
+      if (attachmentHooks?.clearTempFiles) {
+        try {
+          await attachmentHooks.clearTempFiles();
+          console.log("Temp files cleared after task deletion");
+        } catch (error) {
+          console.warn("Failed to clear temp files after task deletion:", error);
+          // Don't block the delete flow for temp cleanup failures
+        }
       }
 
       setSnackbarMessage("Task deleted successfully");
@@ -349,145 +344,21 @@ export default function Task() {
     handleSubmit(onSubmit)();
   };
 
-  const handleAddAttachment = async () => {
-    console.log("Add attachment pressed");
-
-    try {
-      // Request permission to access media library
-      const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
-
-      if (status !== "granted") {
-        Alert.alert(
-          "Permission Required",
-          "Please grant access to your photo library to add images.",
-          [{ text: "OK" }]
-        );
-        return;
-      }
-
-      // Launch image picker with multiple selection
-      const result = await ImagePicker.launchImageLibraryAsync({
-        mediaTypes: ["images"],
-        allowsMultipleSelection: true,
-        quality: 0.8,
-        exif: false,
-      });
-
-      if (result.canceled || !result.assets || result.assets.length === 0) {
-        return;
-      }
-
-      // Validate and upload files to temp storage
-      const validFiles = [];
-      const invalidFiles = [];
-
-      // Process and validate each file
-      for (const asset of result.assets) {
-        const { file, validation } = processAndValidatePickerFile(asset);
-        if (validation.isValid) {
-          validFiles.push(file);
-        } else {
-          invalidFiles.push({ fileName: asset.fileName || "unknown", error: validation.error });
-        }
-      }
-
-      // Show validation errors if any
-      if (invalidFiles.length > 0) {
-        const errorMessage = `${invalidFiles.length} file(s) were skipped:\n${invalidFiles
-          .map((f) => `• ${f.fileName}: ${f.error}`)
-          .join("\n")}`;
-        Alert.alert("File Validation Error", errorMessage, [{ text: "OK" }]);
-
-        // If no valid files, return early
-        if (validFiles.length === 0) {
-          return;
-        }
-      }
-
-      // Upload valid files
-      await upload(validFiles);
-
-      // Mark that files have been uploaded (unsaved changes)
-      setHasUploadedFiles(true);
-
-      const successMessage =
-        validFiles.length === 1
-          ? "1 photo added successfully"
-          : `${validFiles.length} photos added successfully`;
-
-      setSnackbarMessage(successMessage);
-      setSnackbarVisible(true);
-    } catch (error) {
-      console.error("Photo selection error:", error);
-      Alert.alert("Upload Failed", "Failed to add photos. Please try again.", [{ text: "OK" }]);
-    }
+  // Snackbar handler for child components
+  const handleSnackbar = (message: string) => {
+    setSnackbarMessage(message);
+    setSnackbarVisible(true);
   };
 
-  const handleDeleteAttachment = async (id: string | number) => {
-    console.log("Delete attachment:", id);
-
-    // Find the attachment to get its name for confirmation
-    const attachment = attachments.find((att) => att.id === id);
-    if (!attachment) {
-      console.warn("Attachment not found:", id);
-      setSnackbarMessage("Attachment not found");
-      setSnackbarVisible(true);
-      return;
-    }
-
-    // Show confirmation dialog for permanent files
-    const isPermanent = isPermanentAttachment(attachment);
-    if (isPermanent) {
-      Alert.alert(
-        "Delete Attachment",
-        `Are you sure you want to delete "${attachment.file_name}"? This action cannot be undone.`,
-        [
-          { text: "Cancel", style: "cancel" },
-          {
-            text: "Delete",
-            style: "destructive",
-            onPress: () => deleteAttachment(id),
-          },
-        ]
-      );
-    } else {
-      // Temp files can be deleted without confirmation
-      deleteAttachment(id);
-    }
-  };
-
-  const handlePreviewAttachment = async (id: string | number) => {
-    console.log("Preview attachment:", id);
-
-    try {
-      // Find the attachment in attachments
-      const attachment = attachments.find((att) => att.id === id);
-      if (!attachment) {
-        console.warn("Attachment not found:", id);
-        setSnackbarMessage("File not found");
-        setSnackbarVisible(true);
-        return;
-      }
-
-      // Get unified preview URL from hook (handles both temp and permanent files)
-      const previewUrl = await preview(attachment);
-
-      console.log("Opening file via URL:", previewUrl);
-
-      // Attempt to open the URL
-      const supported = await Linking.canOpenURL(previewUrl);
-      if (supported) {
-        await Linking.openURL(previewUrl);
-      } else {
-        setSnackbarMessage("Cannot open this file type on your device");
-        setSnackbarVisible(true);
-      }
-    } catch (error) {
-      console.error("Failed to preview attachment:", error);
-      setSnackbarMessage("Failed to open file. Please try again.");
-      setSnackbarVisible(true);
-    }
-  };
+  // Handler for attachment hooks changes from child component
+  const handleAttachmentHooksChange = useCallback((hooks: {
+    commitTempFiles: (taskId: number, clearTempAfterCommit?: boolean) => Promise<TaskFile[]>;
+    clearTempFiles: () => Promise<void>;
+    uploading: boolean;
+    committing: boolean;
+  }) => {
+    setAttachmentHooks(hooks);
+  }, []);
 
   return (
     <View style={[styles.container, { backgroundColor: theme.colors.background }]}>
@@ -557,26 +428,23 @@ export default function Task() {
           </View>
 
           <AttachmentsSection
-            attachments={attachments}
-            onDeleteAttachment={handleDeleteAttachment}
-            onAddAttachment={handleAddAttachment}
-            onPreviewAttachment={handlePreviewAttachment}
-            loading={isSubmitting || taskFilesLoading || uploading || committing}
-            error={!!taskFilesError}
-            isAttachmentDeleting={isDeleting}
-            isAttachmentUploading={isAttachmentUploading}
+            taskId={taskId ? parseInt(taskId, 10) : undefined}
+            onFileUpload={() => setHasUploadedFiles(true)}
+            onSnackbar={handleSnackbar}
+            onHooksChange={handleAttachmentHooksChange}
+            externalLoading={isSubmitting}
           />
 
           <View style={isAIFlow ? styles.buttonRow : styles.buttonSingle}>
             <SaveButton
               onPress={handleSavePress}
-              loading={isSubmitting || uploading || committing}
+              loading={isSubmitting || (attachmentHooks?.uploading || attachmentHooks?.committing)}
               title={isEditMode ? "Update" : "Save"}
             />
             {isAIFlow && (
               <DiscardButton
                 onPress={handleDiscardPress}
-                loading={isSubmitting || uploading || committing}
+                loading={isSubmitting || (attachmentHooks?.uploading || attachmentHooks?.committing)}
               />
             )}
           </View>
@@ -584,7 +452,7 @@ export default function Task() {
             <View style={styles.deleteButtonContainer}>
               <DeleteButton
                 onPress={handleDeletePress}
-                loading={isSubmitting || uploading || committing}
+                loading={isSubmitting || (attachmentHooks?.uploading || attachmentHooks?.committing)}
               />
             </View>
           )}
