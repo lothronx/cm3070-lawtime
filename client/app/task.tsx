@@ -13,83 +13,75 @@ import { useAppTheme, SPACING } from "@/theme/ThemeProvider";
 import { useTasks } from "@/hooks/useTasks";
 import { useTaskLoading } from "@/hooks/useTaskLoading";
 import { useAITaskFlow } from "@/hooks/useAITaskFlow";
-import { useTaskForm } from "@/hooks/useTaskForm";
 import { useTaskNavigation } from "@/hooks/useTaskNavigation";
 import { useTaskOperations } from "@/hooks/useTaskOperations";
 
+// Type for attachment hooks to improve readability
+type AttachmentHooks = {
+  commitTempFiles: (taskId: number, clearTempAfterCommit?: boolean) => Promise<any[]>;
+  clearTempFiles: () => Promise<void>;
+  uploading: boolean;
+  committing: boolean;
+};
+
 export default function Task() {
   const { theme } = useAppTheme();
+
+  // === Route Parameters & Mode ===
   const { taskId, stackIndex, stackTotal } = useLocalSearchParams<{
     mode?: string;
     taskId?: string;
     stackIndex?: string;
     stackTotal?: string;
   }>();
-
-  // Refs for scroll control
-  const scrollViewRef = useRef<ScrollView>(null);
-
-  // Determine screen mode based on URL parameters
   const isEditMode = !!taskId;
 
-  // Use extracted custom hooks
-  const { tasks, isLoading: tasksLoading } = useTasks();
+  // === Component State ===
+  const [hasUploadedFiles, setHasUploadedFiles] = useState(false);
+  const [attachmentHooks, setAttachmentHooks] = useState<AttachmentHooks | null>(null);
+  const [formSave, setFormSave] = useState<(() => Promise<void>) | null>(null);
+  const scrollViewRef = useRef<ScrollView>(null);
 
+  // === Data & Loading ===
+  const { isLoading: tasksLoading } = useTasks();
+  const { isLoading } = useTaskLoading({ formState: null, attachmentHooks });
+
+  // === AI Flow State ===
   const { isAIFlow, currentTaskIndex, totalTasks } = useAITaskFlow({
     stackIndex,
     stackTotal,
   });
 
-  const { formState, handleFormStateChange, handleSavePress } = useTaskForm();
-
-  // Simple state for file operations (managed by AttachmentsSection now)
-  const [attachmentHooks, setAttachmentHooks] = useState<{
-    commitTempFiles: (taskId: number, clearTempAfterCommit?: boolean) => Promise<any[]>;
-    clearTempFiles: () => Promise<void>;
-    uploading: boolean;
-    committing: boolean;
-  } | null>(null);
-  const [hasUploadedFiles, setHasUploadedFiles] = useState(false);
-
-  // Use navigation hook for UI state management
-  const {
-    snackbarVisible,
-    snackbarMessage,
-    showMessage,
-    handleCloseWithUnsavedChanges,
-    setSnackbarVisible,
-  } = useTaskNavigation({
+  // === UI Navigation & Feedback ===
+  const navigation = useTaskNavigation({
     hasUploadedFiles,
-    onDiscard: async () => {}, // Will be set properly by task operations
+    onDiscard: async () => {}, // Will be set by task operations
   });
 
-  // Use task operations hook for business logic
-  const { handleSave, handleDelete, handleDiscard } = useTaskOperations({
+  // === Business Logic ===
+  const taskOperations = useTaskOperations({
     taskId,
     isEditMode,
     isAIFlow,
     currentTaskIndex,
     totalTasks,
     attachmentHooks,
-    onMessage: showMessage,
+    onMessage: navigation.showMessage,
   });
 
-  // Use loading hook to consolidate loading states
-  const { isLoading } = useTaskLoading({ formState, attachmentHooks });
-
-  // Handler for attachment hooks changes from AttachmentsSection
-  const handleAttachmentHooksChange = useCallback((hooks: {
-    commitTempFiles: (taskId: number, clearTempAfterCommit?: boolean) => Promise<any[]>;
-    clearTempFiles: () => Promise<void>;
-    uploading: boolean;
-    committing: boolean;
-  }) => {
+  // === Event Handlers ===
+  const handleAttachmentHooksChange = useCallback((hooks: AttachmentHooks) => {
     setAttachmentHooks(hooks);
   }, []);
 
-  // Custom save handler that integrates with form validation
-  const handleSaveClick = () => {
-    handleSavePress(handleSave, showMessage);
+  const handleSaveClick = async () => {
+    if (!formSave) {
+      navigation.showMessage("Form not ready. Please try again.");
+      return;
+    }
+
+    // Delegate to form's internal save logic
+    await formSave();
   };
 
   return (
@@ -99,7 +91,7 @@ export default function Task() {
         variant="modal"
         stackIndex={isAIFlow ? currentTaskIndex : undefined}
         stackTotal={isAIFlow ? totalTasks : undefined}
-        onClose={handleCloseWithUnsavedChanges}
+        onClose={navigation.handleCloseWithUnsavedChanges}
       />
 
       {tasksLoading ? (
@@ -116,20 +108,19 @@ export default function Task() {
           contentInsetAdjustmentBehavior="automatic">
           <TaskFormSection
             taskId={taskId}
-            tasks={tasks}
-            tasksLoading={tasksLoading}
             isEditMode={isEditMode}
             scrollViewRef={scrollViewRef}
-            onFormStateChange={handleFormStateChange}
-            onSnackbar={showMessage}
+            onSnackbar={navigation.showMessage}
+            onFormReady={setFormSave}
+            onSave={taskOperations.handleSave}
           />
 
           <AttachmentsSection
             taskId={taskId ? parseInt(taskId, 10) : undefined}
             onFileUpload={() => setHasUploadedFiles(true)}
-            onSnackbar={showMessage}
+            onSnackbar={navigation.showMessage}
             onHooksChange={handleAttachmentHooksChange}
-            externalLoading={formState?.isSubmitting || false}
+            externalLoading={false}
           />
 
           <View style={isAIFlow ? styles.buttonRow : styles.buttonSingle}>
@@ -138,26 +129,26 @@ export default function Task() {
               loading={isLoading}
               title={isEditMode ? "Update" : "Save"}
             />
-            {isAIFlow && <DiscardButton onPress={handleDiscard} loading={isLoading} />}
+            {isAIFlow && <DiscardButton onPress={taskOperations.handleDiscard} loading={isLoading} />}
           </View>
           {isEditMode && (
             <View style={styles.deleteButtonContainer}>
-              <DeleteButton onPress={handleDelete} loading={isLoading} />
+              <DeleteButton onPress={taskOperations.handleDelete} loading={isLoading} />
             </View>
           )}
         </ScrollView>
       )}
 
       <Snackbar
-        visible={snackbarVisible}
-        onDismiss={() => setSnackbarVisible(false)}
-        duration={2000}
+        visible={navigation.snackbarVisible}
+        onDismiss={() => navigation.setSnackbarVisible(false)}
+        duration={1000}
         style={{
-          backgroundColor: snackbarMessage.includes("successfully")
+          backgroundColor: navigation.snackbarMessage.includes("successfully")
             ? theme.colors.secondary
             : theme.colors.error,
         }}>
-        {snackbarMessage}
+        {navigation.snackbarMessage}
       </Snackbar>
     </View>
   );

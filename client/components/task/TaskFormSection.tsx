@@ -1,9 +1,11 @@
-import React, { useEffect, useCallback } from "react";
+import React, { useCallback } from "react";
 import { View, StyleSheet, ScrollView } from "react-native";
 import { Text } from "react-native-paper";
 import { useForm } from "react-hook-form";
 import { useAppTheme, SPACING } from "@/theme/ThemeProvider";
 import { TaskWithClient } from "@/types";
+import { useTasks } from "@/hooks/useTasks";
+import { useTaskFormInit } from "@/hooks/useTaskFormInit";
 import TitleInput from "@/components/task/TitleInput";
 import ClientAutocompleteInput from "@/components/task/ClientAutocompleteInput";
 import LocationInput from "@/components/task/LocationInput";
@@ -12,40 +14,36 @@ import DateTimeInput from "@/components/task/DateTimeInput";
 
 interface TaskFormSectionProps {
   taskId?: string;
-  tasks: TaskWithClient[];
-  tasksLoading: boolean;
   isEditMode: boolean;
   scrollViewRef?: React.RefObject<ScrollView | null>;
-  onFormStateChange?: (formState: {
-    control: any;
-    handleSubmit: any;
-    errors: any;
-    isSubmitting: boolean;
-    isDirty: boolean;
-    trigger: any;
-    reset: any;
-  }) => void;
   onSnackbar?: (message: string) => void;
+  onFormReady?: (saveForm: () => Promise<void>) => void;
+  onSave?: (formData: TaskWithClient) => Promise<void>;
 }
 
+/**
+ * Simplified TaskFormSection focused on UI rendering
+ * Responsibilities:
+ * - Form component structure and styling
+ * - React Hook Form setup
+ * - Input component coordination
+ * - Scroll behavior management
+ */
 export default function TaskFormSection({
   taskId,
-  tasks,
-  tasksLoading,
   isEditMode,
   scrollViewRef,
-  onFormStateChange,
   onSnackbar,
+  onFormReady,
+  onSave,
 }: TaskFormSectionProps) {
   const { theme } = useAppTheme();
 
-  const {
-    control,
-    handleSubmit,
-    formState: { errors, isSubmitting, isDirty },
-    trigger,
-    reset,
-  } = useForm<TaskWithClient>({
+  // Data layer
+  const { tasks, isLoading: tasksLoading } = useTasks();
+
+  // Form setup
+  const formInstance = useForm<TaskWithClient>({
     defaultValues: {
       title: "",
       client_name: "",
@@ -56,65 +54,40 @@ export default function TaskFormSection({
     mode: "onBlur", // Only validate after user leaves field
   });
 
-  // Load existing task data for edit mode using cache-first approach
-  useEffect(() => {
-    if (isEditMode && taskId && !tasksLoading) {
-      try {
-        // Find task directly from tasks array to avoid function dependency issues
-        const task = tasks.find((t) => t.id === parseInt(taskId, 10));
-        console.log("Loading task data:", { taskId, tasks: tasks.length, foundTask: !!task, task });
-
-        if (task) {
-          console.log("Resetting form with task data:", {
-            title: task.title,
-            client_name: task.client_name,
-            event_time: task.event_time,
-            location: task.location,
-            note: task.note,
-          });
-
-          reset({
-            title: task.title,
-            client_name: task.client_name || "",
-            event_time: task.event_time,
-            location: task.location || "",
-            note: task.note || "",
-          });
-        } else if (tasks.length > 0) {
-          // Tasks are loaded but specific task not found
-          console.warn(
-            "Task not found in cache:",
-            taskId,
-            "Available tasks:",
-            tasks.map((t) => t.id)
-          );
-          onSnackbar?.("Task not found");
-        }
-        // If tasks.length === 0, we're still waiting for data to load
-      } catch (error) {
-        console.error("Failed to load task:", error);
-        onSnackbar?.("Failed to load task data");
-      }
+  // Internal form validation and submission
+  const handleFormSave = React.useCallback(async () => {
+    if (!onSave) {
+      onSnackbar?.("Save handler not available");
+      return;
     }
-  }, [isEditMode, taskId, tasks, tasksLoading, reset]);
 
-  // Notify parent component when form state changes
-  const formStateObject = React.useMemo(
-    () => ({
-      control,
-      handleSubmit,
-      errors,
-      isSubmitting,
-      isDirty,
-      trigger,
-      reset,
-    }),
-    [control, handleSubmit, errors, isSubmitting, isDirty, trigger, reset]
-  );
+    // Trigger validation on all fields
+    const isValid = await formInstance.trigger();
+    if (!isValid) {
+      const firstError = Object.values(formInstance.formState.errors)[0] as any;
+      const errorMessage = firstError?.message || "Please fix the errors above";
+      onSnackbar?.(errorMessage);
+      return;
+    }
 
-  useEffect(() => {
-    onFormStateChange?.(formStateObject);
-  }, [formStateObject]);
+    // Submit the valid form
+    formInstance.handleSubmit(onSave)();
+  }, [formInstance, onSave, onSnackbar]);
+
+  // Expose save function to parent
+  React.useEffect(() => {
+    onFormReady?.(handleFormSave);
+  }, [onFormReady, handleFormSave]);
+
+  // Form initialization for edit mode
+  useTaskFormInit({
+    taskId,
+    isEditMode,
+    tasks,
+    tasksLoading,
+    reset: formInstance.reset,
+    onMessage: onSnackbar,
+  });
 
   // Handle note input focus with scroll
   const handleNoteInputFocus = useCallback(() => {
@@ -133,8 +106,16 @@ export default function TaskFormSection({
           Task Information
         </Text>
 
-        <TitleInput control={control} name="title" error={errors.title} />
-        <ClientAutocompleteInput control={control} name="client_name" error={errors.client_name} />
+        <TitleInput
+          control={formInstance.control}
+          name="title"
+          error={formInstance.formState.errors.title}
+        />
+        <ClientAutocompleteInput
+          control={formInstance.control}
+          name="client_name"
+          error={formInstance.formState.errors.client_name}
+        />
       </View>
 
       {/* Schedule Section */}
@@ -143,9 +124,17 @@ export default function TaskFormSection({
           Time & Location
         </Text>
 
-        <DateTimeInput control={control} name="event_time" error={errors.event_time} />
+        <DateTimeInput
+          control={formInstance.control}
+          name="event_time"
+          error={formInstance.formState.errors.event_time}
+        />
 
-        <LocationInput control={control} name="location" error={errors.location} />
+        <LocationInput
+          control={formInstance.control}
+          name="location"
+          error={formInstance.formState.errors.location}
+        />
       </View>
 
       {/* Details Section */}
@@ -155,9 +144,9 @@ export default function TaskFormSection({
         </Text>
 
         <NoteInput
-          control={control}
+          control={formInstance.control}
           name="note"
-          error={errors.note}
+          error={formInstance.formState.errors.note}
           onFocus={handleNoteInputFocus}
         />
       </View>
