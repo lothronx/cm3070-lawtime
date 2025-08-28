@@ -1,7 +1,7 @@
 import { useMemo } from 'react';
 
 interface TaskLoadingState {
-  formState?: {
+  formHooks?: {
     isSubmitting?: boolean;
   } | null;
   attachmentHooks?: {
@@ -17,8 +17,8 @@ interface UseTaskLoadingReturn {
   isAttachmentCommitting: boolean;
 }
 
-export function useTaskLoading({ formState, attachmentHooks }: TaskLoadingState): UseTaskLoadingReturn {
-  const isFormSubmitting = formState?.isSubmitting || false;
+export function useTaskLoading({ formHooks, attachmentHooks }: TaskLoadingState): UseTaskLoadingReturn {
+  const isFormSubmitting = formHooks?.isSubmitting || false;
   const isAttachmentUploading = attachmentHooks?.uploading || false;
   const isAttachmentCommitting = attachmentHooks?.committing || false;
 

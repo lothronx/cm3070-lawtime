@@ -10,7 +10,6 @@ import AttachmentList from "./AttachmentList";
 
 interface AttachmentsSectionProps {
   taskId?: number;
-  onFileUpload?: () => void;
   onSnackbar?: (message: string) => void;
   externalLoading?: boolean;
   onHooksChange?: (hooks: {
@@ -31,7 +30,6 @@ interface AttachmentsSectionProps {
  */
 export default function AttachmentsSection({
   taskId,
-  onFileUpload,
   onSnackbar,
   externalLoading = false,
   onHooksChange,
@@ -69,7 +67,18 @@ export default function AttachmentsSection({
   const { openImagePicker } = useFilePicker({
     onFilesSelected: async (files) => {
       await uploadToTemp(files);
-      onFileUpload?.();
+
+      // Auto-commit to permanent storage if task exists (edit mode)
+      if (taskId) {
+        try {
+          await commitTempFiles(taskId, true); // Clear temp files after commit
+          onSnackbar?.("Files uploaded successfully");
+        } catch (error) {
+          console.error("Failed to commit files:", error);
+          onSnackbar?.("Files uploaded but failed to save permanently. Please try again.");
+        }
+      }
+
     },
     onSuccess: (message) => onSnackbar?.(message),
     onError: (message) => onSnackbar?.(message),

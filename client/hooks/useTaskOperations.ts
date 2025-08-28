@@ -1,4 +1,5 @@
-import { useCallback } from 'react';
+import { useCallback, useState } from 'react';
+import { Alert } from 'react-native';
 import { useRouter } from 'expo-router';
 import { TaskWithClient, TaskFile } from '@/types';
 import { useTasks } from '@/hooks/useTasks';
@@ -10,6 +11,10 @@ interface AttachmentHooks {
   committing: boolean;
 }
 
+interface FormState {
+  isDirty?: boolean;
+}
+
 interface UseTaskOperationsParams {
   taskId?: string;
   isEditMode: boolean;
@@ -17,13 +22,19 @@ interface UseTaskOperationsParams {
   currentTaskIndex: number;
   totalTasks: number;
   attachmentHooks?: AttachmentHooks | null;
-  onMessage: (message: string) => void;
 }
 
 interface UseTaskOperationsReturn {
+  // Task operations
   handleSave: (data: TaskWithClient) => Promise<void>;
   handleDelete: () => Promise<void>;
   handleDiscard: () => Promise<void>;
+  // UI feedback
+  snackbarVisible: boolean;
+  snackbarMessage: string;
+  showMessage: (message: string) => void;
+  setSnackbarVisible: (value: boolean) => void;
+  handleCloseWithUnsavedChanges: (formState?: FormState | null) => void;
 }
 
 /**
@@ -40,12 +51,18 @@ export function useTaskOperations({
   currentTaskIndex,
   totalTasks,
   attachmentHooks,
-  onMessage,
 }: UseTaskOperationsParams): UseTaskOperationsReturn {
   const router = useRouter();
-
-  // Consolidated data and business logic layer
   const { createTask, updateTask, deleteTask } = useTasks();
+
+  // UI feedback state
+  const [snackbarVisible, setSnackbarVisible] = useState(false);
+  const [snackbarMessage, setSnackbarMessage] = useState("");
+
+  const showMessage = useCallback((message: string) => {
+    setSnackbarMessage(message);
+    setSnackbarVisible(true);
+  }, []);
 
   const handleSave = useCallback(async (data: TaskWithClient) => {
     console.log("Form submitted:", data);
@@ -69,7 +86,7 @@ export function useTaskOperations({
           console.log("Temp files committed successfully for task:", savedTaskId);
         } catch (fileError) {
           console.error("File commitment failed:", fileError);
-          onMessage("Task saved but some files failed to attach. Please try re-uploading them.");
+          showMessage("Task saved but some files failed to attach. Please try re-uploading them.");
           return;
         }
       }
@@ -77,9 +94,9 @@ export function useTaskOperations({
       // Success handling
       if (isAIFlow) {
         if (currentTaskIndex < totalTasks) {
-          onMessage(`Task ${currentTaskIndex} saved! Showing task ${currentTaskIndex + 1} of ${totalTasks}`);
+          showMessage(`Task ${currentTaskIndex} saved! Showing task ${currentTaskIndex + 1} of ${totalTasks}`);
         } else {
-          onMessage("All tasks saved successfully!");
+          showMessage("All tasks saved successfully!");
           // Clear temp files when completing the entire AI flow
           if (attachmentHooks?.clearTempFiles) {
             try {
@@ -93,15 +110,15 @@ export function useTaskOperations({
         }
       } else {
         const action = isEditMode ? "updated" : "saved";
-        onMessage(`Task ${action} successfully!`);
+        showMessage(`Task ${action} successfully!`);
         setTimeout(() => router.back(), 1000);
       }
     } catch (error) {
       console.error("Unexpected error in handleSave:", error);
       const action = isEditMode ? "update" : "save";
-      onMessage(`Failed to ${action} task. Please try again.`);
+      showMessage(`Failed to ${action} task. Please try again.`);
     }
-  }, [taskId, isEditMode, isAIFlow, currentTaskIndex, totalTasks, attachmentHooks, onMessage, createTask, updateTask, router]);
+  }, [taskId, isEditMode, isAIFlow, currentTaskIndex, totalTasks, attachmentHooks, showMessage, createTask, updateTask, router]);
 
   const handleDelete = useCallback(async () => {
     if (!isEditMode || !taskId) {
@@ -124,13 +141,13 @@ export function useTaskOperations({
         }
       }
 
-      onMessage("Task deleted successfully");
+      showMessage("Task deleted successfully");
       setTimeout(() => router.back(), 1000);
     } catch (error) {
       console.error("Failed to delete task:", error);
-      onMessage("Failed to delete task. Please try again.");
+      showMessage("Failed to delete task. Please try again.");
     }
-  }, [isEditMode, taskId, attachmentHooks, onMessage, deleteTask, router]);
+  }, [isEditMode, taskId, attachmentHooks, showMessage, deleteTask, router]);
 
   const handleDiscard = useCallback(async () => {
     console.log("Task discarded");
@@ -148,20 +165,56 @@ export function useTaskOperations({
 
     if (isAIFlow) {
       if (currentTaskIndex < totalTasks) {
-        onMessage(`Task ${currentTaskIndex} discarded. Showing task ${currentTaskIndex + 1} of ${totalTasks}`);
+        showMessage(`Task ${currentTaskIndex} discarded. Showing task ${currentTaskIndex + 1} of ${totalTasks}`);
       } else {
-        onMessage("AI flow completed!");
+        showMessage("AI flow completed!");
         router.back();
       }
     } else {
-      onMessage("Changes discarded");
+      showMessage("Changes discarded");
       router.back();
     }
-  }, [isAIFlow, currentTaskIndex, totalTasks, attachmentHooks, onMessage, router]);
+  }, [isAIFlow, currentTaskIndex, totalTasks, attachmentHooks, showMessage, router]);
+
+  const handleCloseWithUnsavedChanges = useCallback((formState?: FormState | null) => {
+    // Check if there are unsaved changes (only form dirty now - files are auto-committed)
+    const hasUnsavedChanges = formState?.isDirty;
+
+    if (hasUnsavedChanges) {
+      Alert.alert(
+        "Unsaved Changes",
+        "You have unsaved form changes that will be lost. Are you sure you want to close?",
+        [
+          {
+            text: "Cancel",
+            style: "cancel",
+          },
+          {
+            text: "Close Without Saving",
+            style: "destructive",
+            onPress: () => {
+              // Handle cleanup before closing
+              handleDiscard();
+            },
+          },
+        ]
+      );
+    } else {
+      // No unsaved changes, close normally
+      router.back();
+    }
+  }, [handleDiscard, router]);
 
   return {
+    // Task operations
     handleSave,
     handleDelete,
     handleDiscard,
+    // UI feedback
+    snackbarVisible,
+    snackbarMessage,
+    showMessage,
+    setSnackbarVisible,
+    handleCloseWithUnsavedChanges,
   };
 }

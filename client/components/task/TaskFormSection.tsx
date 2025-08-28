@@ -17,7 +17,11 @@ interface TaskFormSectionProps {
   isEditMode: boolean;
   scrollViewRef?: React.RefObject<ScrollView | null>;
   onSnackbar?: (message: string) => void;
-  onFormReady?: (saveForm: () => Promise<void>) => void;
+  onFormHooksChange?: (hooks: {
+    saveForm: () => Promise<void>;
+    isSubmitting: boolean;
+    isDirty: boolean;
+  }) => void;
   onSave?: (formData: TaskWithClient) => Promise<void>;
 }
 
@@ -34,7 +38,7 @@ export default function TaskFormSection({
   isEditMode,
   scrollViewRef,
   onSnackbar,
-  onFormReady,
+  onFormHooksChange,
   onSave,
 }: TaskFormSectionProps) {
   const { theme } = useAppTheme();
@@ -71,13 +75,21 @@ export default function TaskFormSection({
     }
 
     // Submit the valid form
-    formInstance.handleSubmit(onSave)();
+    const submitHandler = formInstance.handleSubmit(onSave);
+    await submitHandler();
   }, [formInstance, onSave, onSnackbar]);
 
-  // Expose save function to parent
+  // Memoize the hooks object to prevent unnecessary re-renders
+  const formHooksObject = React.useMemo(() => ({
+    saveForm: handleFormSave,
+    isSubmitting: formInstance.formState.isSubmitting,
+    isDirty: formInstance.formState.isDirty,
+  }), [handleFormSave, formInstance.formState.isSubmitting, formInstance.formState.isDirty]);
+
+  // Notify parent component when form hooks change
   React.useEffect(() => {
-    onFormReady?.(handleFormSave);
-  }, [onFormReady, handleFormSave]);
+    onFormHooksChange?.(formHooksObject);
+  }, [formHooksObject, onFormHooksChange]);
 
   // Form initialization for edit mode
   useTaskFormInit({
