@@ -39,10 +39,36 @@ export const fileStorageService = {
   },
 
   /**
+   * Upload file directly to perm/ folder (for edit mode)
+   * Bypasses temp storage for immediate permanent storage
+   */
+  async uploadToPerm(file: { uri: string; fileName: string; mimeType: string }, taskId: number): Promise<UploadResult> {
+    const { session } = useAuthStore.getState();
+    if (!session?.user) throw new Error('Not authenticated');
+
+    // Direct path to permanent storage: perm/{user_id}/{task_id}/{filename}
+    const path = `perm/${session.user.id}/${taskId}/${file.fileName}`;
+
+    const response = await fetch(file.uri);
+    const arrayBuffer = await response.arrayBuffer();
+
+    const { error } = await supabase.storage
+      .from('file_storage')
+      .upload(path, arrayBuffer, { contentType: file.mimeType });
+
+    if (error) throw error;
+
+    return {
+      path,
+      publicUrl: await fileStorageService.getSignedUrl(path)
+    };
+  },
+
+  /**
    * Copy file from temp/ to perm/ folder (preserves temp file)
    * Uses atomic copy operation within same bucket - no bandwidth overhead!
    */
-  async copyToPerm(tempPath: string, taskId: number): Promise<UploadResult> {
+  async copyFromTempToPerm(tempPath: string, taskId: number): Promise<UploadResult> {
     const { session } = useAuthStore.getState();
     if (!session?.user) throw new Error('Not authenticated');
 
@@ -59,7 +85,7 @@ export const fileStorageService = {
 
     return {
       path: permanentPath,
-      publicUrl: supabase.storage.from('file_storage').getPublicUrl(permanentPath).data.publicUrl
+      publicUrl: await fileStorageService.getSignedUrl(permanentPath)
     };
   },
 

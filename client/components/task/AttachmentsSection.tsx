@@ -51,6 +51,7 @@ export default function AttachmentsSection({
     isUploading,
     isCommitting,
     uploadToTemp,
+    uploadToPerm,
     commitTempFiles,
     clearTempFiles,
     deleteAttachment,
@@ -66,19 +67,15 @@ export default function AttachmentsSection({
   // UI interaction layer
   const { openImagePicker } = useFilePicker({
     onFilesSelected: async (files) => {
-      await uploadToTemp(files);
-
-      // Auto-commit to permanent storage if task exists (edit mode)
       if (taskId) {
-        try {
-          await commitTempFiles(taskId, true); // Clear temp files after commit
-          onSnackbar?.("Files uploaded successfully");
-        } catch (error) {
-          console.error("Failed to commit files:", error);
-          onSnackbar?.("Files uploaded but failed to save permanently. Please try again.");
-        }
+        // Edit mode: Upload directly to permanent storage
+        await uploadToPerm(files, taskId);
+        onSnackbar?.("Files uploaded successfully");
+      } else {
+        // New task mode: Upload to temp storage, will be committed when task is saved
+        await uploadToTemp(files);
+        onSnackbar?.("Files uploaded successfully");
       }
-
     },
     onSuccess: (message) => onSnackbar?.(message),
     onError: (message) => onSnackbar?.(message),
@@ -87,12 +84,15 @@ export default function AttachmentsSection({
   const loading = externalLoading || dataLoading || isUploading || isCommitting;
 
   // Memoize the hooks object to prevent unnecessary re-renders
-  const hooksObject = React.useMemo(() => ({
-    commitTempFiles,
-    clearTempFiles,
-    uploading: isUploading,
-    committing: isCommitting,
-  }), [commitTempFiles, clearTempFiles, isUploading, isCommitting]);
+  const hooksObject = React.useMemo(
+    () => ({
+      commitTempFiles,
+      clearTempFiles,
+      uploading: isUploading,
+      committing: isCommitting,
+    }),
+    [commitTempFiles, clearTempFiles, isUploading, isCommitting]
+  );
 
   // Notify parent component when hooks change
   React.useEffect(() => {

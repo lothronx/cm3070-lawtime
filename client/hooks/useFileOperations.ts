@@ -37,6 +37,42 @@ export function useFileOperations({ taskFiles, onCreateTaskFiles, onDeleteTaskFi
   const [isCommitting, setIsCommitting] = useState(false);
   const [deletingIds, setDeletingIds] = useState<Set<string | number>>(new Set());
 
+  // Upload files directly to permanent storage (for edit mode)
+  const uploadToPerm = useCallback(async (files: { uri: string; fileName: string; originalName: string; mimeType: string; size: number }[], taskId: number) => {
+    if (files.length === 0) return;
+    if (!taskId) throw new Error('Task ID is required for permanent uploads');
+
+    setIsUploading(true);
+
+    try {
+      const filesToCreate: Omit<TaskFileInsert, 'user_id' | 'task_id'>[] = [];
+
+      // Upload files sequentially to avoid overwhelming API
+      for (const file of files) {
+        try {
+          const result = await fileStorageService.uploadToPerm(file, taskId);
+
+          filesToCreate.push({
+            file_name: file.originalName,
+            storage_path: result.path,
+            mime_type: file.mimeType,
+            role: 'attachment'
+          });
+        } catch (error) {
+          console.error(`Permanent upload failed for ${file.originalName}:`, error);
+          throw new Error(`Failed to upload ${file.originalName}`);
+        }
+      }
+
+      // Create database records
+      if (filesToCreate.length > 0) {
+        onCreateTaskFiles({ taskId, files: filesToCreate });
+      }
+    } finally {
+      setIsUploading(false);
+    }
+  }, [onCreateTaskFiles]);
+
   // Upload files to temp storage
   const uploadToTemp = useCallback(async (files: { uri: string; fileName: string; originalName: string; mimeType: string; size: number }[]) => {
     if (files.length === 0) return;
@@ -92,7 +128,7 @@ export function useFileOperations({ taskFiles, onCreateTaskFiles, onDeleteTaskFi
       for (const tempFile of tempFilesToMove) {
         if (!tempFile.path) continue;
 
-        const permanentResult = await fileStorageService.copyToPerm(tempFile.path, taskId);
+        const permanentResult = await fileStorageService.copyFromTempToPerm(tempFile.path, taskId);
 
         copiedFiles.push({
           tempFile,
@@ -267,6 +303,7 @@ export function useFileOperations({ taskFiles, onCreateTaskFiles, onDeleteTaskFi
 
     // Actions
     uploadToTemp,
+    uploadToPerm,
     commitTempFiles,
     clearTempFiles,
     deleteAttachment,
