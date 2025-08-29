@@ -23,14 +23,13 @@ if __name__ == "__main__":
         print("   POST /api/auth/verify-otp")
         print("=" * 50)
 
-        # Run Flask development server
+        # Run Flask development server without reloader and threading
+        # This prevents signal handling conflicts with Alibaba Cloud SDK credential system
         port = int(os.getenv("PORT", 5001))
-        app.run(debug=True, host="0.0.0.0", port=port)
+        app.run(
+            debug=False, host="0.0.0.0", port=port, threaded=False, use_reloader=False
+        )
 
     except Exception as e:
         print(f"❌ Server startup failed: {e}")
-        print("\nTroubleshooting:")
-        print("1. Check your .env.local file has all required variables")
-        print("2. Ensure Supabase credentials are valid")
-        print("3. Verify Alibaba Cloud SMS credentials")
         exit(1)
