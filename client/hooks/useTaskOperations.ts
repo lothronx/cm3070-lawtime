@@ -200,10 +200,25 @@ export function useTaskOperations({
         ]
       );
     } else {
-      // No unsaved changes, close normally
-      router.back();
+      // No unsaved changes, but still need to clean up temp files before closing
+      const shouldCleanupTempFiles = !isAIFlow || currentTaskIndex === totalTasks;
+
+      if (shouldCleanupTempFiles && attachmentHooks?.clearTempFiles) {
+        attachmentHooks.clearTempFiles()
+          .then(() => {
+            console.log("Temp files cleared on close without unsaved changes");
+            router.back();
+          })
+          .catch((error) => {
+            console.warn("Failed to clear temp files on close:", error);
+            // Still navigate back even if cleanup fails
+            router.back();
+          });
+      } else {
+        router.back();
+      }
     }
-  }, [handleDiscard, router]);
+  }, [handleDiscard, router, isAIFlow, currentTaskIndex, totalTasks, attachmentHooks]);
 
   return {
     // Task operations
