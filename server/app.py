@@ -3,8 +3,8 @@ from flask import Flask
 from supabase import create_client, Client
 
 from config import Config, setup_logging
-from services import AuthService, PhoneVerificationService
-from controllers import AuthController
+from services import AuthService, PhoneVerificationService, TaskService
+from controllers import AuthController, TaskController
 
 logger = logging.getLogger(__name__)
 
@@ -45,12 +45,14 @@ def create_app(test_config=None):
 
     # Initialize business services
     auth_service = AuthService(supabase)
+    task_service = TaskService(supabase, config)
 
     # Initialize controllers with simplified dependencies
     auth_controller = AuthController(
         auth_service=auth_service,
         phone_verification_service=phone_verification_service,
     )
+    task_controller = TaskController(task_service=task_service)
 
     # Health check endpoint
     @app.route("/")
@@ -67,5 +69,11 @@ def create_app(test_config=None):
     def verify_otp_route():
         """Verify OTP and return JWT token."""
         return auth_controller.verify_otp()
+
+    # Task routes
+    @app.route("/api/tasks/propose", methods=["POST"])
+    def propose_tasks_route():
+        """Process files using AI and return proposed tasks."""
+        return task_controller.propose_tasks()
 
     return app
