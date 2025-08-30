@@ -1,5 +1,6 @@
 import { Database } from './supabase';
 
+//////////// Database types ////////////
 /**
  * Type aliases pointing to Supabase types (single source of truth)
  */
@@ -18,6 +19,15 @@ export type TaskSourceType = Database['public']['Enums']['task_source_type'];
 export type TaskFileRole = Database['public']['Enums']['task_file_role'];
 export type ProfileStatus = Database['public']['Enums']['profile_status'];
 
+/**
+ * Flattened type combining all Task fields with all Client fields
+ * Used for forms and displays
+ * Automatically derived from Supabase types with conflict resolution
+ */
+export type TaskWithClient = Task &
+  Omit<DbClient, 'id' | 'created_at' | 'user_id'> 
+  
+//////////// Storage types ////////////
 /**
  * Unified attachment type system using discriminated union
  * Handles both temporary files (in temp_uploads) and permanent files (in task_files)
@@ -64,10 +74,40 @@ export const isTempAttachment = (attachment: Attachment): attachment is TempAtta
   return attachment.isTemporary;
 };
 
+//////////// AI Service types ////////////
 /**
- * Flattened type combining all Task fields with all Client fields
- * Used for forms and displays
- * Automatically derived from Supabase types with conflict resolution
+ * AI Service Types for task proposals
+ * Matches server-side LangGraph agent output format
  */
-export type TaskWithClient = Task & 
-  Omit<DbClient, 'id' | 'created_at' | 'user_id'> 
+
+// Client resolution status from AI processing
+export interface ClientResolution {
+  status: 'MATCH_FOUND' | 'NEW_CLIENT_PROPOSED' | 'NO_CLIENT_IDENTIFIED';
+  client_id: number | null;
+  client_name: string | null;
+}
+
+// Single task proposed by AI agent
+export interface ProposedTask {
+  title: string;
+  event_time: string | null; // ISO format datetime
+  location: string | null;
+  note: string;
+  client_resolution: ClientResolution;
+}
+
+// Request format for AI backend
+export interface TaskProposalRequest {
+  source_type: 'ocr' | 'asr';
+  source_file_urls: string[];
+  client_list: { id: number; client_name: string }[];
+}
+
+// Response format from AI backend
+export interface TaskProposalResponse {
+  success: boolean;
+  proposed_tasks: ProposedTask[];
+  count: number;
+}
+
+
