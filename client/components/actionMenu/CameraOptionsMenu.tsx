@@ -12,7 +12,6 @@ interface CameraOptionsMenuProps {
   onDismiss: () => void;
   onPhotoLibrary: () => void;
   onTakePhoto: () => void;
-  onChooseFile: () => void;
 }
 
 /**
@@ -26,7 +25,6 @@ export default function CameraOptionsMenu({
   onDismiss,
   onPhotoLibrary,
   onTakePhoto,
-  onChooseFile,
 }: CameraOptionsMenuProps) {
   const { theme } = useAppTheme();
   const insets = useSafeAreaInsets();
@@ -58,15 +56,6 @@ export default function CameraOptionsMenu({
             left={(props) => <List.Icon {...props} icon="camera" />}
             onPress={() => {
               onTakePhoto();
-              onDismiss();
-            }}
-            titleStyle={styles.menuItemTitle}
-          />
-          <List.Item
-            title="Choose File"
-            left={(props) => <List.Icon {...props} icon="file" />}
-            onPress={() => {
-              onChooseFile();
               onDismiss();
             }}
             titleStyle={styles.menuItemTitle}

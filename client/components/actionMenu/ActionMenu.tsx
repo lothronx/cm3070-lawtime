@@ -23,7 +23,6 @@ export default function ActionMenu({ visible = true }: ActionMenuProps) {
   const {
     onPhotoLibrary,
     onTakePhoto,
-    onChooseFile,
     onAudioHoldStart,
     onAudioHoldEnd,
     onManualPress,
@@ -73,11 +72,6 @@ export default function ActionMenu({ visible = true }: ActionMenuProps) {
   const handleTakePhoto = () => {
     toggleMenu();
     onTakePhoto();
-  };
-
-  const handleChooseFile = () => {
-    toggleMenu();
-    onChooseFile();
   };
 
   const handleCameraPress = () => {
@@ -147,7 +141,6 @@ export default function ActionMenu({ visible = true }: ActionMenuProps) {
         onDismiss={() => setCameraMenuVisible(false)}
         onPhotoLibrary={handlePhotoLibrary}
         onTakePhoto={handleTakePhoto}
-        onChooseFile={handleChooseFile}
       />
 
       <View style={[styles.container, { bottom: insets.bottom + 16 }]}>
