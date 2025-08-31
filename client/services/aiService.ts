@@ -12,23 +12,13 @@ import { TaskProposalRequest, TaskProposalResponse } from '@/types';
  * Uses JWT authentication and structured error handling.
  */
 
-enum AIErrorType {
-  NETWORK_ERROR = 'NETWORK_ERROR',
-  AUTHENTICATION_ERROR = 'AUTHENTICATION_ERROR',
-  TIMEOUT_ERROR = 'TIMEOUT_ERROR',
-  PROCESSING_ERROR = 'PROCESSING_ERROR',
-  SERVER_ERROR = 'SERVER_ERROR',
-}
-
 class AIServiceError extends Error {
   public statusCode: number;
-  public errorType: AIErrorType;
 
-  constructor(message: string, statusCode: number, errorType: AIErrorType) {
+  constructor(message: string, statusCode: number) {
     super(message);
     this.name = 'AIServiceError';
     this.statusCode = statusCode;
-    this.errorType = errorType;
   }
 }
 
@@ -51,11 +41,7 @@ class AIService {
     const { session } = useAuthStore.getState();
 
     if (!session?.access_token) {
-      throw new AIServiceError(
-        'Authentication required. Please log in again.',
-        401,
-        AIErrorType.AUTHENTICATION_ERROR
-      );
+      throw new AIServiceError('Authentication required. Please log in again.', 401);
     }
 
     const url = `${API_BASE_URL}/api/tasks/propose`;
@@ -80,12 +66,8 @@ class AIService {
       const data = await response.json();
 
       if (!response.ok) {
-        const errorType = this.mapStatusToErrorType(response.status);
-        throw new AIServiceError(
-          data.error || 'AI processing failed',
-          response.status,
-          errorType
-        );
+        const errorMessage = data.error || 'AI processing failed';
+        throw new AIServiceError(errorMessage, response.status);
       }
 
       console.log('AI processing completed:', {
@@ -104,16 +86,14 @@ class AIService {
       if (error instanceof Error && error.name === 'AbortError') {
         throw new AIServiceError(
           'AI processing timed out. Please try again with fewer or smaller files.',
-          408,
-          AIErrorType.TIMEOUT_ERROR
+          408
         );
       }
 
       if (error instanceof TypeError && error.message.includes('fetch')) {
         throw new AIServiceError(
           'No internet connection. Please check your network and try again.',
-          0,
-          AIErrorType.NETWORK_ERROR
+          0
         );
       }
 
@@ -121,55 +101,18 @@ class AIService {
 
       throw new AIServiceError(
         'Unexpected error occurred during AI processing. Please try again.',
-        0,
-        AIErrorType.SERVER_ERROR
+        0
       );
     }
   }
 
   /**
-   * Map HTTP status code to specific error type
-   */
-  private mapStatusToErrorType(statusCode: number): AIErrorType {
-    switch (statusCode) {
-      case 400:
-        return AIErrorType.PROCESSING_ERROR;
-      case 401:
-      case 403:
-        return AIErrorType.AUTHENTICATION_ERROR;
-      case 408:
-      case 504:
-        return AIErrorType.TIMEOUT_ERROR;
-      case 500:
-      case 502:
-      case 503:
-        return AIErrorType.SERVER_ERROR;
-      default:
-        return AIErrorType.SERVER_ERROR;
-    }
-  }
-
-  /**
-   * Get user-friendly error message for AI operations
+   * Get error message
    */
   getErrorMessage(error: unknown): string {
     if (error instanceof AIServiceError) {
-      switch (error.errorType) {
-        case AIErrorType.AUTHENTICATION_ERROR:
-          return 'Please log in again to continue.';
-        case AIErrorType.TIMEOUT_ERROR:
-          return 'Processing took too long. Try again with fewer or smaller files.';
-        case AIErrorType.PROCESSING_ERROR:
-          return 'Unable to analyze the files. Please try again or enter tasks manually.';
-        case AIErrorType.NETWORK_ERROR:
-          return error.message; // Already user-friendly
-        case AIErrorType.SERVER_ERROR:
-          return 'Server error. Please try again in a moment.';
-        default:
-          return 'Something went wrong. Please try again.';
-      }
+      return error.message; // Use backend message directly
     }
-
     return 'An unexpected error occurred during AI processing. Please try again.';
   }
 }

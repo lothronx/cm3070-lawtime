@@ -21,23 +21,13 @@ interface VerifyOTPResponse {
   session: Session;
 }
 
-enum AuthErrorType {
-  NETWORK_ERROR = 'NETWORK_ERROR',
-  INVALID_OTP = 'INVALID_OTP',
-  INVALID_PHONE = 'INVALID_PHONE',
-  RATE_LIMITED = 'RATE_LIMITED',
-  SERVER_ERROR = 'SERVER_ERROR',
-}
-
 class AuthServiceError extends Error {
   public statusCode: number;
-  public errorType: AuthErrorType;
 
-  constructor(message: string, statusCode: number, errorType: AuthErrorType) {
+  constructor(message: string, statusCode: number) {
     super(message);
     this.name = 'AuthServiceError';
     this.statusCode = statusCode;
-    this.errorType = errorType;
   }
 }
 
@@ -65,12 +55,8 @@ class AuthService {
       const data = await response.json();
 
       if (!response.ok) {
-        const errorType = this.mapStatusToErrorType(response.status, data.message);
-        throw new AuthServiceError(
-          data.message || 'Failed to send OTP',
-          response.status,
-          errorType
-        );
+        const errorMessage = data.message || 'Failed to send OTP';
+        throw new AuthServiceError(errorMessage, response.status);
       }
 
       return { message: data.message || 'OTP sent successfully' };
@@ -82,15 +68,13 @@ class AuthService {
       if (error instanceof TypeError && error.message.includes('fetch')) {
         throw new AuthServiceError(
           'No internet connection. Please check your network and try again.',
-          0,
-          AuthErrorType.NETWORK_ERROR
+          0
         );
       }
 
       throw new AuthServiceError(
         'Unexpected error occurred. Please try again.',
-        0,
-        AuthErrorType.SERVER_ERROR
+        0
       );
     }
   }
@@ -112,12 +96,8 @@ class AuthService {
       const data = await response.json();
 
       if (!response.ok) {
-        const errorType = this.mapStatusToErrorType(response.status, data.message);
-        throw new AuthServiceError(
-          data.message || 'Failed to verify OTP',
-          response.status,
-          errorType
-        );
+        const errorMessage = data.message || 'Failed to verify OTP';
+        throw new AuthServiceError(errorMessage, response.status);
       }
 
       // Return session data
@@ -133,60 +113,24 @@ class AuthService {
       if (error instanceof TypeError && error.message.includes('fetch')) {
         throw new AuthServiceError(
           'No internet connection. Please check your network and try again.',
-          0,
-          AuthErrorType.NETWORK_ERROR
+          0
         );
       }
 
       throw new AuthServiceError(
         'Unexpected error occurred. Please try again.',
-        0,
-        AuthErrorType.SERVER_ERROR
+        0
       );
     }
   }
 
-
-
   /**
-   * Map HTTP status code to specific error type
-   */
-  private mapStatusToErrorType(statusCode: number, message?: string): AuthErrorType {
-    switch (statusCode) {
-      case 400:
-        if (message?.includes('phone')) return AuthErrorType.INVALID_PHONE;
-        if (message?.includes('otp') || message?.includes('Invalid')) return AuthErrorType.INVALID_OTP;
-        return AuthErrorType.INVALID_OTP; // Default for 400s
-      case 429:
-        return AuthErrorType.RATE_LIMITED;
-      case 500:
-        return AuthErrorType.SERVER_ERROR;
-      default:
-        return AuthErrorType.SERVER_ERROR;
-    }
-  }
-
-  /**
-   * Get user-friendly error message (simplified for OTP operations only)
+   * Get error message - just return the backend message directly
    */
   getErrorMessage(error: unknown): string {
     if (error instanceof AuthServiceError) {
-      switch (error.errorType) {
-        case AuthErrorType.INVALID_PHONE:
-          return 'Please enter a valid phone number';
-        case AuthErrorType.INVALID_OTP:
-          return 'Invalid verification code. Please try again.';
-        case AuthErrorType.RATE_LIMITED:
-          return 'Too many attempts. Please wait before trying again.';
-        case AuthErrorType.NETWORK_ERROR:
-          return error.message; // Already user-friendly
-        case AuthErrorType.SERVER_ERROR:
-          return 'Server error. Please try again in a moment.';
-        default:
-          return 'Something went wrong. Please try again.';
-      }
+      return error.message; // Use backend message directly
     }
-
     return 'An unexpected error occurred. Please try again.';
   }
 }
