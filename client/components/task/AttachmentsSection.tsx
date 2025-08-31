@@ -3,9 +3,9 @@ import { View, StyleSheet, Linking, Alert } from "react-native";
 import { Text, Button } from "react-native-paper";
 import { useAppTheme, SPACING, BORDER_RADIUS } from "@/theme/ThemeProvider";
 import { isPermanentAttachment, TaskFile } from "@/types";
-import { useTaskFilesData } from "@/hooks/useTaskFilesData";
+import { useTaskFiles } from "@/hooks/useTaskFiles";
 import { useFileOperations } from "@/hooks/useFileOperations";
-import { useFilePicker } from "@/hooks/useFilePicker";
+import { useImagePicker } from "@/hooks/useImagePicker";
 import AttachmentList from "./AttachmentList";
 
 interface AttachmentsSectionProps {
@@ -43,7 +43,7 @@ export default function AttachmentsSection({
     isError: dataError,
     createTaskFiles,
     deleteTaskFile,
-  } = useTaskFilesData(taskId || null);
+  } = useTaskFiles(taskId || null);
 
   // Business logic layer
   const {
@@ -65,7 +65,7 @@ export default function AttachmentsSection({
   });
 
   // UI interaction layer
-  const { openImagePicker } = useFilePicker({
+  const { openImagePicker } = useImagePicker({
     onFilesSelected: async (files) => {
       if (taskId) {
         // Edit mode: Upload directly to permanent storage

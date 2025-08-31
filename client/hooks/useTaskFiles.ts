@@ -12,7 +12,7 @@ import { TaskFile, TaskFileInsert } from '@/types';
  * - Cache management
  * - Auth state synchronization
  */
-export function useTaskFilesData(taskId: number | null) {
+export function useTaskFiles(taskId: number | null) {
   const queryClient = useQueryClient();
 
   // Query for permanent task files

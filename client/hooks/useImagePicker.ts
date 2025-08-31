@@ -3,7 +3,7 @@ import { Alert } from 'react-native';
 import * as ImagePicker from 'expo-image-picker';
 import { processAndValidatePickerFile } from '@/utils/fileUploadUtils';
 
-interface UseFilePickerParams {
+interface useImagePickerParams {
   onFilesSelected: (files: { uri: string; fileName: string; originalName: string; mimeType: string; size: number }[]) => Promise<void>;
   onSuccess: (message: string) => void;
   onError: (message: string) => void;
@@ -17,7 +17,7 @@ interface UseFilePickerParams {
  * - File validation and user feedback
  * - Success/error messaging
  */
-export function useFilePicker({ onFilesSelected, onSuccess, onError }: UseFilePickerParams) {
+export function useImagePicker({ onFilesSelected, onSuccess, onError }: useImagePickerParams) {
 
   const openImagePicker = useCallback(async () => {
     console.log("Opening image picker");

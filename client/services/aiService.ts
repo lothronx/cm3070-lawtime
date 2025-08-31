@@ -118,4 +118,3 @@ class AIService {
 }
 
 export default AIService;
-export { AIServiceError };
