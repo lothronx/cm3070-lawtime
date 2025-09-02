@@ -32,7 +32,7 @@ class AuthService:
             session_data = self._sign_in_existing_user(phone_number)
             if session_data:
                 logger.info(
-                    f"Existing user authenticated for phone ending in {phone_number[-4:]}"
+                    "Existing user authenticated for phone ending in %s", phone_number[-4:]
                 )
                 session_data["is_new_user"] = False
                 return True, session_data, None
@@ -40,15 +40,15 @@ class AuthService:
             # User doesn't exist, create new user
             session_data = self._create_new_user(phone_number)
             if session_data:
-                logger.info(f"New user created for phone ending in {phone_number[-4:]}")
+                logger.info("New user created for phone ending in %s", phone_number[-4:])
                 session_data["is_new_user"] = True
                 return True, session_data, None
 
             return False, None, "Failed to create user account"
 
-        except Exception as e:
+        except (RuntimeError, ValueError, KeyError) as e:
             logger.error(
-                f"Authentication error for phone ending in {phone_number[-4:]}: {str(e)}"
+                "Authentication error for phone ending in %s: %s", phone_number[-4:], str(e)
             )
             return False, None, "Authentication service error"
 
@@ -75,7 +75,7 @@ class AuthService:
 
             return None
 
-        except Exception:
+        except (RuntimeError, ValueError, KeyError):
             # User doesn't exist or other auth error
             return None
 
@@ -103,9 +103,9 @@ class AuthService:
 
             return None
 
-        except Exception as e:
+        except (RuntimeError, ValueError, KeyError) as e:
             logger.error(
-                f"User creation failed for phone ending in {phone_number[-4:]}: {str(e)}"
+                "User creation failed for phone ending in %s: %s", phone_number[-4:], str(e)
             )
             return None
 
@@ -160,8 +160,8 @@ class AuthService:
                     "phone": user.user.phone or "",
                 }
             return False, None
-        except Exception as e:
-            logger.error(f"Token verification failed: {str(e)}")
+        except (RuntimeError, ValueError, KeyError) as e:
+            logger.error("Token verification failed: %s", str(e))
             return False, None
 
     def refresh_session(
@@ -184,6 +184,6 @@ class AuthService:
 
             return False, None, "Failed to refresh session"
 
-        except Exception as e:
-            logger.error(f"Session refresh failed: {str(e)}")
+        except (RuntimeError, ValueError, KeyError) as e:
+            logger.error("Session refresh failed: %s", str(e))
             return False, None, "Session refresh error"

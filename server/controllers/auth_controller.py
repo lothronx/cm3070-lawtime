@@ -41,7 +41,7 @@ class AuthController:
 
             # Send verification code using managed service
             # (includes automatic rate limiting and code generation)
-            success, error_message, biz_id = (
+            success, error_message, _ = (
                 self.phone_verification_service.send_verification_code(phone_number)
             )
 
@@ -58,7 +58,7 @@ class AuthController:
                 )
 
             logger.info(
-                f"Verification code sent successfully to phone ending in {phone_number[-4:]}"
+                "Verification code sent successfully to phone ending in %s", phone_number[-4:]
             )
 
             return (
@@ -72,8 +72,8 @@ class AuthController:
                 200,
             )
 
-        except Exception as e:
-            logger.error(f"Send OTP error: {str(e)}")
+        except (RuntimeError, ValueError, KeyError) as e:
+            logger.error("Send OTP error: %s", str(e))
             return jsonify({"status": "error", "message": "Internal server error"}), 500
 
     def verify_otp(self) -> Tuple[Response, int]:
@@ -142,8 +142,8 @@ class AuthController:
                 200,
             )
 
-        except Exception as e:
-            logger.error(f"Verify OTP error: {str(e)}")
+        except (RuntimeError, ValueError, KeyError) as e:
+            logger.error("Verify OTP error: %s", str(e))
             return jsonify({"status": "error", "message": "Internal server error"}), 500
 
     def _validate_send_otp_request(self) -> Tuple[Response, int]:

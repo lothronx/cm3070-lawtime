@@ -38,7 +38,7 @@ class PhoneVerificationService:
         credential = CredentialClient()
 
         api_config = open_api_models.Config(credential=credential)
-        api_config.endpoint = f"dypnsapi.aliyuncs.com"
+        api_config.endpoint = "dypnsapi.aliyuncs.com"
 
         return DypnsapiClient(api_config)
 
@@ -82,21 +82,21 @@ class PhoneVerificationService:
 
             if response.body.code == "OK" and response.body.success:
                 logger.info(
-                    f"Verification code sent successfully to phone ending in {clean_phone[-4:]}"
+                    "Verification code sent successfully to phone ending in %s", clean_phone[-4:]
                 )
                 return True, None, response.body.model.biz_id
             else:
                 error_msg = response.body.message or "Unknown error"
-                logger.error(f"Verification code send failed: {error_msg}")
+                logger.error("Verification code send failed: %s", error_msg)
                 return (
                     False,
                     self._handle_send_error(response.body.code, error_msg),
                     None,
                 )
 
-        except Exception as error:
+        except (RuntimeError, ValueError, KeyError) as error:
             error_message = self._extract_error_message(error)
-            logger.error(f"Verification code send exception: {error_message}")
+            logger.error("Verification code send exception: %s", error_message)
             return False, self._handle_send_error("EXCEPTION", error_message), None
 
     def verify_code(
@@ -132,21 +132,21 @@ class PhoneVerificationService:
                 is_valid = response.body.model.verify_result == "PASS"
                 if is_valid:
                     logger.info(
-                        f"Verification code validated successfully for phone ending in {clean_phone[-4:]}"
+                        "Verification code validated successfully for phone ending in %s", clean_phone[-4:]
                     )
                 else:
                     logger.warning(
-                        f"Verification code validation failed for phone ending in {clean_phone[-4:]}"
+                        "Verification code validation failed for phone ending in %s", clean_phone[-4:]
                     )
                 return is_valid, None
             else:
                 error_msg = response.body.message or "Unknown error"
-                logger.error(f"Verification check failed: {error_msg}")
+                logger.error("Verification check failed: %s", error_msg)
                 return False, self._handle_verify_error(response.body.code, error_msg)
 
-        except Exception as error:
+        except (RuntimeError, ValueError, KeyError) as error:
             error_message = self._extract_error_message(error)
-            logger.error(f"Verification check exception: {error_message}")
+            logger.error("Verification check exception: %s", error_message)
             return False, self._handle_verify_error("EXCEPTION", error_message)
 
     def _handle_send_error(self, error_code: str, error_message: str) -> str:

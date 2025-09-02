@@ -6,13 +6,13 @@ the graph, and returns the processed results.
 """
 
 import logging
-from datetime import datetime
 from typing import Dict, List, Any
-from supabase import Client
 
 from agent.graph import graph
 from agent.utils.state import AgentState
 from config import Config
+
+from supabase import Client
 
 logger = logging.getLogger(__name__)
 
@@ -50,8 +50,8 @@ class TaskService:
 
             return user.user.id
         except Exception as e:
-            logger.error(f"JWT validation failed: {e}")
-            raise ValueError("Authentication failed")
+            logger.error("JWT validation failed: %s", e)
+            raise ValueError("Authentication failed") from e
 
     def validate_file_urls(self, file_urls: List[str], user_id: str) -> None:
         """Validate that file URLs belong to the authenticated user.
@@ -85,7 +85,7 @@ class TaskService:
             url_user_id = url_parts[temp_uploads_index + 1]
             return url_user_id == user_id
         except (ValueError, IndexError):
-            logger.warning(f"Could not parse user ID from URL: {file_url}")
+            logger.warning("Could not parse user ID from URL: %s", file_url)
             return False
 
     async def propose_tasks(
@@ -114,7 +114,7 @@ class TaskService:
         """
         # Validate authentication
         user_id = self.validate_jwt_and_extract_user_id(jwt_token)
-        logger.info(f"Processing task proposal for user {user_id}")
+        logger.info("Processing task proposal for user %s", user_id)
 
         # Validate file URL ownership (HTTP-layer concern)
         self.validate_file_urls(source_file_urls, user_id)
@@ -138,7 +138,7 @@ class TaskService:
 
         try:
             # Invoke the LangGraph agent - it will handle all validation and initialization
-            logger.info(f"Invoking LangGraph agent with source_type: {source_type}")
+            logger.info("Invoking LangGraph agent with source_type: %s", source_type)
             final_state = await graph.ainvoke(initial_state)
 
             # Extract proposed tasks from final state
@@ -149,10 +149,11 @@ class TaskService:
                 return []
 
             logger.info(
-                f"Agent processing completed successfully. Generated {len(proposed_tasks)} tasks"
+                "Agent processing completed successfully. Generated %d tasks",
+                len(proposed_tasks),
             )
             return proposed_tasks
 
         except Exception as e:
-            logger.error(f"LangGraph agent processing failed: {e}")
-            raise ValueError(f"AI processing failed: {str(e)}")
+            logger.error("LangGraph agent processing failed: %s", e)
+            raise ValueError(f"AI processing failed: {str(e)}") from e

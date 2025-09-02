@@ -71,7 +71,7 @@ class TaskController:
             if not isinstance(client_list, list):
                 return jsonify({"error": "client_list must be an array"}), 400
 
-            logger.info(f"Processing task proposal request: {source_type}, {len(source_file_urls)} files, {len(client_list)} clients")
+            logger.info("Processing task proposal request: %s, %d files, %d clients", source_type, len(source_file_urls), len(client_list))
 
             # Process the request using the task service
             # Note: Running async function in sync context using asyncio.run()
@@ -91,15 +91,15 @@ class TaskController:
                 "count": len(proposed_tasks)
             }
 
-            logger.info(f"Task proposal completed successfully: {len(proposed_tasks)} tasks generated")
+            logger.info("Task proposal completed successfully: %d tasks generated", len(proposed_tasks))
             return jsonify(response), 200
 
         except ValueError as e:
             # Handle validation errors (auth, input validation, AI processing)
-            logger.warning(f"Task proposal validation error: {e}")
+            logger.warning("Task proposal validation error: %s", e)
             return jsonify({"error": str(e)}), 400
 
-        except Exception as e:
+        except (RuntimeError, KeyError, TypeError) as e:
             # Handle unexpected errors
-            logger.error(f"Task proposal processing failed: {e}")
+            logger.error("Task proposal processing failed: %s", e)
             return jsonify({"error": "Internal server error"}), 500
