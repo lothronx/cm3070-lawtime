@@ -44,14 +44,13 @@ class AIService {
       throw new AIServiceError('Authentication required. Please log in again.', 401);
     }
 
-    const url = `${API_BASE_URL}/api/tasks/propose`;
-
     console.log('Calling AI backend:', {
-      url,
       source_type: request.source_type,
       file_count: request.source_file_urls.length,
       client_count: request.client_list.length
     });
+
+    const url = `${API_BASE_URL}/api/tasks/propose`;
 
     try {
       const response = await fetch(url, {
