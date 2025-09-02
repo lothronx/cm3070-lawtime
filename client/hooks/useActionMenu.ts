@@ -72,7 +72,7 @@ export function useActionMenu(): ActionMenuHandlers {
   }, []);
 
   // Image picker integration
-  const { openImagePicker } = useImagePicker({
+  const { openImagePicker, openCamera } = useImagePicker({
     onFilesSelected: handleFilesSelected,
     onSuccess: handleSuccess,
     onError: handleError
@@ -90,8 +90,12 @@ export function useActionMenu(): ActionMenuHandlers {
 
   const onTakePhoto = useCallback(async () => {
     console.log('Take photo selected');
-    // TODO: Implement camera functionality
-  }, []);
+    try {
+      await openCamera();
+    } catch (error) {
+      console.error('Failed to open camera:', error);
+    }
+  }, [openCamera]);
 
   const onAudioHoldStart = useCallback(() => {
     console.log('Audio recording started');
