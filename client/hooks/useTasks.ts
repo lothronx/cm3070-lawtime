@@ -97,7 +97,7 @@ export function useTasks() {
     };
 
     return createTaskMutation.mutateAsync(taskDataWithClientId);
-  }, [resolveClientId, createTaskMutation.mutateAsync]);
+  }, [resolveClientId, createTaskMutation]);
 
   // Business logic for updating tasks with client resolution
   const updateTaskWithClientResolution = useCallback(async (taskId: number, updates: Partial<TaskWithClient>) => {
@@ -110,7 +110,7 @@ export function useTasks() {
     }
 
     return updateTaskMutation.mutateAsync({ taskId, updates: resolvedUpdates });
-  }, [resolveClientId, updateTaskMutation.mutateAsync]);
+  }, [resolveClientId, updateTaskMutation]);
 
   // Auth state synchronization - invalidate cache when auth changes
   useEffect(() => {

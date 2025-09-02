@@ -15,16 +15,8 @@ export default function Calendar() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split("T")[0]);
-  const { 
-    tasks, 
-    isLoading, 
-    isError, 
-    error, 
-    refetch,
-    completeTask, 
-    uncompleteTask, 
-    deleteTask 
-  } = useTasks();
+  const { tasks, isLoading, isError, error, refetch, completeTask, incompleteTask, deleteTask } =
+    useTasks();
 
   // Create marked dates object from real tasks
   const markedDates = useMemo(() => {
@@ -59,8 +51,8 @@ export default function Calendar() {
     tasks,
     selectedDate,
     theme.colors.onSurfaceDisabled,
-    theme.colors.primary,
     theme.colors.onSecondary,
+    theme.colors.secondary,
   ]);
 
   // Get tasks for selected date
@@ -84,7 +76,7 @@ export default function Calendar() {
         await completeTask(taskId);
       } else {
         // Mark as incomplete using hook with proper cache invalidation
-        await uncompleteTask(taskId);
+        await incompleteTask(taskId);
       }
     } catch (err) {
       Alert.alert("Error", "Failed to update task status. Please try again.");

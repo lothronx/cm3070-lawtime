@@ -24,7 +24,7 @@ const ClientAutocompleteInput: React.FC<ClientAutocompleteInputProps> = ({
   const [searchQuery, setSearchQuery] = useState("");
 
   // Fetch clients using TanStack Query
-  const { clients, isLoading, isError, error: clientError } = useClients();
+  const { clients, isLoading, isError} = useClients();
 
   const {
     field: { onChange, onBlur, value },

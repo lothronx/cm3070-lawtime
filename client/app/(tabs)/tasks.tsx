@@ -18,7 +18,7 @@ export default function Tasks() {
     error,
     refetch,
     completeTask,
-    uncompleteTask,
+    incompleteTask,
     deleteTask,
   } = useTasks();
 
@@ -29,7 +29,7 @@ export default function Tasks() {
         await completeTask(taskId);
       } else {
         // Mark as incomplete using hook with proper cache invalidation
-        await uncompleteTask(taskId);
+        await incompleteTask(taskId);
       }
     } catch (err) {
       Alert.alert("Error", "Failed to update task status. Please try again.");

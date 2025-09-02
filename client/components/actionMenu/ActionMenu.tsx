@@ -61,7 +61,7 @@ export default function ActionMenu({ visible = true }: ActionMenuProps) {
       // Only close main menu if camera menu is not open
       toggleMenu();
     }
-  }, [cameraMenuVisible, isMenuOpen, toggleMenu]);
+  }, [cameraMenuVisible, isMenuOpen, toggleMenu, setCameraMenuVisible]);
 
   // Camera options handlers
   const handlePhotoLibrary = () => {
