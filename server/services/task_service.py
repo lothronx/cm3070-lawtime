@@ -139,7 +139,7 @@ class TaskService:
         try:
             # Invoke the LangGraph agent - it will handle all validation and initialization
             logger.info(f"Invoking LangGraph agent with source_type: {source_type}")
-            final_state = graph.invoke(initial_state)
+            final_state = await graph.ainvoke(initial_state)
 
             # Extract proposed tasks from final state
             proposed_tasks = final_state.get("proposed_tasks", [])
