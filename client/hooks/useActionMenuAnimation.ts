@@ -65,7 +65,11 @@ export function useActionMenuAnimation() {
     } else {
       // Opening menu
       setIsMenuOpen(true);
-      const config: WithSpringConfig = { damping: 12 };
+      const config: WithSpringConfig = {
+        damping: 12,
+        mass: 1,
+        stiffness: 100,
+      };
       transYManual.value = withDelay(0, withSpring(TRANSLATE_Y, config));
       transYCamera.value = withDelay(DURATION / 8, withSpring(TRANSLATE_Y, config));
       transYAudio.value = withDelay(DURATION / 4, withSpring(TRANSLATE_Y, config));
