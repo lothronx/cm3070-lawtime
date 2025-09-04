@@ -38,7 +38,7 @@ export default function CameraOptionsMenu({
       <AnimatedPressable
         entering={FadeIn.duration(200)}
         exiting={FadeOut.duration(150)}
-        style={[styles.menuContainer, { bottom: insets.bottom + 190, left: width / 2 - 90 }]}
+        style={[styles.menuContainer, { bottom: insets.bottom + 170, left: width / 2 - 90 }]}
         onPress={() => {}} // Capture touches within menu area but do nothing
       >
         <Surface style={[styles.menuContent, { backgroundColor: theme.colors.surface }]}>

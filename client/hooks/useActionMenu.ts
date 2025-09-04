@@ -1,6 +1,7 @@
 import { useCallback, useState } from 'react';
 import { useRouter } from 'expo-router';
 import { useImagePicker } from '@/hooks/useImagePicker';
+import { useAudioRecorder } from '@/hooks/useAudioRecorder';
 import { useFileOperations } from '@/hooks/useFileOperations';
 import { useAIProcessing } from '@/hooks/useAIProcessing';
 
@@ -9,11 +10,13 @@ export interface ActionMenuHandlers {
   onPhotoLibrary: () => void;
   onTakePhoto: () => void;
   onAudioHoldStart: () => void;
-  onAudioHoldEnd: () => boolean; // Returns true if recording was successful
+  onAudioHoldEnd: () => Promise<boolean>; 
   onManualPress: () => void;
   // Audio validation state
   showTooShortWarning: boolean;
   dismissTooShortWarning: () => void;
+  // Recording state
+  isRecording: boolean;
   // Processing state
   isUploading: boolean;
   uploadProgress: string;
@@ -78,6 +81,13 @@ export function useActionMenu(): ActionMenuHandlers {
     onError: handleError
   });
 
+  // Audio recorder integration
+  const { startRecording, stopRecording, cancelRecording, isRecording } = useAudioRecorder({
+    onFilesSelected: handleFilesSelected,
+    onSuccess: handleSuccess,
+    onError: handleError
+  });
+
   // Action handlers
   const onPhotoLibrary = useCallback(async () => {
     console.log('Photo library selected');
@@ -97,26 +107,37 @@ export function useActionMenu(): ActionMenuHandlers {
     }
   }, [openCamera]);
 
-  const onAudioHoldStart = useCallback(() => {
+  const onAudioHoldStart = useCallback(async () => {
     console.log('Audio recording started');
     setRecordingStartTime(Date.now());
     setShowTooShortWarning(false);
-    // TODO: Implement audio recording start
-  }, []);
 
-  const onAudioHoldEnd = useCallback(() => {
+    const success = await startRecording();
+    if (!success) {
+      console.error('Failed to start audio recording');
+    }
+  }, [startRecording]);
+
+  const onAudioHoldEnd = useCallback(async () => {
     const duration = Date.now() - recordingStartTime;
 
     if (duration < 1000) {
       console.log('Audio recording too short:', duration + 'ms');
       setShowTooShortWarning(true);
-      return false; // Recording failed - don't close menu
+      await cancelRecording();
+      return false; 
     }
 
     console.log('Audio recording ended, duration:', duration + 'ms');
-    // TODO: Implement audio processing
-    return true; // Recording successful - close menu
-  }, [recordingStartTime]);
+
+    try {
+      const success = await stopRecording();
+      return success; 
+    } catch (error) {
+      console.error('Failed to stop audio recording:', error);
+      return false; // Recording failed - don't close menu
+    }
+  }, [recordingStartTime, stopRecording, cancelRecording]);
 
   const dismissTooShortWarning = useCallback(() => {
     setShowTooShortWarning(false);
@@ -135,6 +156,7 @@ export function useActionMenu(): ActionMenuHandlers {
     onManualPress,
     showTooShortWarning,
     dismissTooShortWarning,
+    isRecording,
     isUploading: isUploading || aiProcessing.isProcessing,
     uploadProgress,
   };

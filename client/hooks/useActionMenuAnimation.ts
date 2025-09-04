@@ -1,4 +1,4 @@
-import { useState, useCallback } from "react";
+import { useState, useCallback, useEffect } from "react";
 import {
   useSharedValue,
   useAnimatedStyle,
@@ -8,13 +8,14 @@ import {
   interpolate,
   Easing,
   WithSpringConfig,
+  withRepeat,
 } from "react-native-reanimated";
 import { useAppTheme } from "@/theme/ThemeProvider";
 
 const DURATION = 300;
 const TRANSLATE_Y = -80;
 
-export function useActionMenuAnimation() {
+export function useActionMenuAnimation(isRecording: boolean = false) {
   const { theme } = useAppTheme();
 
   // Animation shared values
@@ -28,12 +29,36 @@ export function useActionMenuAnimation() {
   const cameraState = useSharedValue(0);
   const manualState = useSharedValue(0);
   const audioState = useSharedValue(0);
-  const audioRecordingState = useSharedValue(0); // 0=idle, 1=recording
+
+  // Recording animation states
+  const recordingPulse = useSharedValue(0);
+  const recordingColorProgress = useSharedValue(0);
 
   // Camera options menu state
   const [cameraMenuVisible, setCameraMenuVisible] = useState(false);
   // Menu open React state (synced with menuState shared value)
   const [isMenuOpen, setIsMenuOpen] = useState(false);
+
+  // Start/stop recording animation based on isRecording prop
+  useEffect(() => {
+    if (isRecording) {
+      // Start pulsing animation
+      recordingPulse.value = withRepeat(
+        withTiming(1, { duration: 800, easing: Easing.inOut(Easing.ease) }),
+        -1, // Infinite repeat
+        true // Reverse (creates pulse effect)
+      );
+
+      // Animate color to recording state
+      recordingColorProgress.value = withTiming(1, { duration: 200 });
+    } else {
+      // Stop pulsing animation
+      recordingPulse.value = withTiming(0, { duration: 200 });
+
+      // Animate color back to normal
+      recordingColorProgress.value = withTiming(0, { duration: 200 });
+    }
+  }, [isRecording, recordingPulse, recordingColorProgress]);
 
   const toggleMenu = useCallback(() => {
     // Close camera menu if it's open
@@ -86,16 +111,12 @@ export function useActionMenuAnimation() {
   const animateAudioPressIn = useCallback(() => {
     // Press feedback (immediate)
     audioState.value = withTiming(1, { duration: 100 });
-    // Start recording - single state handles all functionality
-    audioRecordingState.value = withTiming(1, { duration: 200 });
-  }, [audioState, audioRecordingState]);
+  }, [audioState]);
 
   const animateAudioPressOut = useCallback(() => {
     // Release press feedback (immediate)
     audioState.value = withTiming(0, { duration: 100 });
-    // Stop recording - single state handles all functionality
-    audioRecordingState.value = withTiming(0, { duration: 200 });
-  }, [audioState, audioRecordingState]);
+  }, [audioState]);
 
   const animateManualPressIn = useCallback(() => {
     manualState.value = withTiming(1, { duration: 100 });
@@ -126,11 +147,10 @@ export function useActionMenuAnimation() {
         },
         { scale: menuScale * pressScale },
       ],
-      backgroundColor:
-        audioRecordingState.value > 0.5 ? theme.colors.onSurfaceDisabled : theme.colors.error,
+      backgroundColor: isRecording ? theme.colors.onSurfaceDisabled : theme.colors.error,
       opacity: interpolate(manualState.value, [0, 1], [1, 0.6]),
     };
-  }, [theme.colors.error, theme.colors.onSurfaceDisabled]);
+  }, [theme.colors.error, theme.colors.onSurfaceDisabled, isRecording]);
 
   const rCameraAnimateStyles = useAnimatedStyle(() => {
     const menuScale = interpolate(transYCamera.value, [TRANSLATE_Y, 0], [1, 0]);
@@ -138,16 +158,22 @@ export function useActionMenuAnimation() {
 
     return {
       transform: [{ translateY: transYCamera.value }, { scale: menuScale * pressScale }],
-      backgroundColor:
-        audioRecordingState.value > 0.5 ? theme.colors.onSurfaceDisabled : theme.colors.error,
+      backgroundColor: isRecording ? theme.colors.onSurfaceDisabled : theme.colors.error,
       opacity: interpolate(cameraState.value, [0, 1], [1, 0.6]),
     };
-  }, [theme.colors.error, theme.colors.onSurfaceDisabled]);
+  }, [theme.colors.error, theme.colors.onSurfaceDisabled, isRecording]);
 
   const rAudioAnimateStyles = useAnimatedStyle(() => {
     const baseScale = interpolate(transYAudio.value, [TRANSLATE_Y, 0], [1, 0]);
-    const recordingScale = interpolate(audioRecordingState.value, [0, 1], [1, 1.1]);
     const pressScale = interpolate(audioState.value, [0, 1], [1, 0.9]);
+
+    // Recording pulse effect - creates breathing animation
+    const pulseScale = interpolate(recordingPulse.value, [0, 1], [1.1, 1.25]);
+    const finalScale = isRecording ? pulseScale : 1.0;
+
+    // Color interpolation from error (red) to a darker red when recording
+    const recordingColor = `rgba(220, 38, 38, ${interpolate(recordingColorProgress.value, [0, 1], [1, 0.9])})`;
+    const normalColor = theme.colors.error;
 
     return {
       transform: [
@@ -155,12 +181,12 @@ export function useActionMenuAnimation() {
         {
           translateX: interpolate(transYAudio.value, [TRANSLATE_Y, 0], [-TRANSLATE_Y * 0.866, 0]),
         },
-        { scale: baseScale * recordingScale * pressScale },
+        { scale: baseScale * finalScale * pressScale },
       ],
-      backgroundColor: theme.colors.error,
-      opacity: interpolate(audioState.value, [0, 1], [1, 0.6]), // Press feedback opacity
+      backgroundColor: isRecording ? recordingColor : normalColor,
+      opacity: interpolate(audioState.value, [0, 1], [1, 0.6]),
     };
-  }, [theme.colors.error]);
+  }, [theme.colors.error, isRecording]);
 
   const rMenuAnimateStyles = useAnimatedStyle(() => {
     return {
@@ -182,8 +208,7 @@ export function useActionMenuAnimation() {
     setCameraMenuVisible,
     isMenuOpen,
     menuState,
-    audioRecordingState,
-    
+
     // Functions
     toggleMenu,
     animateAudioPressIn,
@@ -192,7 +217,7 @@ export function useActionMenuAnimation() {
     animateManualPressOut,
     animateCameraPressIn,
     animateCameraPressOut,
-    
+
     // Animated styles
     rManualAnimateStyles,
     rCameraAnimateStyles,

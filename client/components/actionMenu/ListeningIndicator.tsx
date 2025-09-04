@@ -1,49 +1,49 @@
-import React from "react";
+import React, { useEffect } from "react";
 import { StyleSheet, Text, View } from "react-native";
 import Animated, {
   interpolate,
   useAnimatedStyle,
-  SharedValue,
   useSharedValue,
   withRepeat,
   withTiming,
   withDelay,
-  useAnimatedReaction,
 } from "react-native-reanimated";
 import { useAppTheme } from "@/theme/ThemeProvider";
 
 interface ListeningIndicatorProps {
-  isListening: SharedValue<number>;
+  isRecording: boolean;
 }
 
-export default function ListeningIndicator({ isListening }: ListeningIndicatorProps) {
+export default function ListeningIndicator({ isRecording }: ListeningIndicatorProps) {
   const { theme } = useAppTheme();
 
-  // Internal sound wave animation shared values
+  // Animation shared values
+  const opacity = useSharedValue(0);
+  const scale = useSharedValue(0.8);
   const soundWave1 = useSharedValue(0);
   const soundWave2 = useSharedValue(0);
 
-  // Start/stop sound wave animations based on isListening value
-  useAnimatedReaction(
-    () => isListening.value,
-    (current, previous) => {
-      if (current > 0.5 && (previous === null || previous <= 0.5)) {
-        // Start sound wave animations
-        soundWave1.value = withRepeat(withTiming(1, { duration: 600 }), -1, true);
-        soundWave2.value = withDelay(300, withRepeat(withTiming(1, { duration: 600 }), -1, true));
-      } else if (current <= 0.5 && (previous === null || previous > 0.5)) {
-        // Stop sound wave animations
-        soundWave1.value = withTiming(0, { duration: 200 });
-        soundWave2.value = withTiming(0, { duration: 200 });
-      }
-    },
-    [isListening]
-  );
+  // Start/stop animations based on isRecording value
+  useEffect(() => {
+    if (isRecording) {
+      // Start animations
+      opacity.value = withTiming(1, { duration: 100 });
+      scale.value = withTiming(1, { duration: 100 });
+      soundWave1.value = withRepeat(withTiming(1, { duration: 600 }), -1, true);
+      soundWave2.value = withDelay(300, withRepeat(withTiming(1, { duration: 600 }), -1, true));
+    } else {
+      // Stop animations
+      opacity.value = withTiming(0, { duration: 200 });
+      scale.value = withTiming(0.8, { duration: 200 });
+      soundWave1.value = withTiming(0, { duration: 200 });
+      soundWave2.value = withTiming(0, { duration: 200 });
+    }
+  }, [isRecording, opacity, scale, soundWave1, soundWave2]);
 
   const rListeningIndicatorStyles = useAnimatedStyle(() => {
     return {
-      opacity: isListening.value,
-      transform: [{ scale: interpolate(isListening.value, [0, 1], [0.8, 1]) }],
+      opacity: opacity.value,
+      transform: [{ scale: scale.value }],
     };
   }, []);
 

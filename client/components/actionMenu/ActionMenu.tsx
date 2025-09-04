@@ -28,6 +28,7 @@ export default function ActionMenu({ visible = true }: ActionMenuProps) {
     onManualPress,
     showTooShortWarning,
     dismissTooShortWarning,
+    isRecording,
   } = useActionMenu();
 
   const {
@@ -35,7 +36,6 @@ export default function ActionMenu({ visible = true }: ActionMenuProps) {
     setCameraMenuVisible,
     isMenuOpen,
     menuState,
-    audioRecordingState,
     toggleMenu,
     animateAudioPressIn,
     animateAudioPressOut,
@@ -48,7 +48,7 @@ export default function ActionMenu({ visible = true }: ActionMenuProps) {
     rAudioAnimateStyles,
     rMenuAnimateStyles,
     rMenuButtonStyles,
-  } = useActionMenuAnimation();
+  } = useActionMenuAnimation(isRecording);
 
   const handleFullScreenOverlay = React.useCallback(() => {
     if (cameraMenuVisible) {
@@ -100,11 +100,11 @@ export default function ActionMenu({ visible = true }: ActionMenuProps) {
     onAudioHoldStart();
   };
 
-  const handleAudioPressOut = () => {
+  const handleAudioPressOut = async () => {
     animateAudioPressOut();
 
     // Let parent handle validation and return success/failure
-    const shouldCloseMenu = onAudioHoldEnd();
+    const shouldCloseMenu = await onAudioHoldEnd();
 
     // Only close menu if recording was successful
     if (shouldCloseMenu) {
@@ -133,7 +133,7 @@ export default function ActionMenu({ visible = true }: ActionMenuProps) {
       <FullScreenOverlay opacityValue={menuState} onPress={handleFullScreenOverlay} />
 
       {/* Listening Indicator */}
-      <ListeningIndicator isListening={audioRecordingState} />
+      <ListeningIndicator isRecording={isRecording} />
 
       {/* Camera Options Menu */}
       <CameraOptionsMenu
