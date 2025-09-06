@@ -66,6 +66,11 @@ export default function Task() {
     attachmentHooks,
   });
 
+  // Create a close handler that passes the current form state
+  const handleHeaderClose = React.useCallback(() => {
+    taskOperations.handleClose(formHooks);
+  }, [taskOperations, formHooks]);
+
   // === Event Handlers ===
   const handleSaveClick = async () => {
     if (!formHooks?.saveForm) {
@@ -83,7 +88,7 @@ export default function Task() {
         variant="modal"
         stackIndex={isAIFlow ? currentTaskIndex : undefined}
         stackTotal={isAIFlow ? totalTasks : undefined}
-        onClose={taskOperations.handleClose}
+        onClose={handleHeaderClose}
       />
 
       {initialLoading ? (

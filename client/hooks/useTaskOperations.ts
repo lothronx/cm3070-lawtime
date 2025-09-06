@@ -29,12 +29,13 @@ interface UseTaskOperationsReturn {
   handleSave: (data: TaskWithClient) => Promise<void>;
   handleDelete: () => Promise<void>;
   handleDiscard: () => Promise<void>;
+  handleClose: (formState?: FormState | null) => void;
+
   // UI feedback
   snackbarVisible: boolean;
   snackbarMessage: string;
   showMessage: (message: string) => void;
   setSnackbarVisible: (value: boolean) => void;
-  handleClose: (formState?: FormState | null) => void;
 }
 
 /**
@@ -214,11 +215,12 @@ export function useTaskOperations({
     handleSave,
     handleDelete,
     handleDiscard,
+    handleClose,
+
     // UI feedback
     snackbarVisible,
     snackbarMessage,
     showMessage,
     setSnackbarVisible,
-    handleClose,
   };
 }
