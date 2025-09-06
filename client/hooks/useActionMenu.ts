@@ -48,10 +48,13 @@ export function useActionMenu(): ActionMenuHandlers {
     onDeleteTaskFile: () => {} // No-op for this use case
   });
 
+  // Track current action type for source type determination
+  const [currentSourceType, setCurrentSourceType] = useState<'ocr' | 'asr'>('ocr');
+
   const { uploadToTemp, attachments } = fileOperations;
 
   // AI processing integration
-  const aiProcessing = useAIProcessing({ attachments });
+  const aiProcessing = useAIProcessing({ attachments, sourceType: currentSourceType });
 
   // Compute upload progress from both file upload and AI processing
   const uploadProgress = isUploading ? 'Uploading files...' : aiProcessing.progress;
@@ -91,6 +94,7 @@ export function useActionMenu(): ActionMenuHandlers {
   // Action handlers
   const onPhotoLibrary = useCallback(async () => {
     console.log('Photo library selected');
+    setCurrentSourceType('ocr');
     try {
       await openImagePicker();
     } catch (error) {
@@ -100,6 +104,7 @@ export function useActionMenu(): ActionMenuHandlers {
 
   const onTakePhoto = useCallback(async () => {
     console.log('Take photo selected');
+    setCurrentSourceType('ocr');
     try {
       await openCamera();
     } catch (error) {
@@ -109,6 +114,7 @@ export function useActionMenu(): ActionMenuHandlers {
 
   const onAudioHoldStart = useCallback(async () => {
     console.log('Audio recording started');
+    setCurrentSourceType('asr');
     setRecordingStartTime(Date.now());
     setShowTooShortWarning(false);
 

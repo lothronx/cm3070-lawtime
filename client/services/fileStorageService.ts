@@ -105,18 +105,50 @@ export const fileStorageService = {
     if (error) throw error;
   },
 
+
   /**
-   * List temp files for cleanup
+   * Delete all temp files for current user
    */
-  async listTempBatches(): Promise<string[]> {
+  async clearUserTempFiles(): Promise<void> {
     const { session } = useAuthStore.getState();
-    if (!session?.user) return [];
+    if (!session?.user) return;
 
-    const { data } = await supabase.storage
+    const userTempPath = `temp/${session.user.id}`;
+
+    // List all files in user's temp directory
+    const { data: files } = await supabase.storage
       .from('file_storage')
-      .list(`temp/${session.user.id}`);
+      .list(userTempPath, {
+        sortBy: { column: 'name', order: 'asc' }
+      });
 
-    return data?.map(item => item.name) || [];
+    if (!files || files.length === 0) return;
+
+    // Get all file paths (including nested batch folders)
+    const allPaths: string[] = [];
+
+    for (const item of files) {
+      if (item.name) {
+        // List files within each batch folder
+        const { data: batchFiles } = await supabase.storage
+          .from('file_storage')
+          .list(`${userTempPath}/${item.name}`);
+
+        if (batchFiles) {
+          batchFiles.forEach(file => {
+            if (file.name) {
+              allPaths.push(`${userTempPath}/${item.name}/${file.name}`);
+            }
+          });
+        }
+      }
+    }
+
+    // Delete all files at once
+    if (allPaths.length > 0) {
+      const { error } = await supabase.storage.from('file_storage').remove(allPaths);
+      if (error) throw error;
+    }
   },
 
   /**

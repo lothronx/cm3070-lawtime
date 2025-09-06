@@ -32,7 +32,7 @@ interface UseFileOperationsParams {
  */
 export function useFileOperations({ taskFiles, onCreateTaskFiles, onDeleteTaskFile }: UseFileOperationsParams) {
   const [tempFiles, setTempFiles] = useState<TempFile[]>([]);
-  const [uploadBatchId] = useState(() => generateUploadBatchId());
+  const [uploadBatchId, setUploadBatchId] = useState(() => generateUploadBatchId());
   const [isUploading, setIsUploading] = useState(false);
   const [isCommitting, setIsCommitting] = useState(false);
   const [deletingIds, setDeletingIds] = useState<Set<string | number>>(new Set());
@@ -82,10 +82,22 @@ export function useFileOperations({ taskFiles, onCreateTaskFiles, onDeleteTaskFi
       throw new Error('Cannot upload files while saving is in progress. Please wait and try again.');
     }
 
+    // Clean up all existing temp files for user before starting new batch
+    try {
+      await fileStorageService.clearUserTempFiles();
+    } catch (error) {
+      console.warn('Failed to clean previous temp files:', error);
+    }
+
+    // Generate new batch ID and clear state for new task
+    const newBatchId = generateUploadBatchId();
+    setUploadBatchId(newBatchId);
+    setTempFiles([]);
+
     setIsUploading(true);
 
     // Update UI immediately with uploading state
-    setTempFiles(prev => [...prev, ...files.map(f => ({ ...f, isUploading: true }))]);
+    setTempFiles(files.map(f => ({ ...f, isUploading: true })));
 
     try {
       // Upload files sequentially to avoid overwhelming API
@@ -93,7 +105,7 @@ export function useFileOperations({ taskFiles, onCreateTaskFiles, onDeleteTaskFi
         const file = files[i];
 
         try {
-          const result = await fileStorageService.uploadToTemp(file, uploadBatchId);
+          const result = await fileStorageService.uploadToTemp(file, newBatchId);
 
           // Update this specific file's state
           setTempFiles(prev => prev.map(tf =>
@@ -110,7 +122,7 @@ export function useFileOperations({ taskFiles, onCreateTaskFiles, onDeleteTaskFi
     } finally {
       setIsUploading(false);
     }
-  }, [uploadBatchId, isCommitting]);
+  }, [isCommitting]);
 
   // Move temp files to permanent when saving task
   const commitTempFiles = useCallback(async (taskId: number, clearTempAfterCommit: boolean = true): Promise<TaskFile[]> => {
@@ -185,16 +197,13 @@ export function useFileOperations({ taskFiles, onCreateTaskFiles, onDeleteTaskFi
 
   // Clear temp files
   const clearTempFiles = useCallback(async () => {
-    const pathsToClean = tempFiles.map(f => f.path).filter(Boolean) as string[];
-    if (pathsToClean.length > 0) {
-      try {
-        await fileStorageService.deleteFromTemp(pathsToClean);
-      } catch (error) {
-        console.warn('Failed to clean temp files:', error);
-      }
+    try {
+      await fileStorageService.clearUserTempFiles();
+    } catch (error) {
+      console.warn('Failed to clean temp files:', error);
     }
     setTempFiles([]);
-  }, [tempFiles]);
+  }, []);
 
   // Delete temp file
   const deleteTempFile = useCallback((fileName: string) => {

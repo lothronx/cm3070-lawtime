@@ -5,6 +5,7 @@ import AIService from '@/services/aiService';
 
 interface UseAIProcessingParams {
   attachments: Attachment[];
+  sourceType?: 'ocr' | 'asr';
 }
 
 interface AIProcessingState {
@@ -21,7 +22,7 @@ interface AIProcessingState {
  * - Call AI service with OCR processing
  * - Handle AI processing state and errors
  */
-export function useAIProcessing({ attachments }: UseAIProcessingParams) {
+export function useAIProcessing({ attachments, sourceType = 'ocr' }: UseAIProcessingParams) {
   const [pendingProcessing, setPendingProcessing] = useState(false);
   const [processingState, setProcessingState] = useState<AIProcessingState>({
     isProcessing: false,
@@ -51,6 +52,8 @@ export function useAIProcessing({ attachments }: UseAIProcessingParams) {
         return;
       }
 
+      console.log(`Calling AI backend: {"client_count": ${clients.length}, "file_count": ${tempAttachments.length}, "source_type": "${sourceType}"}`);
+
       // Prepare client context
       const clientList = clients.map(client => ({
         id: client.id,
@@ -60,7 +63,7 @@ export function useAIProcessing({ attachments }: UseAIProcessingParams) {
       // Call AI service
       const aiService = AIService.getInstance();
       const response = await aiService.proposeTasks({
-        source_type: 'ocr' as const,
+        source_type: sourceType,
         source_file_urls: sourceFileUrls,
         client_list: clientList
       });
