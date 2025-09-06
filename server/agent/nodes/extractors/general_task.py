@@ -45,7 +45,7 @@ class ExtractedEvent(BaseModel):
         default="general_task",
         description="事件类型，固定为'general_task'"
     )
-    raw_title: str = Field(description="提取的简洁任务描述")
+    raw_title: str = Field(description="提取的简洁任务描述，不超过12个汉字")
     raw_date_time: Optional[str] = Field(
         description="任务的绝对ISO日期时间字符串（格式：YYYY-MM-DDTHH:MM:SS+08:00），如果没有时间则为null"
     )
@@ -272,7 +272,7 @@ PROMPT_EXTRACT_GENERAL_TASK = """
   "extracted_events": [
     {{
       "event_type": "general_task",
-      "raw_title": "审核证据清单",
+      "raw_title": "审核阿里巴巴案证据清单",
       "raw_date_time": null,
       "raw_location": null,
       "related_party_name": "阿里巴巴（中国）有限公司",

@@ -44,7 +44,7 @@ class PreservationEvent(BaseModel):
         description="事件类型，固定为 'asset_preservation'",
     )
     raw_title: str = Field(
-        description="格式化的事件标题，例如：'腾讯公司和平路1号不动产查封冻结到期'"
+        description="格式化的事件标题，例如：'腾讯不动产续封'，不超过12个汉字"
     )
     raw_date_time: Optional[str] = Field(
         description="任务的绝对ISO日期时间字符串（格式：YYYY-MM-DDTHH:MM:SS+08:00），如果没有时间则为null"
@@ -164,8 +164,8 @@ PROMPT_EXTRACT_ASSET_PRESERVATION = """
    - 如无明确期限，按legal_preservation_periods计算
 
 3. **标题构建 (raw_title)**:
-   - 格式：{{资产简要描述}}查封冻结到期
-   - 示例：腾讯公司和平路1号不动产查封冻结到期
+   - 格式：{{资产简要描述}}续封
+   - 示例：腾讯不动产续封
 
 4. **案件信息 (note)**:
    - 提取案号、当事人、案由信息
@@ -263,7 +263,7 @@ PROMPT_EXTRACT_ASSET_PRESERVATION = """
   "extracted_events": [
     {{
       "event_type": "asset_preservation",
-      "raw_title": "腾讯公司和平路1号不动产查封冻结到期",
+      "raw_title": "腾讯不动产续封",
       "raw_date_time": "2028-07-07T09:00:00+08:00",
       "raw_location": null,
       "related_party_name": "阿里巴巴（中国）有限公司",
@@ -277,7 +277,7 @@ PROMPT_EXTRACT_ASSET_PRESERVATION = """
     }},
     {{
       "event_type": "asset_preservation", 
-      "raw_title": "腾讯公司银行存款查封冻结到期",
+      "raw_title": "腾讯银行存款续封",
       "raw_date_time": "2026-07-07T09:00:00+08:00",
       "raw_location": null,
       "related_party_name": "阿里巴巴（中国）有限公司",

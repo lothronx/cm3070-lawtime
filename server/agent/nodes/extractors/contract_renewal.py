@@ -27,7 +27,7 @@ class ContractEvent(BaseModel):
         description="时间类型，固定为 'contract_renewal'.",
     )
     raw_title: str = Field(
-        description="构建的合同到期标题, e.g., '阿里巴巴法律顾问合同到期'"
+        description="构建的合同到期标题, e.g., '阿里巴巴法律顾问合同到期'，不超过12个汉字"
     )
     raw_date_time: Optional[str] = Field(
         description="任务的绝对ISO日期时间字符串（格式：YYYY-MM-DDTHH:MM:SS+08:00），如果没有时间则为null"

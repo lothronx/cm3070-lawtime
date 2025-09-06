@@ -39,7 +39,7 @@ class Task(BaseModel):
         default="general_task",
         description="事件类型，固定为'general_task'"
     )
-    raw_title: str = Field(description="从语音笔记中提取的简洁、清晰的任务描述")
+    raw_title: str = Field(description="从语音笔记中提取的简洁、清晰的任务描述，不超过12个汉字")
     raw_date_time: Optional[str] = Field(
         description="任务的绝对ISO日期时间字符串（格式：YYYY-MM-DDTHH:MM:SS+08:00），如果没有时间则为null"
     )

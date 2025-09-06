@@ -39,7 +39,7 @@ class ExtractedEvent(BaseModel):
     event_type: Literal["post_hearing_task"] = Field(
         default="post_hearing_task", description="事件类型，固定为 'post_hearing_task'"
     )
-    raw_title: str = Field(description="提取的庭后任务的简洁描述")
+    raw_title: str = Field(description="提取的庭后任务的简洁描述，不超过12个汉字")
     raw_date_time: Optional[str] = Field(
         description="任务的绝对ISO日期时间字符串（格式：YYYY-MM-DDTHH:MM:SS+08:00），如果没有时间则为null"
     )
@@ -257,7 +257,7 @@ PROMPT_EXTRACT_POST_HEARING_TASKS = """
   "extracted_events": [
     {{
       "event_type": "post_hearing_task",
-      "raw_title": "补充提交2023年度的详细财务流水",
+      "raw_title": "补充提交23年财务流水",
       "raw_date_time": "2025-03-28T09:00:00+08:00",
       "raw_location": null,
       "related_party_name": "阿里巴巴（中国）有限公司",
