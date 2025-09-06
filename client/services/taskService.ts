@@ -155,7 +155,7 @@ export const taskService = {
 
       if (storagePaths.length > 0) {
         const { error: storageError } = await supabase.storage
-          .from('user_files')
+          .from('file_storage')
           .remove(storagePaths);
 
         if (storageError) {

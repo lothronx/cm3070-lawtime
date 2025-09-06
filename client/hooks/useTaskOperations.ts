@@ -34,7 +34,7 @@ interface UseTaskOperationsReturn {
   snackbarMessage: string;
   showMessage: (message: string) => void;
   setSnackbarVisible: (value: boolean) => void;
-  handleCloseWithUnsavedChanges: (formState?: FormState | null) => void;
+  handleClose: (formState?: FormState | null) => void;
 }
 
 /**
@@ -130,24 +130,13 @@ export function useTaskOperations({
 
     try {
       await deleteTask(parseInt(taskId, 10));
-
-      // Clean up any temp files
-      if (attachmentHooks?.clearTempFiles) {
-        try {
-          await attachmentHooks.clearTempFiles();
-          console.log("Temp files cleared after task deletion");
-        } catch (error) {
-          console.warn("Failed to clear temp files after task deletion:", error);
-        }
-      }
-
       showMessage("Task deleted successfully");
       setTimeout(() => router.back(), 1000);
     } catch (error) {
       console.error("Failed to delete task:", error);
       showMessage("Failed to delete task. Please try again.");
     }
-  }, [isEditMode, taskId, attachmentHooks, showMessage, deleteTask, router]);
+  }, [isEditMode, taskId, showMessage, deleteTask, router]);
 
   const handleDiscard = useCallback(async () => {
     console.log("Task discarded");
@@ -176,7 +165,7 @@ export function useTaskOperations({
     }
   }, [isAIFlow, currentTaskIndex, totalTasks, attachmentHooks, showMessage, router]);
 
-  const handleCloseWithUnsavedChanges = useCallback((formState?: FormState | null) => {
+  const handleClose = useCallback((formState?: FormState | null) => {
     // Check if there are unsaved changes (only form dirty now - files are auto-committed)
     const hasUnsavedChanges = formState?.isDirty;
 
@@ -230,6 +219,6 @@ export function useTaskOperations({
     snackbarMessage,
     showMessage,
     setSnackbarVisible,
-    handleCloseWithUnsavedChanges,
+    handleClose,
   };
 }

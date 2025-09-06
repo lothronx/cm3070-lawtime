@@ -100,8 +100,8 @@ export const fileStorageService = {
   /**
    * Delete from perm/ folder in file_storage bucket
    */
-  async deleteFromPerm(path: string): Promise<void> {
-    const { error } = await supabase.storage.from('file_storage').remove([path]);
+  async deleteFromPerm(paths: string[]): Promise<void> {
+    const { error } = await supabase.storage.from('file_storage').remove(paths);
     if (error) throw error;
   },
 
@@ -109,7 +109,7 @@ export const fileStorageService = {
   /**
    * Delete all temp files for current user
    */
-  async clearUserTempFiles(): Promise<void> {
+  async clearAllTempFiles(): Promise<void> {
     const { session } = useAuthStore.getState();
     if (!session?.user) return;
 

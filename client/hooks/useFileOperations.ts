@@ -84,7 +84,7 @@ export function useFileOperations({ taskFiles, onCreateTaskFiles, onDeleteTaskFi
 
     // Clean up all existing temp files for user before starting new batch
     try {
-      await fileStorageService.clearUserTempFiles();
+      await fileStorageService.clearAllTempFiles();
     } catch (error) {
       console.warn('Failed to clean previous temp files:', error);
     }
@@ -105,7 +105,7 @@ export function useFileOperations({ taskFiles, onCreateTaskFiles, onDeleteTaskFi
         const file = files[i];
 
         try {
-          const result = await fileStorageService.uploadToTemp(file, newBatchId);
+          const result = await fileStorageService.uploadToTemp(file, uploadBatchId);
 
           // Update this specific file's state
           setTempFiles(prev => prev.map(tf =>
@@ -122,7 +122,7 @@ export function useFileOperations({ taskFiles, onCreateTaskFiles, onDeleteTaskFi
     } finally {
       setIsUploading(false);
     }
-  }, [isCommitting]);
+  }, [isCommitting, uploadBatchId]);
 
   // Move temp files to permanent when saving task
   const commitTempFiles = useCallback(async (taskId: number, clearTempAfterCommit: boolean = true): Promise<TaskFile[]> => {
@@ -180,7 +180,7 @@ export function useFileOperations({ taskFiles, onCreateTaskFiles, onDeleteTaskFi
       // Rollback: Clean up any files that were copied to permanent storage
       const cleanupPromises = copiedFiles.map(async ({ permanentPath }) => {
         try {
-          await fileStorageService.deleteFromPerm(permanentPath);
+          await fileStorageService.deleteFromPerm([permanentPath]);
         } catch (cleanupError) {
           console.warn(`Failed to cleanup file ${permanentPath}:`, cleanupError);
         }
@@ -198,7 +198,7 @@ export function useFileOperations({ taskFiles, onCreateTaskFiles, onDeleteTaskFi
   // Clear temp files
   const clearTempFiles = useCallback(async () => {
     try {
-      await fileStorageService.clearUserTempFiles();
+      await fileStorageService.clearAllTempFiles();
     } catch (error) {
       console.warn('Failed to clean temp files:', error);
     }
@@ -226,7 +226,7 @@ export function useFileOperations({ taskFiles, onCreateTaskFiles, onDeleteTaskFi
     try {
       // Delete from storage first
       if (file.storage_path) {
-        await fileStorageService.deleteFromPerm(file.storage_path);
+        await fileStorageService.deleteFromPerm([file.storage_path]);
       }
       // Then delete from database via data layer
       onDeleteTaskFile(fileId);

@@ -83,7 +83,7 @@ export default function Task() {
         variant="modal"
         stackIndex={isAIFlow ? currentTaskIndex : undefined}
         stackTotal={isAIFlow ? totalTasks : undefined}
-        onClose={taskOperations.handleCloseWithUnsavedChanges}
+        onClose={taskOperations.handleClose}
       />
 
       {initialLoading ? (
