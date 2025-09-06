@@ -53,7 +53,7 @@ const LocationInput: React.FC<LocationInputProps> = ({ control, name, error }) =
         onBlur={handleBlur}
         mode="outlined"
         error={hasError}
-        multiline={false}
+        multiline={true}
         maxLength={200}
         autoCapitalize="words"
         returnKeyType="done"

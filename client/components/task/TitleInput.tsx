@@ -54,7 +54,7 @@ const TitleInput: React.FC<TitleInputProps> = ({ control, name, error }) => {
         onBlur={handleBlur}
         mode="outlined"
         error={hasError}
-        multiline={false}
+        multiline={true}
         maxLength={100}
         autoCapitalize="words"
         returnKeyType="done"

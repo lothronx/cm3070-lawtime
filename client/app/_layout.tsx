@@ -7,6 +7,7 @@ import { GestureHandlerRootView } from "react-native-gesture-handler";
 import * as SplashScreen from "expo-splash-screen";
 import { useEffect } from "react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { ProcessingOverlay } from "@/components/ProcessingOverlay";
 
 // Keep the splash screen visible while we fetch resources
 SplashScreen.preventAutoHideAsync();
@@ -18,7 +19,10 @@ const queryClient = new QueryClient({
       // Smart retry logic - don't retry auth errors, do retry network errors
       retry: (failureCount, error) => {
         // Don't retry authentication errors - redirect to login instead
-        if (error.message.includes('Authentication error') || error.message.includes('No authenticated user')) {
+        if (
+          error.message.includes("Authentication error") ||
+          error.message.includes("No authenticated user")
+        ) {
           return false;
         }
         // Retry network/server errors up to 3 times
@@ -68,6 +72,7 @@ function RootLayoutContent() {
             translucent={true}
           />
           <Stack screenOptions={{ headerShown: false }} />
+          <ProcessingOverlay />
         </View>
       </PaperProvider>
     </GestureHandlerRootView>

@@ -35,26 +35,15 @@ export default function TermsAndConditionsCheckbox({
         size={14}
       />
       <View style={styles.termsTextContainer}>
-        <Text style={[styles.checkboxText, { color: theme.colors.primary }]}>
-          I accept the{" "}
-        </Text>
+        <Text style={[styles.checkboxText, { color: theme.colors.primary }]}>I accept the </Text>
         <TouchableOpacity onPress={handleTermsPress}>
-          <Text style={[styles.linkText, { color: theme.colors.primary }]}>
-            Terms of Service
-          </Text>
+          <Text style={[styles.linkText, { color: theme.colors.primary }]}>Terms of Service</Text>
         </TouchableOpacity>
-        <Text style={[styles.checkboxText, { color: theme.colors.primary }]}>
-          {" "}
-          and{" "}
-        </Text>
+        <Text style={[styles.checkboxText, { color: theme.colors.primary }]}> and </Text>
         <TouchableOpacity onPress={handlePrivacyPress}>
-          <Text style={[styles.linkText, { color: theme.colors.primary }]}>
-            Privacy Policy
-          </Text>
+          <Text style={[styles.linkText, { color: theme.colors.primary }]}>Privacy Policy</Text>
         </TouchableOpacity>
-        <Text style={[styles.checkboxText, { color: theme.colors.primary }]}>
-          .
-        </Text>
+        <Text style={[styles.checkboxText, { color: theme.colors.primary }]}>.</Text>
       </View>
     </View>
   );

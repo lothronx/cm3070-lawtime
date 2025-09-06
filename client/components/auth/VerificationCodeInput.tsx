@@ -42,7 +42,7 @@ export default function VerificationCodeInput({
         <Text style={styles.countdownText}>Resend in {countdown} seconds...</Text>
       ) : (
         <Button mode="text" onPress={onResend} style={styles.helpButton}>
-          <Text style={[styles.helpButtonText, {color: theme.colors.primary}]}>Resend</Text>
+          <Text style={[styles.helpButtonText, { color: theme.colors.primary }]}>Resend</Text>
         </Button>
       )}
     </>

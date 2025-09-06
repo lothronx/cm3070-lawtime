@@ -42,7 +42,9 @@ export default function PhoneNumberInput({
       </HelperText>
       {showChangeButton && (
         <Button mode="text" onPress={onChangePhoneNumber} style={styles.helpButton}>
-          <Text style={[styles.helpButtonText, {color: theme.colors.primary}]}>Change Phone Number</Text>
+          <Text style={[styles.helpButtonText, { color: theme.colors.primary }]}>
+            Change Phone Number
+          </Text>
         </Button>
       )}
     </>

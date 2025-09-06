@@ -6,7 +6,7 @@ import { useAppTheme, SPACING, BORDER_RADIUS } from "@/theme/ThemeProvider";
 import { sanitizeInput } from "@/utils/inputUtils";
 import { filterClients, debounce } from "@/utils/clientUtils";
 import { TaskWithClient } from "@/types";
-import { useClients } from "@/hooks/useClients";
+import { useClients } from "@/hooks/data/useClients";
 
 interface ClientAutocompleteInputProps {
   control: Control<TaskWithClient>;
@@ -24,7 +24,7 @@ const ClientAutocompleteInput: React.FC<ClientAutocompleteInputProps> = ({
   const [searchQuery, setSearchQuery] = useState("");
 
   // Fetch clients using TanStack Query
-  const { clients, isLoading, isError} = useClients();
+  const { clients, isLoading, isError } = useClients();
 
   const {
     field: { onChange, onBlur, value },
@@ -92,7 +92,7 @@ const ClientAutocompleteInput: React.FC<ClientAutocompleteInputProps> = ({
           onBlur={handleBlur}
           mode="outlined"
           error={hasError}
-          multiline={false}
+          multiline={true}
           maxLength={100}
           autoCapitalize="words"
           autoCorrect={false}

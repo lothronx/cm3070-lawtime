@@ -159,7 +159,7 @@ const DateTimeInput: React.FC<DateTimeInputProps> = ({ control, name, error }) =
             onChangeText={(text) => {
               const formatted = DateTimeUtils.formatDateInput(text);
               setDateDisplayValue(formatted);
-              
+
               // If date is cleared, also clear the time field
               if (!formatted) {
                 setTimeDisplayValue("");
