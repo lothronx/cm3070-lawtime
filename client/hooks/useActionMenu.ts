@@ -3,7 +3,7 @@ import { useRouter } from 'expo-router';
 import { useImagePicker } from '@/hooks/useImagePicker';
 import { useAudioRecorder } from '@/hooks/useAudioRecorder';
 import { useFileOperations } from '@/hooks/useFileOperations';
-import { useAIProcessing } from '@/hooks/useAIProcessing';
+import { useAIWorkflow } from '@/hooks/useAIWorkflow';
 
 
 export interface ActionMenuHandlers {
@@ -53,11 +53,14 @@ export function useActionMenu(): ActionMenuHandlers {
 
   const { uploadToTemp, attachments } = fileOperations;
 
-  // AI processing integration
-  const aiProcessing = useAIProcessing({ attachments, sourceType: currentSourceType });
+  // AI workflow hook
+  const workflow = useAIWorkflow({
+    attachments,
+    sourceType: currentSourceType
+  });
 
-  // Compute upload progress from both file upload and AI processing
-  const uploadProgress = isUploading ? 'Uploading files...' : aiProcessing.progress;
+  // Compute upload progress
+  const uploadProgress = isUploading ? 'Uploading files...' : workflow.processingMessage;
 
   // File operation handlers
   const handleFilesSelected = useCallback(async (files: { uri: string; fileName: string; originalName: string; mimeType: string; size: number }[]) => {
@@ -68,9 +71,20 @@ export function useActionMenu(): ActionMenuHandlers {
   const handleSuccess = useCallback((message: string) => {
     console.log('File upload success:', message);
     setIsUploading(false);
-    // Trigger AI processing when files are successfully uploaded
-    aiProcessing.triggerProcessing();
-  }, [aiProcessing]);
+    
+    // Navigate immediately to Task screen with loading state
+    router.push({
+      pathname: '/task',
+      params: {
+        mode: 'ai-flow',
+        stackIndex: '1',
+        stackTotal: '1' // Will be updated when AI processing completes
+      }
+    });
+    
+    // Trigger AI processing in background
+    workflow.startProcessing();
+  }, [workflow, router]);
 
   const handleError = useCallback((message: string) => {
     console.error('File selection error:', message);
@@ -163,7 +177,7 @@ export function useActionMenu(): ActionMenuHandlers {
     showTooShortWarning,
     dismissTooShortWarning,
     isRecording,
-    isUploading: isUploading || aiProcessing.isProcessing,
+    isUploading: isUploading || workflow.isProcessing,
     uploadProgress,
   };
 }

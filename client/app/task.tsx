@@ -12,7 +12,7 @@ import DeleteButton from "@/components/task/DeleteButton";
 import { useAppTheme, SPACING } from "@/theme/ThemeProvider";
 import { useTasks } from "@/hooks/useTasks";
 import { useTaskLoading } from "@/hooks/useTaskLoading";
-import { useAITaskFlow } from "@/hooks/useAITaskFlow";
+import { useAIWorkflow } from "@/hooks/useAIWorkflow";
 import { useTaskOperations } from "@/hooks/useTaskOperations";
 
 // Types for component hooks to improve readability
@@ -33,36 +33,53 @@ export default function Task() {
   const { theme } = useAppTheme();
 
   // === Route Parameters & Mode ===
-  const { taskId, stackIndex, stackTotal } = useLocalSearchParams<{
+  const { taskId, mode, stackIndex, stackTotal } = useLocalSearchParams<{
     mode?: string;
     taskId?: string;
     stackIndex?: string;
     stackTotal?: string;
   }>();
   const isEditMode = !!taskId;
+  const isAIFlowMode = mode === 'ai-flow';
 
   // === Component State ===
   const [attachmentHooks, setAttachmentHooks] = useState<AttachmentHooks | null>(null);
   const [formHooks, setFormHooks] = useState<FormHooks | null>(null);
   const scrollViewRef = useRef<ScrollView>(null);
 
+  // === AI Workflow State ===
+  const workflow = useAIWorkflow({
+    stackIndex,
+    stackTotal
+  });
+
+  // Use workflow state
+  const isAIFlowActive = workflow.isActive || isAIFlowMode;
+  const currentTaskIndex = workflow.currentIndex;
+  const totalTasks = workflow.totalTasks;
+  
   // === Data & Loading ===
   const { isLoading: initialLoading } = useTasks();
   const { isLoading: submitLoading } = useTaskLoading({ formHooks, attachmentHooks });
-
-  // === AI Flow State ===
-  const { isAIFlow, currentTaskIndex, totalTasks } = useAITaskFlow({
-    stackIndex,
-    stackTotal,
-  });
+  
+  // Combined loading state includes AI processing
+  const isLoading = initialLoading || workflow.isProcessing;
+  
+  // Get current proposed task if in AI flow
+  const currentProposedTask = isAIFlowMode ? workflow.currentTask : null;
+  
+  // Use shared AI flow as source of truth
+  const effectiveIsAIFlow = isAIFlowActive;
+  const effectiveCurrentIndex = currentTaskIndex;
+  const effectiveTotalTasks = totalTasks;
 
   // === Business Logic & UI Navigation ===
   const taskOperations = useTaskOperations({
     taskId,
     isEditMode,
-    isAIFlow,
-    currentTaskIndex,
-    totalTasks,
+    isAIFlow: effectiveIsAIFlow,
+    currentTaskIndex: effectiveCurrentIndex,
+    totalTasks: effectiveTotalTasks,
     attachmentHooks,
   });
 
@@ -79,6 +96,21 @@ export default function Task() {
     }
 
     await formHooks.saveForm();
+    
+    // If in AI flow, advance to next task after successful save
+    if (effectiveIsAIFlow) {
+      const message = await workflow.continueFlow();
+      console.log(message);
+    }
+  };
+  
+  const handleDiscardClick = async () => {
+    if (effectiveIsAIFlow) {
+      const message = await workflow.continueFlow();
+      console.log(message);
+    } else {
+      taskOperations.handleDiscard();
+    }
   };
 
   return (
@@ -86,13 +118,16 @@ export default function Task() {
       <Header
         title={isEditMode ? "Edit Task" : "New Task"}
         variant="modal"
-        stackIndex={isAIFlow ? currentTaskIndex : undefined}
-        stackTotal={isAIFlow ? totalTasks : undefined}
+        stackIndex={effectiveIsAIFlow ? effectiveCurrentIndex : undefined}
+        stackTotal={effectiveIsAIFlow ? effectiveTotalTasks : undefined}
         onClose={handleHeaderClose}
       />
 
-      {initialLoading ? (
-        <LoadingComponent message="Loading task data..." />
+      {isLoading ? (
+        <LoadingComponent 
+          message={workflow.isProcessing ? workflow.processingMessage : "Loading task data..."}
+          variant={workflow.isProcessing ? "processing" : "default"}
+        />
       ) : (
         <ScrollView
           ref={scrollViewRef}
@@ -110,6 +145,7 @@ export default function Task() {
             onSnackbar={taskOperations.showMessage}
             onFormHooksChange={setFormHooks}
             onSave={taskOperations.handleSave}
+            proposedTask={currentProposedTask}
           />
 
           <AttachmentsSection
@@ -119,14 +155,14 @@ export default function Task() {
             externalLoading={formHooks?.isSubmitting || false}
           />
 
-          <View style={isAIFlow ? styles.buttonRow : styles.buttonSingle}>
+          <View style={effectiveIsAIFlow ? styles.buttonRow : styles.buttonSingle}>
             <SaveButton
               onPress={handleSaveClick}
               loading={submitLoading}
               title={isEditMode ? "Update" : "Save"}
             />
-            {isAIFlow && (
-              <DiscardButton onPress={taskOperations.handleDiscard} loading={submitLoading} />
+            {effectiveIsAIFlow && (
+              <DiscardButton onPress={handleDiscardClick} loading={submitLoading} />
             )}
           </View>
           {isEditMode && (

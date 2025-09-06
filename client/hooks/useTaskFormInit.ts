@@ -1,5 +1,6 @@
 import { useEffect } from 'react';
 import { TaskWithClient } from '@/types';
+import { taskToFormValues } from '@/utils/taskFormUtils';
 
 interface UseTaskFormInitParams {
   taskId?: string;
@@ -43,21 +44,10 @@ export function useTaskFormInit({
       });
 
       if (task) {
-        console.log("Resetting form with task data:", {
-          title: task.title,
-          client_name: task.client_name,
-          event_time: task.event_time,
-          location: task.location,
-          note: task.note,
-        });
-
-        reset({
-          title: task.title,
-          client_name: task.client_name || "",
-          event_time: task.event_time,
-          location: task.location || "",
-          note: task.note || "",
-        });
+        const formValues = taskToFormValues(task);
+        console.log("Resetting form with task data:", formValues);
+        
+        reset(formValues);
       } else if (tasks.length > 0) {
         // Tasks are loaded but specific task not found
         console.warn(

@@ -1,11 +1,12 @@
-import React, { useCallback } from "react";
+import React, { useCallback, useMemo, useEffect } from "react";
 import { View, StyleSheet, ScrollView } from "react-native";
 import { Text } from "react-native-paper";
 import { useForm } from "react-hook-form";
 import { useAppTheme, SPACING } from "@/theme/ThemeProvider";
-import { TaskWithClient } from "@/types";
+import { TaskWithClient, ProposedTask } from "@/types";
 import { useTasks } from "@/hooks/useTasks";
 import { useTaskFormInit } from "@/hooks/useTaskFormInit";
+import { taskToFormValues } from "@/utils/taskFormUtils";
 import TitleInput from "@/components/task/TitleInput";
 import ClientAutocompleteInput from "@/components/task/ClientAutocompleteInput";
 import LocationInput from "@/components/task/LocationInput";
@@ -23,6 +24,7 @@ interface TaskFormSectionProps {
     isDirty: boolean;
   }) => void;
   onSave?: (formData: TaskWithClient) => Promise<void>;
+  proposedTask?: ProposedTask | null;
 }
 
 /**
@@ -40,21 +42,20 @@ export default function TaskFormSection({
   onSnackbar,
   onFormHooksChange,
   onSave,
+  proposedTask,
 }: TaskFormSectionProps) {
   const { theme } = useAppTheme();
 
   // Data layer
   const { tasks, isLoading: tasksLoading } = useTasks();
 
-  // Form setup
+  // Form setup with AI proposed task data
+  const getDefaultValues = useCallback(() => {
+    return taskToFormValues(proposedTask);
+  }, [proposedTask]);
+
   const formInstance = useForm<TaskWithClient>({
-    defaultValues: {
-      title: "",
-      client_name: "",
-      event_time: null,
-      location: null,
-      note: null,
-    },
+    defaultValues: getDefaultValues(),
     mode: "onBlur", // Only validate after user leaves field
   });
 
@@ -80,14 +81,14 @@ export default function TaskFormSection({
   }, [formInstance, onSave, onSnackbar]);
 
   // Memoize the hooks object to prevent unnecessary re-renders
-  const formHooksObject = React.useMemo(() => ({
+  const formHooksObject = useMemo(() => ({
     saveForm: handleFormSave,
     isSubmitting: formInstance.formState.isSubmitting,
     isDirty: formInstance.formState.isDirty,
   }), [handleFormSave, formInstance.formState.isSubmitting, formInstance.formState.isDirty]);
 
   // Notify parent component when form hooks change
-  React.useEffect(() => {
+  useEffect(() => {
     onFormHooksChange?.(formHooksObject);
   }, [formHooksObject, onFormHooksChange]);
 
@@ -100,6 +101,14 @@ export default function TaskFormSection({
     reset: formInstance.reset,
     onMessage: onSnackbar,
   });
+  
+  // Reset form with proposed task data when it changes
+  useEffect(() => {
+    if (proposedTask && !isEditMode) {
+      const newValues = getDefaultValues();
+      formInstance.reset(newValues);
+    }
+  }, [proposedTask, isEditMode, formInstance, getDefaultValues]);
 
   // Handle note input focus with scroll
   const handleNoteInputFocus = useCallback(() => {
