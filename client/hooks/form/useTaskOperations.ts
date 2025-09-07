@@ -2,7 +2,7 @@ import { useCallback, useState } from 'react';
 import { Alert } from 'react-native';
 import { useRouter } from 'expo-router';
 import { TaskWithClient, TaskFile } from '@/types';
-import { useTasks } from '@/hooks/useTasks';
+import { useTasks } from '@/hooks/data/useTasks';
 
 interface AttachmentHooks {
   commitTempFiles: (taskId: number, clearTempAfterCommit?: boolean) => Promise<TaskFile[]>;

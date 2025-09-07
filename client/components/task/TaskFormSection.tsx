@@ -5,7 +5,7 @@ import { useForm } from "react-hook-form";
 import { useAppTheme, SPACING } from "@/theme/ThemeProvider";
 import { TaskWithClient, ProposedTask } from "@/types";
 import { useTasks } from "@/hooks/data/useTasks";
-import { useTaskFormInit } from "@/hooks/useTaskFormInit";
+import { useTaskFormInit } from "@/hooks/form/useTaskFormInit";
 import { taskToFormValues } from "@/utils/taskFormUtils";
 import TitleInput from "@/components/task/TitleInput";
 import ClientAutocompleteInput from "@/components/task/ClientAutocompleteInput";

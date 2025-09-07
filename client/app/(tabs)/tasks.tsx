@@ -5,7 +5,7 @@ import { useRouter } from "expo-router";
 import { useAppTheme, SPACING } from "@/theme/ThemeProvider";
 import Header from "@/components/Header";
 import TaskSection from "@/components/tasks/TaskSection";
-import { useTasks } from "@/hooks/useTasks";
+import { useTasks } from "@/hooks/data/useTasks";
 import { TaskWithClient } from "@/types";
 
 export default function Tasks() {

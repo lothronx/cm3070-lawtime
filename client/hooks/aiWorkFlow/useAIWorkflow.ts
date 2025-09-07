@@ -1,6 +1,6 @@
 import { useState, useCallback, useEffect } from 'react';
 import { useRouter } from 'expo-router';
-import { useClients } from '@/hooks/useClients';
+import { useClients } from '@/hooks/data/useClients';
 import { Attachment, ProposedTask } from '@/types';
 import AIService from '@/services/aiService';
 

@@ -8,8 +8,8 @@ import Animated from "react-native-reanimated";
 import FullScreenOverlay from "@/components/actionMenu/FullScreenOverlay";
 import ListeningIndicator from "@/components/actionMenu/ListeningIndicator";
 import CameraOptionsMenu from "@/components/actionMenu/CameraOptionsMenu";
-import { useActionMenu } from "@/hooks/useActionMenu";
-import { useActionMenuAnimation } from "@/hooks/useActionMenuAnimation";
+import { useActionMenu } from "@/hooks/actionMenu/useActionMenu";
+import { useActionMenuAnimation } from "@/hooks/actionMenu/useActionMenuAnimation";
 
 const AnimatedPressable = Animated.createAnimatedComponent(Pressable);
 

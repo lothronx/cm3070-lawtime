@@ -8,7 +8,7 @@ import { useAppTheme, SPACING } from "@/theme/ThemeProvider";
 import Header from "@/components/Header";
 import { TaskWithClient } from "@/types";
 import TaskItem from "@/components/tasks/TaskItem";
-import { useTasks } from "@/hooks/useTasks";
+import { useTasks } from "@/hooks/data/useTasks";
 
 export default function Calendar() {
   const { theme } = useAppTheme();

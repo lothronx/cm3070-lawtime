@@ -10,10 +10,10 @@ import SaveButton from "@/components/task/SaveButton";
 import DiscardButton from "@/components/task/DiscardButton";
 import DeleteButton from "@/components/task/DeleteButton";
 import { useAppTheme, SPACING } from "@/theme/ThemeProvider";
-import { useTasks } from "@/hooks/useTasks";
+import { useTasks } from "@/hooks/data/useTasks";
 import { useTaskLoading } from "@/hooks/useTaskLoading";
-import { useAIWorkflow } from "@/hooks/useAIWorkflow";
-import { useTaskOperations } from "@/hooks/useTaskOperations";
+import { useAIWorkflow } from "@/hooks/aiWorkFlow/useAIWorkflow";
+import { useTaskOperations } from "@/hooks/form/useTaskOperations";
 
 // Types for component hooks to improve readability
 type AttachmentHooks = {
@@ -40,7 +40,7 @@ export default function Task() {
     stackTotal?: string;
   }>();
   const isEditMode = !!taskId;
-  const isAIFlowMode = mode === 'ai-flow';
+  const isAIFlowMode = mode === "ai-flow";
 
   // === Component State ===
   const [attachmentHooks, setAttachmentHooks] = useState<AttachmentHooks | null>(null);
@@ -50,24 +50,24 @@ export default function Task() {
   // === AI Workflow State ===
   const workflow = useAIWorkflow({
     stackIndex,
-    stackTotal
+    stackTotal,
   });
 
   // Use workflow state
   const isAIFlowActive = workflow.isActive || isAIFlowMode;
   const currentTaskIndex = workflow.currentIndex;
   const totalTasks = workflow.totalTasks;
-  
+
   // === Data & Loading ===
   const { isLoading: initialLoading } = useTasks();
   const { isLoading: submitLoading } = useTaskLoading({ formHooks, attachmentHooks });
-  
+
   // Combined loading state includes AI processing
   const isLoading = initialLoading || workflow.isProcessing;
-  
+
   // Get current proposed task if in AI flow
   const currentProposedTask = isAIFlowMode ? workflow.currentTask : null;
-  
+
   // Use shared AI flow as source of truth
   const effectiveIsAIFlow = isAIFlowActive;
   const effectiveCurrentIndex = currentTaskIndex;
@@ -96,14 +96,14 @@ export default function Task() {
     }
 
     await formHooks.saveForm();
-    
+
     // If in AI flow, advance to next task after successful save
     if (effectiveIsAIFlow) {
       const message = await workflow.continueFlow();
       console.log(message);
     }
   };
-  
+
   const handleDiscardClick = async () => {
     if (effectiveIsAIFlow) {
       const message = await workflow.continueFlow();
@@ -124,7 +124,7 @@ export default function Task() {
       />
 
       {isLoading ? (
-        <LoadingComponent 
+        <LoadingComponent
           message={workflow.isProcessing ? workflow.processingMessage : "Loading task data..."}
           variant={workflow.isProcessing ? "processing" : "default"}
         />

@@ -4,8 +4,8 @@ import { Text, Button } from "react-native-paper";
 import { useAppTheme, SPACING, BORDER_RADIUS } from "@/theme/ThemeProvider";
 import { isPermanentAttachment, TaskFile } from "@/types";
 import { useTaskFiles } from "@/hooks/data/useTaskFiles";
-import { useFileOperations } from "@/hooks/useFileOperations";
-import { useImagePicker } from "@/hooks/useImagePicker";
+import { useFileOperations } from "@/hooks/media/useFileOperations";
+import { useImagePicker } from "@/hooks/media/useImagePicker";
 import AttachmentList from "./AttachmentList";
 
 interface AttachmentsSectionProps {

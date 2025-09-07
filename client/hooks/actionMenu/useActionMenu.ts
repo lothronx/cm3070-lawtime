@@ -1,9 +1,9 @@
 import { useCallback, useState } from 'react';
 import { useRouter } from 'expo-router';
-import { useImagePicker } from '@/hooks/useImagePicker';
-import { useAudioRecorder } from '@/hooks/useAudioRecorder';
-import { useFileOperations } from '@/hooks/useFileOperations';
-import { useAIWorkflow } from '@/hooks/useAIWorkflow';
+import { useImagePicker } from '@/hooks/media/useImagePicker';
+import { useAudioRecorder } from '@/hooks/media/useAudioRecorder';
+import { useFileOperations } from '@/hooks/media/useFileOperations';
+import { useAIWorkflow } from '@/hooks/aiWorkFlow/useAIWorkflow';
 
 
 export interface ActionMenuHandlers {
@@ -17,9 +17,6 @@ export interface ActionMenuHandlers {
   dismissTooShortWarning: () => void;
   // Recording state
   isRecording: boolean;
-  // Processing state
-  isUploading: boolean;
-  uploadProgress: string;
 }
 
 /**
@@ -37,9 +34,6 @@ export function useActionMenu(): ActionMenuHandlers {
   // Audio recording state
   const [recordingStartTime, setRecordingStartTime] = useState<number>(0);
   const [showTooShortWarning, setShowTooShortWarning] = useState(false);
-
-  // File upload state
-  const [isUploading, setIsUploading] = useState(false);
 
   // File operations for temp uploads
   const fileOperations = useFileOperations({
@@ -59,18 +53,14 @@ export function useActionMenu(): ActionMenuHandlers {
     sourceType: currentSourceType
   });
 
-  // Compute upload progress
-  const uploadProgress = isUploading ? 'Uploading files...' : workflow.processingMessage;
-
   // File operation handlers
   const handleFilesSelected = useCallback(async (files: { uri: string; fileName: string; originalName: string; mimeType: string; size: number }[]) => {
-    setIsUploading(true);
+
     await uploadToTemp(files);
   }, [uploadToTemp]);
 
   const handleSuccess = useCallback((message: string) => {
     console.log('File upload success:', message);
-    setIsUploading(false);
     
     // Navigate immediately to Task screen with loading state
     router.push({
@@ -88,7 +78,6 @@ export function useActionMenu(): ActionMenuHandlers {
 
   const handleError = useCallback((message: string) => {
     console.error('File selection error:', message);
-    setIsUploading(false);
   }, []);
 
   // Image picker integration
@@ -177,7 +166,5 @@ export function useActionMenu(): ActionMenuHandlers {
     showTooShortWarning,
     dismissTooShortWarning,
     isRecording,
-    isUploading: isUploading || workflow.isProcessing,
-    uploadProgress,
   };
 }
