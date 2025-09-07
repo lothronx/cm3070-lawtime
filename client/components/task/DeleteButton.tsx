@@ -11,12 +11,12 @@ interface DeleteButtonProps {
   confirmMessage?: string;
 }
 
-const DeleteButton: React.FC<DeleteButtonProps> = ({ 
-  onPress, 
+const DeleteButton: React.FC<DeleteButtonProps> = ({
+  onPress,
   loading = false,
   title = "Delete Task",
   confirmTitle = "Delete Task",
-  confirmMessage = "Are you sure you want to delete this task? This action cannot be undone."
+  confirmMessage = "Are you sure you want to delete this task? This action cannot be undone.",
 }) => {
   const { theme } = useAppTheme();
 
@@ -48,14 +48,10 @@ const DeleteButton: React.FC<DeleteButtonProps> = ({
       disabled={loading}
       style={styles.button}
       contentStyle={styles.buttonContent}
-      labelStyle={[
-        styles.buttonText,
-        { color: theme.colors.error }
-      ]}
+      labelStyle={[styles.buttonText, { color: theme.colors.error }]}
       accessibilityLabel="Delete task"
       accessibilityHint="Permanently delete this task after confirmation"
-      accessibilityRole="button"
-    >
+      accessibilityRole="button">
       {title}
     </Button>
   );
@@ -65,16 +61,16 @@ export default DeleteButton;
 
 const styles = StyleSheet.create({
   button: {
-    alignSelf: 'center',
+    alignSelf: "center",
     borderRadius: BORDER_RADIUS.md,
   },
   buttonContent: {
     height: 44,
-    justifyContent: 'center',
-    alignItems: 'center',
+    justifyContent: "center",
+    alignItems: "center",
   },
   buttonText: {
     fontSize: 14,
-    fontWeight: '500',
+    fontWeight: "500",
   },
 });

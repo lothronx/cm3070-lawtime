@@ -38,8 +38,8 @@ const getFileIconColor = (mimeType: string | null, theme: any): string => {
 
 const getUserFriendlyFileType = (mimeType: string | null, fileName: string): string => {
   if (!mimeType) {
-    const ext = fileName.split('.').pop()?.toLowerCase();
-    return ext ? `${ext.toUpperCase()} file` : 'Unknown type';
+    const ext = fileName.split(".").pop()?.toLowerCase();
+    return ext ? `${ext.toUpperCase()} file` : "Unknown type";
   }
 
   if (mimeType.startsWith("image/")) return "Image";
@@ -50,8 +50,8 @@ const getUserFriendlyFileType = (mimeType: string | null, fileName: string): str
   if (mimeType.includes("word")) return "Word document";
   if (mimeType.includes("excel") || mimeType.includes("spreadsheet")) return "Spreadsheet";
 
-  const ext = fileName.split('.').pop()?.toLowerCase();
-  return ext ? `${ext.toUpperCase()} file` : 'Document';
+  const ext = fileName.split(".").pop()?.toLowerCase();
+  return ext ? `${ext.toUpperCase()} file` : "Document";
 };
 
 function AttachmentItem({
@@ -72,16 +72,19 @@ function AttachmentItem({
       style={[
         styles.container,
         { backgroundColor: theme.colors.surface },
-        isDisabled && { opacity: 0.7 }
+        isDisabled && { opacity: 0.7 },
       ]}
       activeOpacity={isDisabled ? 1 : 0.7}
       onPress={() => !isDisabled && onPreview?.(id)}
       disabled={isDisabled}>
-
       <View style={styles.fileInfo}>
-        <View style={[styles.iconContainer, {
-          backgroundColor: getFileIconColor(mime_type, theme) + '20',
-        }]}>
+        <View
+          style={[
+            styles.iconContainer,
+            {
+              backgroundColor: getFileIconColor(mime_type, theme) + "20",
+            },
+          ]}>
           <IconButton
             icon={isUploading ? "upload" : getFileIcon(mime_type)}
             size={20}
@@ -100,10 +103,7 @@ function AttachmentItem({
           <Text
             variant="bodySmall"
             style={[styles.fileType, { color: theme.colors.onSurfaceVariant }]}>
-            {isUploading
-              ? "Uploading..."
-              : getUserFriendlyFileType(mime_type, file_name)
-            }
+            {isUploading ? "Uploading..." : getUserFriendlyFileType(mime_type, file_name)}
           </Text>
         </View>
       </View>

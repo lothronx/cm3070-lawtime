@@ -4,7 +4,7 @@ import { Text } from "react-native-paper";
 import { useForm } from "react-hook-form";
 import { useAppTheme, SPACING } from "@/theme/ThemeProvider";
 import { TaskWithClient, ProposedTask } from "@/types";
-import { useTasks } from "@/hooks/useTasks";
+import { useTasks } from "@/hooks/data/useTasks";
 import { useTaskFormInit } from "@/hooks/useTaskFormInit";
 import { taskToFormValues } from "@/utils/taskFormUtils";
 import TitleInput from "@/components/task/TitleInput";
@@ -81,11 +81,14 @@ export default function TaskFormSection({
   }, [formInstance, onSave, onSnackbar]);
 
   // Memoize the hooks object to prevent unnecessary re-renders
-  const formHooksObject = useMemo(() => ({
-    saveForm: handleFormSave,
-    isSubmitting: formInstance.formState.isSubmitting,
-    isDirty: formInstance.formState.isDirty,
-  }), [handleFormSave, formInstance.formState.isSubmitting, formInstance.formState.isDirty]);
+  const formHooksObject = useMemo(
+    () => ({
+      saveForm: handleFormSave,
+      isSubmitting: formInstance.formState.isSubmitting,
+      isDirty: formInstance.formState.isDirty,
+    }),
+    [handleFormSave, formInstance.formState.isSubmitting, formInstance.formState.isDirty]
+  );
 
   // Notify parent component when form hooks change
   useEffect(() => {
@@ -101,7 +104,7 @@ export default function TaskFormSection({
     reset: formInstance.reset,
     onMessage: onSnackbar,
   });
-  
+
   // Reset form with proposed task data when it changes
   useEffect(() => {
     if (proposedTask && !isEditMode) {

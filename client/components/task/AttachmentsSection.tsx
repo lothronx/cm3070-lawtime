@@ -3,7 +3,7 @@ import { View, StyleSheet, Linking, Alert } from "react-native";
 import { Text, Button } from "react-native-paper";
 import { useAppTheme, SPACING, BORDER_RADIUS } from "@/theme/ThemeProvider";
 import { isPermanentAttachment, TaskFile } from "@/types";
-import { useTaskFiles } from "@/hooks/useTaskFiles";
+import { useTaskFiles } from "@/hooks/data/useTaskFiles";
 import { useFileOperations } from "@/hooks/useFileOperations";
 import { useImagePicker } from "@/hooks/useImagePicker";
 import AttachmentList from "./AttachmentList";
@@ -48,8 +48,8 @@ export default function AttachmentsSection({
   // Business logic layer
   const {
     attachments,
-    isUploading,
-    isCommitting,
+    uploading,
+    committing,
     uploadToTemp,
     uploadToPerm,
     commitTempFiles,
@@ -81,17 +81,17 @@ export default function AttachmentsSection({
     onError: (message) => onSnackbar?.(message),
   });
 
-  const loading = externalLoading || dataLoading || isUploading || isCommitting;
+  const loading = externalLoading || dataLoading || uploading || committing;
 
   // Memoize the hooks object to prevent unnecessary re-renders
   const hooksObject = React.useMemo(
     () => ({
       commitTempFiles,
       clearTempFiles,
-      uploading: isUploading,
-      committing: isCommitting,
+      uploading,
+      committing,
     }),
-    [commitTempFiles, clearTempFiles, isUploading, isCommitting]
+    [commitTempFiles, clearTempFiles, uploading, committing]
   );
 
   // Notify parent component when hooks change
