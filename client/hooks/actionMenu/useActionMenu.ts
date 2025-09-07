@@ -2,7 +2,7 @@ import { useCallback, useState } from 'react';
 import { useRouter } from 'expo-router';
 import { useImagePicker } from '@/hooks/media/useImagePicker';
 import { useAudioRecorder } from '@/hooks/media/useAudioRecorder';
-import { useFileOperations } from '@/hooks/media/useFileOperations';
+import { useFileOperations } from '@/hooks/operations/useFileOperations';
 import { useAIWorkflow } from '@/hooks/aiWorkFlow/useAIWorkflow';
 import { useProcessing } from '@/hooks/infrastructure/useProcessing';
 
@@ -37,11 +37,15 @@ export function useActionMenu(): ActionMenuHandlers {
   const [recordingStartTime, setRecordingStartTime] = useState<number>(0);
   const [showTooShortWarning, setShowTooShortWarning] = useState(false);
 
+  // Memoized no-op callbacks to prevent infinite re-renders
+  const onCreateTaskFiles = useCallback(() => {}, []);
+  const onDeleteTaskFile = useCallback(() => {}, []);
+
   // File operations for temp uploads
   const fileOperations = useFileOperations({
     taskFiles: [], // No existing task files in this context
-    onCreateTaskFiles: () => {}, // No-op for this use case
-    onDeleteTaskFile: () => {} // No-op for this use case
+    onCreateTaskFiles, // Memoized no-op for this use case
+    onDeleteTaskFile // Memoized no-op for this use case
   });
 
   // Track current action type for source type determination

@@ -82,6 +82,7 @@ export function useAIWorkflow({
   // Process attachments through AI when triggered
   const processFiles = useCallback(async () => {
     try {
+      updateWorkflow.reset();
       startAIProcessing();
 
       const tempFiles = attachments.filter(att => att.isTemporary);
@@ -149,7 +150,12 @@ export function useAIWorkflow({
     } else {
       updateWorkflow.reset();
       await onComplete?.();
-      router.back();
+
+      if (router.canGoBack()) {
+        router.back();
+      } else {
+        router.replace('/(tabs)');
+      }
       return "All tasks completed successfully!";
     }
   }, [stackIndex, stackTotal, router]);

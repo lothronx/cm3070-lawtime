@@ -1,11 +1,12 @@
-import React, { useCallback, useMemo, useEffect } from "react";
+import React, { useCallback, useEffect } from "react";
 import { View, StyleSheet, ScrollView } from "react-native";
 import { Text } from "react-native-paper";
 import { useForm } from "react-hook-form";
 import { useAppTheme, SPACING } from "@/theme/ThemeProvider";
 import { TaskWithClient, ProposedTask } from "@/types";
 import { useTasks } from "@/hooks/data/useTasks";
-import { useTaskFormInit } from "@/hooks/form/useTaskFormInit";
+import { useTaskFormInit } from "@/hooks/operations/useTaskFormInit";
+import { useTaskStore } from "@/stores/useTaskStore";
 import { taskToFormValues } from "@/utils/taskFormUtils";
 import TitleInput from "@/components/task/TitleInput";
 import ClientAutocompleteInput from "@/components/task/ClientAutocompleteInput";
@@ -18,11 +19,6 @@ interface TaskFormSectionProps {
   isEditMode: boolean;
   scrollViewRef?: React.RefObject<ScrollView | null>;
   onSnackbar?: (message: string) => void;
-  onFormHooksChange?: (hooks: {
-    saveForm: () => Promise<void>;
-    isSubmitting: boolean;
-    isDirty: boolean;
-  }) => void;
   onSave?: (formData: TaskWithClient) => Promise<void>;
   proposedTask?: ProposedTask | null;
 }
@@ -40,11 +36,11 @@ export default function TaskFormSection({
   isEditMode,
   scrollViewRef,
   onSnackbar,
-  onFormHooksChange,
   onSave,
   proposedTask,
 }: TaskFormSectionProps) {
   const { theme } = useAppTheme();
+  const taskStore = useTaskStore();
 
   // Data layer
   const { tasks, isLoading: tasksLoading } = useTasks();
@@ -80,20 +76,18 @@ export default function TaskFormSection({
     await submitHandler();
   }, [formInstance, onSave, onSnackbar]);
 
-  // Memoize the hooks object to prevent unnecessary re-renders
-  const formHooksObject = useMemo(
-    () => ({
-      saveForm: handleFormSave,
+  // Update task store with form state
+  useEffect(() => {
+    taskStore.setFormState({
+      formSaveCallback: handleFormSave,
       isSubmitting: formInstance.formState.isSubmitting,
       isDirty: formInstance.formState.isDirty,
-    }),
-    [handleFormSave, formInstance.formState.isSubmitting, formInstance.formState.isDirty]
-  );
-
-  // Notify parent component when form hooks change
-  useEffect(() => {
-    onFormHooksChange?.(formHooksObject);
-  }, [formHooksObject, onFormHooksChange]);
+    });
+  }, [
+    handleFormSave,
+    formInstance.formState.isSubmitting,
+    formInstance.formState.isDirty,
+  ]);
 
   // Form initialization for edit mode
   useTaskFormInit({

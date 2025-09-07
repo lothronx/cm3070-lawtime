@@ -2,9 +2,9 @@ import React from "react";
 import { View, StyleSheet, Linking, Alert } from "react-native";
 import { Text, Button } from "react-native-paper";
 import { useAppTheme, SPACING, BORDER_RADIUS } from "@/theme/ThemeProvider";
-import { isPermanentAttachment, TaskFile } from "@/types";
+import { isPermanentAttachment } from "@/types";
 import { useTaskFiles } from "@/hooks/data/useTaskFiles";
-import { useFileOperations } from "@/hooks/media/useFileOperations";
+import { useFileOperations } from "@/hooks/operations/useFileOperations";
 import { useImagePicker } from "@/hooks/media/useImagePicker";
 import AttachmentList from "./AttachmentList";
 
@@ -12,12 +12,6 @@ interface AttachmentsSectionProps {
   taskId?: number;
   onSnackbar?: (message: string) => void;
   externalLoading?: boolean;
-  onHooksChange?: (hooks: {
-    commitTempFiles: (taskId: number, clearTempAfterCommit?: boolean) => Promise<TaskFile[]>;
-    clearTempFiles: () => Promise<void>;
-    uploading: boolean;
-    committing: boolean;
-  }) => void;
 }
 
 /**
@@ -32,7 +26,6 @@ export default function AttachmentsSection({
   taskId,
   onSnackbar,
   externalLoading = false,
-  onHooksChange,
 }: AttachmentsSectionProps) {
   const { theme } = useAppTheme();
 
@@ -48,12 +41,10 @@ export default function AttachmentsSection({
   // Business logic layer
   const {
     attachments,
-    uploading,
-    committing,
+    isUploading,
+    isCommitting,
     uploadToTemp,
     uploadToPerm,
-    commitTempFiles,
-    clearTempFiles,
     deleteAttachment,
     getPreviewUrl,
     isAttachmentDeleting,
@@ -81,23 +72,7 @@ export default function AttachmentsSection({
     onError: (message) => onSnackbar?.(message),
   });
 
-  const loading = externalLoading || dataLoading || uploading || committing;
-
-  // Memoize the hooks object to prevent unnecessary re-renders
-  const hooksObject = React.useMemo(
-    () => ({
-      commitTempFiles,
-      clearTempFiles,
-      uploading,
-      committing,
-    }),
-    [commitTempFiles, clearTempFiles, uploading, committing]
-  );
-
-  // Notify parent component when hooks change
-  React.useEffect(() => {
-    onHooksChange?.(hooksObject);
-  }, [hooksObject, onHooksChange]);
+  const loading = externalLoading || dataLoading || isUploading || isCommitting;
 
   // Handle delete with confirmation for permanent files
   const handleDeleteAttachment = async (id: string | number) => {

@@ -1,4 +1,4 @@
-import { useRef, useState, useEffect, useCallback } from "react";
+import { useRef, useCallback } from "react";
 import { View, ScrollView, StyleSheet } from "react-native";
 import { Snackbar } from "react-native-paper";
 import { useLocalSearchParams } from "expo-router";
@@ -10,21 +10,7 @@ import DiscardButton from "@/components/task/DiscardButton";
 import DeleteButton from "@/components/task/DeleteButton";
 import { useAppTheme, SPACING } from "@/theme/ThemeProvider";
 import { useAIWorkflow } from "@/hooks/aiWorkFlow/useAIWorkflow";
-import { useTaskOperations } from "@/hooks/form/useTaskOperations";
-
-// Types for component hooks to improve readability
-type AttachmentHooks = {
-  commitTempFiles: (taskId: number, clearTempAfterCommit?: boolean) => Promise<any[]>;
-  clearTempFiles: () => Promise<void>;
-  uploading: boolean;
-  committing: boolean;
-};
-
-type FormHooks = {
-  saveForm: () => Promise<void>;
-  isSubmitting: boolean;
-  isDirty: boolean;
-};
+import { useTaskOperations } from "@/hooks/operations/useTaskOperations";
 
 export default function Task() {
   const { theme } = useAppTheme();
@@ -40,8 +26,6 @@ export default function Task() {
   const isAIFlowMode = mode === "ai-flow";
 
   // === Component State ===
-  const [attachmentHooks, setAttachmentHooks] = useState<AttachmentHooks | null>(null);
-  const [formHooks, setFormHooks] = useState<FormHooks | null>(null);
   const scrollViewRef = useRef<ScrollView>(null);
 
   // === AI Workflow State ===
@@ -55,50 +39,39 @@ export default function Task() {
   const currentTaskIndex = workflow.currentIndex;
   const totalTasks = workflow.totalTasks;
 
-  // === Data & Loading ===
-  const submitLoading = formHooks?.isSubmitting || attachmentHooks?.committing || false;
-
-  // Get current proposed task if in AI flow
-  const currentProposedTask = isAIFlowMode ? workflow.currentTask : null;
-
-  // Use shared AI flow as source of truth
-  const effectiveIsAIFlow = isAIFlowActive;
-  const effectiveCurrentIndex = currentTaskIndex;
-  const effectiveTotalTasks = totalTasks;
-
   // === Business Logic & UI Navigation ===
   const taskOperations = useTaskOperations({
     taskId,
     isEditMode,
-    isAIFlow: effectiveIsAIFlow,
-    currentTaskIndex: effectiveCurrentIndex,
-    totalTasks: effectiveTotalTasks,
-    attachmentHooks,
+    isAIFlow: isAIFlowActive,
+    currentTaskIndex: currentTaskIndex,
+    totalTasks: totalTasks,
   });
+
+  // === Data & Loading ===
+  const submitLoading = taskOperations.isSubmitting || false;
+
+  // Get current proposed task if in AI flow
+  const currentProposedTask = isAIFlowMode ? workflow.currentTask : null;
 
   // Create a close handler that passes the current form state
   const handleHeaderClose = useCallback(() => {
-    taskOperations.handleClose(formHooks);
-  }, [taskOperations, formHooks]);
+    taskOperations.handleClose();
+  }, [taskOperations]);
 
   // === Event Handlers ===
   const handleSaveClick = async () => {
-    if (!formHooks?.saveForm) {
-      taskOperations.showMessage("Form not ready. Please try again.");
-      return;
-    }
-
-    await formHooks.saveForm();
+    await taskOperations.saveForm();
 
     // If in AI flow, advance to next task after successful save
-    if (effectiveIsAIFlow) {
+    if (isAIFlowActive) {
       const message = await workflow.continueFlow();
       console.log(message);
     }
   };
 
   const handleDiscardClick = async () => {
-    if (effectiveIsAIFlow) {
+    if (isAIFlowActive) {
       const message = await workflow.continueFlow();
       console.log(message);
     } else {
@@ -111,8 +84,8 @@ export default function Task() {
       <Header
         title={isEditMode ? "Edit Task" : "New Task"}
         variant="modal"
-        stackIndex={effectiveIsAIFlow ? effectiveCurrentIndex : undefined}
-        stackTotal={effectiveIsAIFlow ? effectiveTotalTasks : undefined}
+        stackIndex={isAIFlowActive ? currentTaskIndex : undefined}
+        stackTotal={isAIFlowActive ? totalTasks : undefined}
         onClose={handleHeaderClose}
       />
 
@@ -131,7 +104,6 @@ export default function Task() {
           isEditMode={isEditMode}
           scrollViewRef={scrollViewRef}
           onSnackbar={taskOperations.showMessage}
-          onFormHooksChange={setFormHooks}
           onSave={taskOperations.handleSave}
           proposedTask={currentProposedTask}
         />
@@ -139,19 +111,16 @@ export default function Task() {
         <AttachmentsSection
           taskId={taskId ? parseInt(taskId, 10) : undefined}
           onSnackbar={taskOperations.showMessage}
-          onHooksChange={setAttachmentHooks}
-          externalLoading={formHooks?.isSubmitting || false}
+          externalLoading={taskOperations.isSubmitting || false}
         />
 
-        <View style={effectiveIsAIFlow ? styles.buttonRow : styles.buttonSingle}>
+        <View style={isAIFlowActive ? styles.buttonRow : styles.buttonSingle}>
           <SaveButton
             onPress={handleSaveClick}
             loading={submitLoading}
             title={isEditMode ? "Update" : "Save"}
           />
-          {effectiveIsAIFlow && (
-            <DiscardButton onPress={handleDiscardClick} loading={submitLoading} />
-          )}
+          {isAIFlowActive && <DiscardButton onPress={handleDiscardClick} loading={submitLoading} />}
         </View>
         {isEditMode && (
           <View style={styles.deleteButtonContainer}>
