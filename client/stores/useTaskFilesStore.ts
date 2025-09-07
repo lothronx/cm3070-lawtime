@@ -255,18 +255,11 @@ export const useTaskFilesStore = create<TaskFilesStore>((set, get) => ({
 
   // Delete temp file
   deleteTempFile: (fileName: string) => {
-    set(state => ({
-      deletingIds: new Set(state.deletingIds).add(fileName),
-    }));
-
-    set(state => ({
-      tempFiles: state.tempFiles.filter(f => f.fileName !== fileName),
-    }));
-
     set(state => {
+      const newTempFiles = state.tempFiles.filter(f => f.fileName !== fileName);
       const newDeletingIds = new Set(state.deletingIds);
       newDeletingIds.delete(fileName);
-      return { deletingIds: newDeletingIds };
+      return { tempFiles: newTempFiles, deletingIds: newDeletingIds };
     });
   },
 
