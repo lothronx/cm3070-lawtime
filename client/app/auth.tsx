@@ -12,7 +12,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import WelcomeMessage from "@/components/auth/WelcomeMessage";
 import CurvedBackground from "@/components/auth/CurvedBackground";
 import AuthCard from "@/components/auth/AuthCard";
-import useAuth from "@/hooks/useAuth";
+import useAuth from "@/hooks/auth/useAuth";
 import { useAppTheme } from "@/theme/ThemeProvider";
 
 export default function Auth() {
@@ -20,7 +20,7 @@ export default function Auth() {
     mobileNumber,
     smsCode,
     codeSent,
-    isLoading,
+    isAuthenticating,
     agreedToTerms,
     phoneError,
     codeError,
@@ -73,7 +73,7 @@ export default function Auth() {
                 onResend={handleResend}
                 onChangePhoneNumber={handleChangePhoneNumber}
                 onAction={handleAction}
-                isLoading={isLoading}
+                isLoading={isAuthenticating}
                 actionEnabled={codeSent ? signInButtonEnabled : nextButtonEnabled}
                 actionTitle={codeSent ? "Sign In / Register" : "Next"}
                 agreedToTerms={agreedToTerms}

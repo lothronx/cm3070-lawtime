@@ -7,8 +7,8 @@ export default function useAuth() {
   const [mobileNumber, setMobileNumber] = useState("");
   const [smsCode, setSmsCode] = useState("");
   const [codeSent, setCodeSent] = useState(false);
-  const [isLoading, setIsLoading] = useState(false);
   const router = useRouter();
+  const [isAuthenticating, setIsAuthenticating] = useState(false);
   const [agreedToTerms, setAgreedToTerms] = useState(false);
   const [phoneError, setPhoneError] = useState("");
   const [codeError, setCodeError] = useState("");
@@ -85,23 +85,24 @@ export default function useAuth() {
       return;
     }
 
-    setIsLoading(true);
     setGeneralError("");
 
     try {
+      setIsAuthenticating(true);
+
       // Clean phone number and add country code if needed
       const cleanPhone = mobileNumber.replace(/\D/g, "");
       const formattedPhone = cleanPhone.startsWith("86") ? `+${cleanPhone}` : `+86${cleanPhone}`;
 
       await authService.sendOTP(formattedPhone);
-      
+
       setCodeSent(true);
       setCountdown(59);
-      setIsLoading(false);
     } catch (error) {
       const errorMessage = authService.getErrorMessage(error);
       setGeneralError(errorMessage);
-      setIsLoading(false);
+    } finally {
+      setIsAuthenticating(false);
     }
   };
 
@@ -111,27 +112,27 @@ export default function useAuth() {
       return;
     }
 
-    setIsLoading(true);
     setGeneralError("");
 
     try {
+      setIsAuthenticating(true);
+
       // Clean phone number and add country code if needed
       const cleanPhone = mobileNumber.replace(/\D/g, "");
       const formattedPhone = cleanPhone.startsWith("86") ? `+${cleanPhone}` : `+86${cleanPhone}`;
 
       const response = await authService.verifyOTP(formattedPhone, smsCode);
-      
+
       // Set session in global state
       await setSession(response.session);
-      
+
       // Navigate to main app
       router.replace("/(tabs)");
-      
-      setIsLoading(false);
     } catch (error) {
       const errorMessage = authService.getErrorMessage(error);
       setGeneralError(errorMessage);
-      setIsLoading(false);
+    } finally {
+      setIsAuthenticating(false);
     }
   };
 
@@ -141,14 +142,14 @@ export default function useAuth() {
     }
 
     setGeneralError("");
-    
+
     try {
       // Clean phone number and add country code if needed
       const cleanPhone = mobileNumber.replace(/\D/g, "");
       const formattedPhone = cleanPhone.startsWith("86") ? `+${cleanPhone}` : `+86${cleanPhone}`;
 
       await authService.sendOTP(formattedPhone);
-      
+
       setCountdown(59);
     } catch (error) {
       const errorMessage = authService.getErrorMessage(error);
@@ -169,25 +170,25 @@ export default function useAuth() {
 
   const isPhoneValid = validatePhoneNumber(mobileNumber);
   const isCodeValid = validateCode(smsCode);
-  const nextButtonEnabled = isPhoneValid && !isLoading;
-  const signInButtonEnabled = isCodeValid && !isLoading;
+  const nextButtonEnabled = isPhoneValid && !isAuthenticating;
+  const signInButtonEnabled = isCodeValid && !isAuthenticating;
 
   return {
     // State
     mobileNumber,
     smsCode,
     codeSent,
-    isLoading,
+    isAuthenticating,
     agreedToTerms,
     phoneError,
     codeError,
     generalError,
     countdown,
-    
+
     // Computed values
     nextButtonEnabled,
     signInButtonEnabled,
-    
+
     // Actions
     handlePhoneChange,
     handleCodeChange,
