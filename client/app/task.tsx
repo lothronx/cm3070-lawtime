@@ -1,17 +1,14 @@
-import React, { useRef, useState } from "react";
+import { useRef, useState, useEffect, useCallback } from "react";
 import { View, ScrollView, StyleSheet } from "react-native";
 import { Snackbar } from "react-native-paper";
 import { useLocalSearchParams } from "expo-router";
 import Header from "@/components/Header";
-import LoadingComponent from "@/components/LoadingComponent";
 import TaskFormSection from "@/components/task/TaskFormSection";
 import AttachmentsSection from "@/components/task/AttachmentsSection";
 import SaveButton from "@/components/task/SaveButton";
 import DiscardButton from "@/components/task/DiscardButton";
 import DeleteButton from "@/components/task/DeleteButton";
 import { useAppTheme, SPACING } from "@/theme/ThemeProvider";
-import { useTasks } from "@/hooks/data/useTasks";
-import { useTaskLoading } from "@/hooks/useTaskLoading";
 import { useAIWorkflow } from "@/hooks/aiWorkFlow/useAIWorkflow";
 import { useTaskOperations } from "@/hooks/form/useTaskOperations";
 
@@ -59,11 +56,7 @@ export default function Task() {
   const totalTasks = workflow.totalTasks;
 
   // === Data & Loading ===
-  const { isLoading: initialLoading } = useTasks();
-  const { isLoading: submitLoading } = useTaskLoading({ formHooks, attachmentHooks });
-
-  // Combined loading state includes AI processing
-  const isLoading = initialLoading || workflow.isProcessing;
+  const submitLoading = formHooks?.isSubmitting || attachmentHooks?.committing || false;
 
   // Get current proposed task if in AI flow
   const currentProposedTask = isAIFlowMode ? workflow.currentTask : null;
@@ -84,7 +77,7 @@ export default function Task() {
   });
 
   // Create a close handler that passes the current form state
-  const handleHeaderClose = React.useCallback(() => {
+  const handleHeaderClose = useCallback(() => {
     taskOperations.handleClose(formHooks);
   }, [taskOperations, formHooks]);
 
@@ -123,55 +116,49 @@ export default function Task() {
         onClose={handleHeaderClose}
       />
 
-      {isLoading ? (
-        <LoadingComponent
-          message={workflow.isProcessing ? workflow.processingMessage : "Loading task data..."}
-          variant={workflow.isProcessing ? "processing" : "default"}
+      {/* Task content - processing overlay handles AI loading states globally */}
+      <ScrollView
+        ref={scrollViewRef}
+        style={styles.scrollView}
+        contentContainerStyle={styles.scrollContent}
+        showsVerticalScrollIndicator={true}
+        keyboardShouldPersistTaps="handled"
+        keyboardDismissMode="on-drag"
+        automaticallyAdjustKeyboardInsets={true}
+        contentInsetAdjustmentBehavior="automatic">
+        <TaskFormSection
+          taskId={taskId}
+          isEditMode={isEditMode}
+          scrollViewRef={scrollViewRef}
+          onSnackbar={taskOperations.showMessage}
+          onFormHooksChange={setFormHooks}
+          onSave={taskOperations.handleSave}
+          proposedTask={currentProposedTask}
         />
-      ) : (
-        <ScrollView
-          ref={scrollViewRef}
-          style={styles.scrollView}
-          contentContainerStyle={styles.scrollContent}
-          showsVerticalScrollIndicator={true}
-          keyboardShouldPersistTaps="handled"
-          keyboardDismissMode="on-drag"
-          automaticallyAdjustKeyboardInsets={true}
-          contentInsetAdjustmentBehavior="automatic">
-          <TaskFormSection
-            taskId={taskId}
-            isEditMode={isEditMode}
-            scrollViewRef={scrollViewRef}
-            onSnackbar={taskOperations.showMessage}
-            onFormHooksChange={setFormHooks}
-            onSave={taskOperations.handleSave}
-            proposedTask={currentProposedTask}
-          />
 
-          <AttachmentsSection
-            taskId={taskId ? parseInt(taskId, 10) : undefined}
-            onSnackbar={taskOperations.showMessage}
-            onHooksChange={setAttachmentHooks}
-            externalLoading={formHooks?.isSubmitting || false}
-          />
+        <AttachmentsSection
+          taskId={taskId ? parseInt(taskId, 10) : undefined}
+          onSnackbar={taskOperations.showMessage}
+          onHooksChange={setAttachmentHooks}
+          externalLoading={formHooks?.isSubmitting || false}
+        />
 
-          <View style={effectiveIsAIFlow ? styles.buttonRow : styles.buttonSingle}>
-            <SaveButton
-              onPress={handleSaveClick}
-              loading={submitLoading}
-              title={isEditMode ? "Update" : "Save"}
-            />
-            {effectiveIsAIFlow && (
-              <DiscardButton onPress={handleDiscardClick} loading={submitLoading} />
-            )}
-          </View>
-          {isEditMode && (
-            <View style={styles.deleteButtonContainer}>
-              <DeleteButton onPress={taskOperations.handleDelete} loading={submitLoading} />
-            </View>
+        <View style={effectiveIsAIFlow ? styles.buttonRow : styles.buttonSingle}>
+          <SaveButton
+            onPress={handleSaveClick}
+            loading={submitLoading}
+            title={isEditMode ? "Update" : "Save"}
+          />
+          {effectiveIsAIFlow && (
+            <DiscardButton onPress={handleDiscardClick} loading={submitLoading} />
           )}
-        </ScrollView>
-      )}
+        </View>
+        {isEditMode && (
+          <View style={styles.deleteButtonContainer}>
+            <DeleteButton onPress={taskOperations.handleDelete} loading={submitLoading} />
+          </View>
+        )}
+      </ScrollView>
 
       <Snackbar
         visible={taskOperations.snackbarVisible}

@@ -5,7 +5,6 @@ import { useAppTheme } from "@/theme/ThemeProvider";
 import Header from "@/components/Header";
 import AlertTimePicker from "@/components/settings/AlertTimePicker";
 import LogoutSection from "@/components/settings/LogoutSection";
-import LoadingComponent from "@/components/LoadingComponent";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useRouter } from "expo-router";
 import { useAuthStore } from "@/stores/useAuthStore";
@@ -97,15 +96,6 @@ export default function Settings() {
       router.replace("/auth");
     }
   };
-
-  if (profileLoading) {
-    return (
-      <View style={[styles.container, { backgroundColor: theme.colors.background }]}>
-        <Header title="Settings" variant="modal" />
-        <LoadingComponent variant="settings" />
-      </View>
-    );
-  }
 
   return (
     <View style={[styles.container, { backgroundColor: theme.colors.background }]}>

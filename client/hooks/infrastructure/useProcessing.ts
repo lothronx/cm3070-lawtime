@@ -6,7 +6,6 @@ import { create } from 'zustand';
  * AI messages rotate to keep users engaged during longer operations
  */
 const AI_MESSAGES = [
-  'Uploading files to AI service...',
   'AI analyzing your document...',
   'Extracting key information...',
   'Identifying important dates...',

@@ -1,8 +1,7 @@
 import { useEffect } from "react";
-import { useRouter } from "expo-router";
+import { Redirect } from "expo-router";
 import { useAuthStore } from "@/stores/useAuthStore";
-import LoadingComponent from "@/components/LoadingComponent";
-import { useAppTheme } from "@/theme/ThemeProvider";
+import { useProcessing } from "@/hooks/infrastructure/useProcessing";
 
 /**
  * Main routing logic component that handles authentication state
@@ -16,30 +15,32 @@ import { useAppTheme } from "@/theme/ThemeProvider";
  */
 export default function IndexScreen() {
   const { isLoading, isAuthenticated, checkSession } = useAuthStore();
-  const { theme } = useAppTheme();
-  const router = useRouter();
+  const { startProcessing, stopProcessing } = useProcessing();
 
   // Check auth session on mount
   useEffect(() => {
     checkSession();
   }, [checkSession]);
 
-  // Handle navigation based on auth state
-  useEffect(() => {
-    if (!isLoading) {
-      if (isAuthenticated) {
-        router.replace("/(tabs)");
-      } else {
-        router.replace("/auth");
-      }
-    }
-  }, [isLoading, isAuthenticated, router]);
 
-  // Show loading screen while checking authentication
-  if (isLoading) {
-    return <LoadingComponent variant="authentication" backgroundColor={theme.colors.background} />;
+  // Control processing overlay based on loading state
+  useEffect(() => {
+    if (isLoading) {
+      startProcessing("Checking authentication...");
+    } else {
+      stopProcessing();
+    }
+  }, [isLoading, startProcessing, stopProcessing]);
+
+  // Handle navigation based on auth state using Redirect component
+  if (!isLoading) {
+    if (isAuthenticated) {
+      return <Redirect href="/(tabs)" />;
+    } else {
+      return <Redirect href="/auth" />;
+    }
   }
 
-  // This component should never render anything else since it always redirects
+  // Show loading state - processing overlay handles the display
   return null;
 }

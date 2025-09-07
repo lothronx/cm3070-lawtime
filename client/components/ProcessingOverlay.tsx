@@ -43,14 +43,12 @@ export function ProcessingOverlay({ visible, message }: ProcessingOverlayProps) 
         style={[
           styles.overlay,
           {
-            backgroundColor: theme.colors.backdrop,
+            backgroundColor: `${theme.colors.surfaceVariant}CC`,
             opacity: fadeAnim,
           },
         ]}>
         <ActivityIndicator color={theme.colors.primary} />
-        <Text
-          variant="bodyMedium"
-          style={[styles.message, { color: theme.colors.onBackground }]}>
+        <Text variant="bodyMedium" style={[styles.message, { color: theme.colors.onBackground }]}>
           {displayMessage}
         </Text>
       </Animated.View>
@@ -67,11 +65,13 @@ const styles = StyleSheet.create({
     bottom: 0,
     justifyContent: "center",
     alignItems: "center",
+    paddingBottom: SPACING.xxl,
     zIndex: 999999,
     elevation: 999999,
   },
   message: {
     textAlign: "center",
+    fontSize: 16,
     marginTop: SPACING.md,
   },
 });

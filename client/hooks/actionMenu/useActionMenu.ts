@@ -4,6 +4,7 @@ import { useImagePicker } from '@/hooks/media/useImagePicker';
 import { useAudioRecorder } from '@/hooks/media/useAudioRecorder';
 import { useFileOperations } from '@/hooks/media/useFileOperations';
 import { useAIWorkflow } from '@/hooks/aiWorkFlow/useAIWorkflow';
+import { useProcessing } from '@/hooks/infrastructure/useProcessing';
 
 
 export interface ActionMenuHandlers {
@@ -30,6 +31,7 @@ export interface ActionMenuHandlers {
  */
 export function useActionMenu(): ActionMenuHandlers {
   const router = useRouter();
+  const { startProcessing, stopProcessing } = useProcessing();
 
   // Audio recording state
   const [recordingStartTime, setRecordingStartTime] = useState<number>(0);
@@ -55,9 +57,18 @@ export function useActionMenu(): ActionMenuHandlers {
 
   // File operation handlers
   const handleFilesSelected = useCallback(async (files: { uri: string; fileName: string; originalName: string; mimeType: string; size: number }[]) => {
+    // Phase 1: File upload with static message
+    startProcessing("Uploading files...");
 
-    await uploadToTemp(files);
-  }, [uploadToTemp]);
+    try {
+      await uploadToTemp(files);
+    } catch (error) {
+      stopProcessing();
+      throw error;
+    } finally {
+      stopProcessing();
+    }
+  }, [uploadToTemp, startProcessing, stopProcessing]);
 
   const handleSuccess = useCallback((message: string) => {
     console.log('File upload success:', message);
@@ -72,13 +83,14 @@ export function useActionMenu(): ActionMenuHandlers {
       }
     });
     
-    // Trigger AI processing in background
     workflow.startProcessing();
   }, [workflow, router]);
 
   const handleError = useCallback((message: string) => {
     console.error('File selection error:', message);
-  }, []);
+    // Stop processing overlay on any error
+    stopProcessing();
+  }, [stopProcessing]);
 
   // Image picker integration
   const { openImagePicker, openCamera } = useImagePicker({
