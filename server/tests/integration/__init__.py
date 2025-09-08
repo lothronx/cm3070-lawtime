@@ -1,1 +1,1 @@
-# Integration tests - test API endpoints and real functionality
+"""Integration tests package for LawTime backend API."""

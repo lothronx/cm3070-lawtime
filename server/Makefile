@@ -7,7 +7,13 @@ help:
 	@echo ""
 	@echo "Available commands:"
 	@echo "  make test         Run all unit tests (free, fast)"
+	@echo "  make test-all     Run all tests (unit + integration)"
 	@echo "  make test-coverage Run tests with coverage report"
+	@echo ""
+	@echo "Integration Tests:"
+	@echo "  make test-integration Run integration tests only"
+	@echo "  make test-api-endpoints Run API endpoint tests only"
+	@echo "  make test-auth-workflow Run auth workflow tests only"
 	@echo ""
 	@echo "Controller Tests:"
 	@echo "  make test-auth    Run auth controller tests only"
@@ -94,6 +100,26 @@ clean:
 	rm -rf htmlcov
 	rm -rf __pycache__
 	find . -name "*.pyc" -delete
+
+# Run all tests (unit + integration)
+test-all:
+	@echo "Running all tests (unit + integration)..."
+	$(VENV) pytest tests/ -v
+
+# Run integration tests only
+test-integration:
+	@echo "Running integration tests..."
+	$(VENV) pytest tests/integration/ -v
+
+# Run API endpoint integration tests
+test-api-endpoints:
+	@echo "Running API endpoint integration tests..."
+	$(VENV) pytest tests/integration/test_api_endpoints.py -v
+
+# Run authentication workflow integration tests
+test-auth-workflow:
+	@echo "Running authentication workflow integration tests..."
+	$(VENV) pytest tests/integration/test_auth_workflow.py -v
 
 # Start development server
 server:
