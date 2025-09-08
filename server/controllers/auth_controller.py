@@ -166,6 +166,11 @@ class AuthController:
         data = request.get_json()
 
         phone_number = data.get("phone_number")
+        if not phone_number:
+            return (
+                jsonify({"status": "error", "message": "phone_number cannot be empty"}),
+                400,
+            )
         phone_number = phone_number.strip()
         if not phone_number:
             return (
