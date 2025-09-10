@@ -19,6 +19,8 @@ module.exports = {
     '^@/(.*)$': '<rootDir>/$1',
     '^@env$': '<rootDir>/__mocks__/env.js',
   },
+  clearMocks: true,
+  resetMocks: true,
   globals: {
     '__DEV__': true,
   },
