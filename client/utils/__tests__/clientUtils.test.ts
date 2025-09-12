@@ -8,35 +8,30 @@ const mockClients: DbClient[] = [
     user_id: 'user1',
     client_name: 'ACME Corporation',
     created_at: '2025-01-01T00:00:00Z',
-    updated_at: '2025-01-01T00:00:00Z'
   },
   {
     id: 2,
     user_id: 'user1',
     client_name: 'Smith & Associates',
     created_at: '2025-01-01T00:00:00Z',
-    updated_at: '2025-01-01T00:00:00Z'
   },
   {
     id: 3,
     user_id: 'user1',
     client_name: 'Johnson Legal Group',
     created_at: '2025-01-01T00:00:00Z',
-    updated_at: '2025-01-01T00:00:00Z'
   },
   {
     id: 4,
     user_id: 'user1',
     client_name: 'ABC Industries',
     created_at: '2025-01-01T00:00:00Z',
-    updated_at: '2025-01-01T00:00:00Z'
   },
   {
     id: 5,
     user_id: 'user1',
     client_name: 'Global Tech Solutions',
     created_at: '2025-01-01T00:00:00Z',
-    updated_at: '2025-01-01T00:00:00Z'
   }
 ];
 

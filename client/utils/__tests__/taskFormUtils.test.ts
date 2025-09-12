@@ -52,7 +52,6 @@ describe('taskFormUtils', () => {
         id: 123,
         user_id: 'user-123',
         created_at: '2025-01-01T00:00:00Z',
-        updated_at: '2025-01-01T00:00:00Z'
       };
 
       it('should convert TaskWithClient to form values correctly', () => {

@@ -20,11 +20,16 @@ describe('AIService', () => {
   const mockSession = {
     access_token: 'mock-jwt-token',
     refresh_token: 'mock-refresh-token',
+    expires_in: 3600,
     expires_at: Date.now() / 1000 + 3600,
     token_type: 'bearer',
     user: {
       id: 'test-user-id',
       email: 'test@example.com',
+      app_metadata: {},
+      user_metadata: {},
+      aud: 'authenticated',
+      created_at: '2025-08-30T10:00:00Z',
     },
   };
 
@@ -86,6 +91,11 @@ describe('AIService', () => {
     beforeEach(() => {
       mockUseAuthStore.mockReturnValue({
         session: mockSession,
+        isAuthenticated: true,
+        isLoading: false,
+        setSession: jest.fn(),
+        checkSession: jest.fn(),
+        logout: jest.fn(),
       });
     });
 
@@ -176,6 +186,11 @@ describe('AIService', () => {
     it('should throw error when not authenticated', async () => {
       mockUseAuthStore.mockReturnValue({
         session: null,
+        isAuthenticated: false,
+        isLoading: false,
+        setSession: jest.fn(),
+        checkSession: jest.fn(),
+        logout: jest.fn(),
       });
 
       await expect(aiService.proposeTasks(mockRequest)).rejects.toThrow(
@@ -187,7 +202,12 @@ describe('AIService', () => {
 
     it('should throw error when no access token', async () => {
       mockUseAuthStore.mockReturnValue({
-        session: { ...mockSession, access_token: undefined },
+        session: { ...mockSession, access_token: undefined } as any,
+        isAuthenticated: true,
+        isLoading: false,
+        setSession: jest.fn(),
+        checkSession: jest.fn(),
+        logout: jest.fn(),
       });
 
       await expect(aiService.proposeTasks(mockRequest)).rejects.toThrow(
@@ -287,6 +307,11 @@ describe('AIService', () => {
       // Mock authentication
       mockUseAuthStore.mockReturnValue({
         session: mockSession,
+        isAuthenticated: true,
+        isLoading: false,
+        setSession: jest.fn(),
+        checkSession: jest.fn(),
+        logout: jest.fn(),
       });
 
       // Mock an API error response to trigger AIServiceError creation

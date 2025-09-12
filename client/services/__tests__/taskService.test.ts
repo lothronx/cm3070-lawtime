@@ -53,11 +53,19 @@ describe('taskService', () => {
   const mockUser = {
     id: 'test-user-id',
     email: 'test@example.com',
+    app_metadata: {},
+    user_metadata: {},
+    aud: 'authenticated',
+    created_at: '2025-08-30T10:00:00Z',
   };
 
   const mockSession = {
     user: mockUser,
     access_token: 'mock-token',
+    refresh_token: 'mock-refresh-token',
+    expires_in: 3600,
+    expires_at: Date.now() / 1000 + 3600,
+    token_type: 'bearer',
   };
 
   const mockTaskWithClient: TaskWithClient = {
@@ -77,7 +85,14 @@ describe('taskService', () => {
 
   beforeEach(() => {
     jest.clearAllMocks();
-    mockUseAuthStore.mockReturnValue({ session: mockSession });
+    mockUseAuthStore.mockReturnValue({
+      session: mockSession,
+      isAuthenticated: true,
+      isLoading: false,
+      setSession: jest.fn(),
+      checkSession: jest.fn(),
+      logout: jest.fn(),
+    });
   });
 
   describe('getTasks', () => {
@@ -279,7 +294,7 @@ describe('taskService', () => {
       const taskDataWithoutClient: TaskWithClient = {
         ...mockTaskWithClient,
         client_id: null,
-        client_name: null,
+        client_name: '', // Empty string for no client
       };
 
       const mockCreatedTaskData = {
@@ -361,7 +376,14 @@ describe('taskService', () => {
     });
 
     it('should throw error when user is not authenticated', async () => {
-      mockUseAuthStore.mockReturnValue({ session: null });
+      mockUseAuthStore.mockReturnValue({
+        session: null,
+        isAuthenticated: false,
+        isLoading: false,
+        setSession: jest.fn(),
+        checkSession: jest.fn(),
+        logout: jest.fn(),
+      });
 
       await expect(taskService.createTask(mockTaskWithClient)).rejects.toThrow(
         'Authentication required. Please log in again.'
@@ -490,7 +512,14 @@ describe('taskService', () => {
     });
 
     it('should throw error when user is not authenticated', async () => {
-      mockUseAuthStore.mockReturnValue({ session: null });
+      mockUseAuthStore.mockReturnValue({
+        session: null,
+        isAuthenticated: false,
+        isLoading: false,
+        setSession: jest.fn(),
+        checkSession: jest.fn(),
+        logout: jest.fn(),
+      });
 
       await expect(taskService.updateTask(456, {})).rejects.toThrow(
         'Authentication required. Please log in again.'
@@ -563,7 +592,14 @@ describe('taskService', () => {
 
 
     it('should throw error when user is not authenticated', async () => {
-      mockUseAuthStore.mockReturnValue({ session: null });
+      mockUseAuthStore.mockReturnValue({
+        session: null,
+        isAuthenticated: false,
+        isLoading: false,
+        setSession: jest.fn(),
+        checkSession: jest.fn(),
+        logout: jest.fn(),
+      });
 
       await expect(taskService.deleteTask(456)).rejects.toThrow(
         'Authentication required. Please log in again.'
@@ -747,7 +783,14 @@ describe('taskService', () => {
     });
 
     it('should throw error when user is not authenticated', async () => {
-      mockUseAuthStore.mockReturnValue({ session: null });
+      mockUseAuthStore.mockReturnValue({
+        session: null,
+        isAuthenticated: false,
+        isLoading: false,
+        setSession: jest.fn(),
+        checkSession: jest.fn(),
+        logout: jest.fn(),
+      });
 
       await expect(taskService.getTaskById(456)).rejects.toThrow(
         'Authentication required. Please log in again.'

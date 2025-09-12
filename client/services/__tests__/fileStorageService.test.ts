@@ -34,11 +34,19 @@ describe('fileStorageService', () => {
   const mockUser = {
     id: 'test-user-id',
     email: 'test@example.com',
+    app_metadata: {},
+    user_metadata: {},
+    aud: 'authenticated',
+    created_at: '2025-08-30T10:00:00Z',
   };
 
   const mockSession = {
     user: mockUser,
     access_token: 'mock-token',
+    refresh_token: 'mock-refresh-token',
+    expires_in: 3600,
+    expires_at: Date.now() / 1000 + 3600,
+    token_type: 'bearer',
   };
 
   const mockFile = {
@@ -51,7 +59,14 @@ describe('fileStorageService', () => {
 
   beforeEach(() => {
     jest.clearAllMocks();
-    mockUseAuthStore.mockReturnValue({ session: mockSession });
+    mockUseAuthStore.mockReturnValue({
+      session: mockSession,
+      isAuthenticated: true,
+      isLoading: false,
+      setSession: jest.fn(),
+      checkSession: jest.fn(),
+      logout: jest.fn(),
+    });
     
     // Mock fetch to return array buffer
     mockFetch.mockResolvedValue({
@@ -91,7 +106,14 @@ describe('fileStorageService', () => {
     });
 
     it('should throw error when not authenticated', async () => {
-      mockUseAuthStore.mockReturnValue({ session: null });
+      mockUseAuthStore.mockReturnValue({
+        session: null,
+        isAuthenticated: false,
+        isLoading: false,
+        setSession: jest.fn(),
+        checkSession: jest.fn(),
+        logout: jest.fn(),
+      });
 
       await expect(fileStorageService.uploadToTemp(mockFile, 'batch-123')).rejects.toThrow(
         'Not authenticated'
@@ -170,7 +192,14 @@ describe('fileStorageService', () => {
     });
 
     it('should throw error when not authenticated', async () => {
-      mockUseAuthStore.mockReturnValue({ session: null });
+      mockUseAuthStore.mockReturnValue({
+        session: null,
+        isAuthenticated: false,
+        isLoading: false,
+        setSession: jest.fn(),
+        checkSession: jest.fn(),
+        logout: jest.fn(),
+      });
 
       await expect(fileStorageService.uploadToPerm(mockFile, 456)).rejects.toThrow(
         'Not authenticated'
@@ -348,7 +377,14 @@ describe('fileStorageService', () => {
     });
 
     it('should handle not authenticated user', async () => {
-      mockUseAuthStore.mockReturnValue({ session: null });
+      mockUseAuthStore.mockReturnValue({
+        session: null,
+        isAuthenticated: false,
+        isLoading: false,
+        setSession: jest.fn(),
+        checkSession: jest.fn(),
+        logout: jest.fn(),
+      });
 
       await fileStorageService.clearAllTempFiles();
 

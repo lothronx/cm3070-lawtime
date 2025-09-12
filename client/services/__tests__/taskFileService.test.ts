@@ -38,11 +38,19 @@ describe('taskFileService', () => {
   const mockUser = {
     id: 'test-user-id',
     email: 'test@example.com',
+    app_metadata: {},
+    user_metadata: {},
+    aud: 'authenticated',
+    created_at: '2025-08-30T10:00:00Z',
   };
 
   const mockSession = {
     user: mockUser,
     access_token: 'mock-token',
+    refresh_token: 'mock-refresh-token',
+    expires_in: 3600,
+    expires_at: Date.now() / 1000 + 3600,
+    token_type: 'bearer',
   };
 
   const mockTaskFile: TaskFile = {
@@ -58,7 +66,14 @@ describe('taskFileService', () => {
 
   beforeEach(() => {
     jest.clearAllMocks();
-    mockUseAuthStore.mockReturnValue({ session: mockSession });
+    mockUseAuthStore.mockReturnValue({
+      session: mockSession,
+      isAuthenticated: true,
+      isLoading: false,
+      setSession: jest.fn(),
+      checkSession: jest.fn(),
+      logout: jest.fn(),
+    });
   });
 
   describe('getTaskFiles', () => {
@@ -193,6 +208,7 @@ describe('taskFileService', () => {
         user_id: 'test-user-id',
         created_at: '2025-08-31T11:00:00Z',
         ...fileData,
+        mime_type: fileData.mime_type || null,
       };
 
       const mockSingle = jest.fn().mockResolvedValue({
@@ -241,6 +257,7 @@ describe('taskFileService', () => {
         user_id: 'test-user-id',
         created_at: '2025-08-31T11:00:00Z',
         ...sourceFileData,
+        mime_type: sourceFileData.mime_type || null,
       };
 
       const mockSingle = jest.fn().mockResolvedValue({
@@ -270,7 +287,14 @@ describe('taskFileService', () => {
     });
 
     it('should throw error when user is not authenticated', async () => {
-      mockUseAuthStore.mockReturnValue({ session: null });
+      mockUseAuthStore.mockReturnValue({
+        session: null,
+        isAuthenticated: false,
+        isLoading: false,
+        setSession: jest.fn(),
+        checkSession: jest.fn(),
+        logout: jest.fn(),
+      });
 
       const fileData: Omit<TaskFileInsert, 'user_id'> = {
         task_id: 456,
@@ -288,7 +312,14 @@ describe('taskFileService', () => {
     });
 
     it('should throw error when session has no user', async () => {
-      mockUseAuthStore.mockReturnValue({ session: { user: null } });
+      mockUseAuthStore.mockReturnValue({
+        session: { user: null } as any,
+        isAuthenticated: false,
+        isLoading: false,
+        setSession: jest.fn(),
+        checkSession: jest.fn(),
+        logout: jest.fn(),
+      });
 
       const fileData: Omit<TaskFileInsert, 'user_id'> = {
         task_id: 456,
@@ -357,7 +388,14 @@ describe('taskFileService', () => {
     });
 
     it('should throw error when user is not authenticated', async () => {
-      mockUseAuthStore.mockReturnValue({ session: null });
+      mockUseAuthStore.mockReturnValue({
+        session: null,
+        isAuthenticated: false,
+        isLoading: false,
+        setSession: jest.fn(),
+        checkSession: jest.fn(),
+        logout: jest.fn(),
+      });
 
       await expect(taskFileService.deleteTaskFile(123)).rejects.toThrow(
         'Authentication required. Please log in again.'
@@ -428,6 +466,7 @@ describe('taskFileService', () => {
           user_id: 'test-user-id',
           created_at: '2025-08-31T11:00:00Z',
           ...filesData[0],
+          mime_type: filesData[0].mime_type || null,
         },
         {
           id: 128,
@@ -435,6 +474,7 @@ describe('taskFileService', () => {
           user_id: 'test-user-id',
           created_at: '2025-08-31T11:01:00Z',
           ...filesData[1],
+          mime_type: filesData[1].mime_type || null,
         },
       ];
 
@@ -491,7 +531,14 @@ describe('taskFileService', () => {
     });
 
     it('should throw error when user is not authenticated', async () => {
-      mockUseAuthStore.mockReturnValue({ session: null });
+      mockUseAuthStore.mockReturnValue({
+        session: null,
+        isAuthenticated: false,
+        isLoading: false,
+        setSession: jest.fn(),
+        checkSession: jest.fn(),
+        logout: jest.fn(),
+      });
 
       await expect(
         taskFileService.createMultipleTaskFiles(456, [])
@@ -581,7 +628,14 @@ describe('taskFileService', () => {
     });
 
     it('should throw error when user is not authenticated', async () => {
-      mockUseAuthStore.mockReturnValue({ session: null });
+      mockUseAuthStore.mockReturnValue({
+        session: null,
+        isAuthenticated: false,
+        isLoading: false,
+        setSession: jest.fn(),
+        checkSession: jest.fn(),
+        logout: jest.fn(),
+      });
 
       await expect(taskFileService.getTaskFileById(123)).rejects.toThrow(
         'Authentication required. Please log in again.'
