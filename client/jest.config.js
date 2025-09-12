@@ -4,6 +4,9 @@ module.exports = {
     '<rootDir>/jest.setup.js',
   ],
   testEnvironment: 'node',
+  transform: {
+    '^.+\\.(js|jsx|ts|tsx)$': ['babel-jest', { envName: 'test' }],
+  },
   collectCoverageFrom: [
     'services/**/*.{ts,tsx}',
     '!**/__tests__/**',

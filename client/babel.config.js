@@ -1,5 +1,7 @@
 module.exports = function (api) {
-  api.cache(true);
+  const isTest = api.env('test');
+  api.cache.using(() => isTest);
+
   return {
     presets: ["babel-preset-expo"],
     plugins: [
@@ -7,7 +9,7 @@ module.exports = function (api) {
         "module:react-native-dotenv",
         {
           moduleName: "@env",
-          path: ".env.local",
+          path: isTest ? ".env.test" : ".env.local",
           blacklist: null,
           whitelist: null,
           safe: false,

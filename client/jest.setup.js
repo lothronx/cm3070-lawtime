@@ -1,17 +1,14 @@
-// Mock global fetch for testing (only for service tests)
+// Mock global fetch for testing
 global.fetch = jest.fn();
 
-// Mock expo-secure-store (only needed for service tests)
+// Mock expo-secure-store
 jest.mock('expo-secure-store', () => ({
   getItemAsync: jest.fn(),
   setItemAsync: jest.fn(),
   deleteItemAsync: jest.fn(),
 }));
 
-// Mock environment variables
-jest.mock('@env', () => ({
-  API_BASE_URL: 'https://test.api.com',
-}));
+// Environment variables are mocked via moduleNameMapper in jest.config.js
 
 // Mock Supabase for tests that don't need real auth
 jest.mock('@/utils/supabase', () => ({
