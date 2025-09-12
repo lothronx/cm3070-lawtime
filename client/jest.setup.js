@@ -1,6 +1,15 @@
 // Mock global fetch for testing
 global.fetch = jest.fn();
 
+// Suppress console output during tests for cleaner test output
+global.console = {
+  ...console,
+  log: jest.fn(), // Mock console.log to suppress output
+  error: jest.fn(), // Mock console.error to suppress output
+  warn: jest.fn(), // Mock console.warn to suppress output
+  info: jest.fn(), // Mock console.info to suppress output
+};
+
 // Mock expo-secure-store
 jest.mock('expo-secure-store', () => ({
   getItemAsync: jest.fn(),
