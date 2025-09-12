@@ -22,7 +22,7 @@ interface TaskDependencies {
   };
 }
 
-interface TaskConfig {
+export interface TaskConfig {
   taskId?: string;
   isEditMode: boolean;
   isAIFlow: boolean;

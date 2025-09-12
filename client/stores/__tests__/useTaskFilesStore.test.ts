@@ -1,3 +1,8 @@
+import { useTaskFilesStore } from '../useTaskFilesStore';
+import { fileStorageService } from '@/services/fileStorageService';
+import { generateUploadBatchId } from '@/utils/fileUploadUtils';
+import { TaskFile } from '@/types';
+
 // Mock services and utilities BEFORE imports
 jest.mock('@/services/fileStorageService', () => ({
   fileStorageService: {
@@ -15,10 +20,7 @@ jest.mock('@/utils/fileUploadUtils', () => ({
   generateUploadBatchId: jest.fn(() => 'test-batch-id-123'),
 }));
 
-import { useTaskFilesStore } from '../useTaskFilesStore';
-import { fileStorageService } from '@/services/fileStorageService';
-import { generateUploadBatchId } from '@/utils/fileUploadUtils';
-import { TaskFile } from '@/types';
+
 
 const mockFileStorageService = fileStorageService as jest.Mocked<typeof fileStorageService>;
 const mockGenerateUploadBatchId = generateUploadBatchId as jest.MockedFunction<typeof generateUploadBatchId>;

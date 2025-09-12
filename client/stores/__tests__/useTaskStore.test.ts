@@ -1,5 +1,4 @@
-import { useTaskStore, TaskConfig, OperationResult } from '../useTaskStore';
-import { TaskWithClient } from '@/types';
+import { useTaskStore, TaskConfig } from '../useTaskStore';
 
 // Mock useTaskFilesStore
 jest.mock('../useTaskFilesStore', () => ({
@@ -25,15 +24,6 @@ describe('useTaskStore', () => {
     isAIFlow: false,
     currentTaskIndex: 1,
     totalTasks: 1,
-  };
-
-  const mockTaskData: TaskWithClient = {
-    title: 'Court Hearing',
-    event_time: '2025-09-15T09:00:00+08:00',
-    location: 'Court Room 3',
-    note: 'Bring all documents',
-    client_id: 1,
-    client_name: 'ACME Corp',
   };
 
   beforeEach(() => {

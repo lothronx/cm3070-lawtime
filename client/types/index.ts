@@ -92,7 +92,7 @@ export interface ProposedTask {
   title: string;
   event_time: string | null; // ISO format datetime
   location: string | null;
-  note: string;
+  note: string | null;
   client_resolution: ClientResolution;
 }
 
