@@ -3,11 +3,11 @@
 # Default target executed when no arguments are given to make.
 all: help
 
-# Define a variable for the test file path.
-TEST_FILE ?= tests/unit_tests/
-
 test:
-	python -m pytest $(TEST_FILE)
+	python -m pytest
+
+unit_tests:
+	python -m pytest tests/unit_tests
 
 integration_tests:
 	python -m pytest tests/integration_tests 
