@@ -1,11 +1,2 @@
 .DS_Store
 .*/
-
-# report related files
-/images
-*.md
-
-# dotenvx
-.env.keys
-.env.local
-.env.*.local

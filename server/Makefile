@@ -98,7 +98,7 @@ clean:
 	@echo "Cleaning test artifacts..."
 	rm -rf .pytest_cache
 	rm -rf htmlcov
-	rm -rf __pycache__
+	find . -type d -name '__pycache__' -exec rm -rf {} +
 	find . -name "*.pyc" -delete
 
 # Run all tests (unit + integration)

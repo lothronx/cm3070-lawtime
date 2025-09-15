@@ -1,0 +1,6 @@
+.DS_Store
+
+# dotenvx
+.env.keys
+.env.local
+.env.*.local
