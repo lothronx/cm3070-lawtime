@@ -193,7 +193,7 @@ export const taskService = {
    * @returns Promise<TaskWithClient> - The updated task
    */
   async uncompleteTask(taskId: number): Promise<TaskWithClient> {
-    return this.updateTask(taskId, { 
+    return this.updateTask(taskId, {
       completed_at: null,
     });
   },

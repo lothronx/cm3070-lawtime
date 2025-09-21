@@ -43,7 +43,7 @@ export function useTasks() {
 
   // Delete task mutation
   const deleteTaskMutation = useMutation({
-    mutationFn: taskService.deleteTask,
+    mutationFn: (taskId: number) => taskService.deleteTask(taskId),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['tasks'] });
     },
@@ -51,7 +51,7 @@ export function useTasks() {
 
   // Complete task mutation
   const completeTaskMutation = useMutation({
-    mutationFn: taskService.completeTask,
+    mutationFn: (taskId: number) => taskService.completeTask(taskId),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['tasks'] });
     },
@@ -59,7 +59,7 @@ export function useTasks() {
 
   // Incomplete task mutation
   const incompleteTaskMutation = useMutation({
-    mutationFn: taskService.uncompleteTask,
+    mutationFn: (taskId: number) => taskService.uncompleteTask(taskId),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['tasks'] });
     },

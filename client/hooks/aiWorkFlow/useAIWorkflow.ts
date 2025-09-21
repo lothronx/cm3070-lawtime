@@ -42,7 +42,11 @@ export function useAIWorkflow({
   // Use the new modular hooks
   const { processFiles } = useAIProcessing({
     onSuccess: (taskCount) => {
-      console.log(`AI generated ${taskCount} tasks`);
+      if (taskCount === 0) {
+        console.log('No tasks extracted - user will manually enter task details');
+      } else {
+        console.log(`AI generated ${taskCount} tasks`);
+      }
     },
     onError: (error) => {
       console.error('AI processing failed:', error);

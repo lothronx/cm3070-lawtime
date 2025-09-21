@@ -1,6 +1,11 @@
 import { create } from 'zustand';
 import { ProposedTask } from '@/types';
 
+interface PendingMessage {
+  text: string;
+  type: 'success' | 'error';
+}
+
 interface AIWorkflowState {
   // Data
   tasks: ProposedTask[];
@@ -9,6 +14,7 @@ interface AIWorkflowState {
 
   // Status
   isProcessing: boolean;
+  pendingMessage: PendingMessage | null;
 }
 
 interface AIWorkflowActions {
@@ -20,6 +26,9 @@ interface AIWorkflowActions {
 
   // Processing status
   setProcessing: (isProcessing: boolean) => void;
+
+  // Messages
+  setPendingMessage: (message: PendingMessage | null) => void;
 
   // State reset
   reset: () => void;
@@ -33,6 +42,7 @@ export const useAIWorkflowStore = create<AIWorkflowStore>((set) => ({
   sourceType: null,
   currentIndex: 1,
   isProcessing: false,
+  pendingMessage: null,
 
   // Task Management
   setTasks: (tasks: ProposedTask[], sourceType: 'ocr' | 'asr') => {
@@ -53,6 +63,11 @@ export const useAIWorkflowStore = create<AIWorkflowStore>((set) => ({
     set({ isProcessing });
   },
 
+  // Messages
+  setPendingMessage: (pendingMessage: PendingMessage | null) => {
+    set({ pendingMessage });
+  },
+
   // State Reset
   reset: () => {
     set({
@@ -60,6 +75,7 @@ export const useAIWorkflowStore = create<AIWorkflowStore>((set) => ({
       sourceType: null,
       currentIndex: 1,
       isProcessing: false,
+      pendingMessage: null,
     });
   },
 }));
