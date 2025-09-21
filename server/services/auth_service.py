@@ -1,4 +1,5 @@
 import logging
+from datetime import datetime
 from typing import Dict, Optional, Tuple, Any
 from supabase import Client
 
@@ -132,15 +133,39 @@ class AuthService:
         return {
             "access_token": auth_response.session.access_token,
             "refresh_token": auth_response.session.refresh_token,
-            "expires_at": auth_response.session.expires_at,
+            "expires_at": self._format_timestamp(auth_response.session.expires_at),
             "token_type": auth_response.session.token_type,
             "user": {
                 "id": auth_response.user.id,
                 "email": auth_response.user.email or "",
                 "phone": auth_response.user.phone or "",
-                "created_at": auth_response.user.created_at,
+                "created_at": self._format_timestamp(auth_response.user.created_at),
             },
         }
+
+    def _format_timestamp(self, timestamp: Any) -> Optional[str]:
+        """Convert timestamp to ISO format string.
+
+        Args:
+            timestamp: Timestamp value (can be datetime, int, or None)
+
+        Returns:
+            ISO format string or None
+        """
+        if timestamp is None:
+            return None
+
+        if isinstance(timestamp, datetime):
+            return timestamp.isoformat()
+
+        if isinstance(timestamp, (int, float)):
+            return datetime.fromtimestamp(timestamp).isoformat()
+
+        # If it's already a string, return as-is
+        if isinstance(timestamp, str):
+            return timestamp
+
+        return None
 
     def verify_token(self, token: str) -> Tuple[bool, Optional[Dict]]:
         """Verify JWT token and return user data.

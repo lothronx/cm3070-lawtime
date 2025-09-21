@@ -5,6 +5,7 @@ orchestrating the LangGraph agent processing, and returning formatted responses.
 """
 
 import logging
+import json
 from typing import Tuple
 from flask import request, jsonify
 import asyncio
@@ -44,7 +45,7 @@ class TaskController:
             if not auth_header or not auth_header.startswith('Bearer '):
                 logger.warning("Missing or invalid Authorization header")
                 return jsonify({"error": "Authorization header required"}), 401
-            
+
             jwt_token = auth_header.replace('Bearer ', '')
 
             # Parse and validate request body
@@ -53,7 +54,15 @@ class TaskController:
                 return jsonify({"error": "Request body must be JSON"}), 400
 
             data = request.get_json()
-            
+
+            # ===== DEBUG: Print request JSON =====
+            print("\n" + "="*50)
+            print("🔵 POST /api/tasks/propose")
+            print("📥 REQUEST JSON:")
+            print(json.dumps(data, indent=2))
+            print("🔑 JWT TOKEN (first 20 chars):", jwt_token[:20] + "...")
+            print("="*50)
+
             # Validate required fields
             source_type = data.get('source_type')
             source_file_urls = data.get('source_file_urls')
@@ -91,15 +100,37 @@ class TaskController:
                 "count": len(proposed_tasks)
             }
 
+            # ===== DEBUG: Print success response JSON =====
+            print("📤 SUCCESS RESPONSE JSON:")
+            print(json.dumps(response, indent=2))
+            print("📊 STATUS CODE: 200")
+            print("="*50 + "\n")
+
             logger.info("Task proposal completed successfully: %d tasks generated", len(proposed_tasks))
             return jsonify(response), 200
 
         except ValueError as e:
             # Handle validation errors (auth, input validation, AI processing)
+            error_response = {"error": str(e)}
+
+            # ===== DEBUG: Print error response JSON =====
+            print("📤 ERROR RESPONSE JSON:")
+            print(json.dumps(error_response, indent=2))
+            print("📊 STATUS CODE: 400")
+            print("="*50 + "\n")
+
             logger.warning("Task proposal validation error: %s", e)
-            return jsonify({"error": str(e)}), 400
+            return jsonify(error_response), 400
 
         except (RuntimeError, KeyError, TypeError) as e:
             # Handle unexpected errors
+            error_response = {"error": "Internal server error"}
+
+            # ===== DEBUG: Print error response JSON =====
+            print("📤 ERROR RESPONSE JSON:")
+            print(json.dumps(error_response, indent=2))
+            print("📊 STATUS CODE: 500")
+            print("="*50 + "\n")
+
             logger.error("Task proposal processing failed: %s", e)
-            return jsonify({"error": "Internal server error"}), 500
+            return jsonify(error_response), 500
