@@ -6,6 +6,22 @@ This project tackles the fascinating challenge of building reliable AI systems f
 
 With 971 comprehensive tests spanning React Native frontend, Flask backend, and LangGraph AI workflows, the full-stack architecture features graceful AI degradation that ensures continuous productivity whether AI processing succeeds or fails—demonstrating practical approaches to AI reliability in mission-critical applications.
 
+## Table of Contents
+
+- [Key Features](#key-features)
+- [User Flow](#user-flow)
+- [Technology Selection & Architectural Constraints](#technology-selection--architectural-constraints)
+- [System Architecture Diagram](#system-architecture-diagram)
+- [API Specification](#api-specification)
+- [Frontend Structure](#frontend-structure)
+- [Backend Structure](#backend-structure)
+- [Database and Storage Schema](#database-and-storage-schema)
+- [Agentic Workflow](#agentic-workflow)
+- [Tests](#tests)
+- [Error Handling](#error-handling)
+- [Security](#security)
+- [Scope](#scope)
+
 ## Key Features
 
 The implementation addresses core challenges in AI orchestration, mobile development, and China market deployment constraints.
