@@ -354,6 +354,8 @@ The database uses five core tables with Row Level Security (RLS) policies that r
 
 ### Core Tables
 
+![Database Schema Diagram](images/supabase-schema.png)
+
 | Table              | Purpose                                 | Key Fields                                                                                                                                                                                                                                                                                                                       | Constraints                                                            |
 | ------------------ | --------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------- |
 | **`profiles`**     | User settings, auto-created via trigger | `id` (UUID, PK)<br>`status` (ENUM)<br>`default_alert_offset_minutes` (INT, default 1440)                                                                                                                                                                                                                                         | Links to `auth.users.id`                                               |
