@@ -36,15 +36,15 @@ Independent attorneys and small law firms in China face high malpractice risk fr
     </td>
   </tr>
   <tr>
-    <td style="width: 33.33%; text-align: center; padding: 10px; vertical-align: top;">
+    <td style="width: 33%; text-align: center; padding: 10px; vertical-align: top;">
       <img src="images/action-menu.png" alt="Action Menu" style="max-width: 100%; height: auto; border: 1px solid #ddd; border-radius: 8px;">
       <br><strong>Action Menu</strong>
     </td>
-    <td style="width: 33.33%; text-align: center; padding: 10px; vertical-align: top;">
+    <td style="width: 33%; text-align: center; padding: 10px; vertical-align: top;">
       <img src="images/new-task-screen.png" alt="New Task Screen" style="max-width: 100%; height: auto; border: 1px solid #ddd; border-radius: 8px;">
       <br><strong>New Task Screen</strong>
     </td>
-    <td style="width: 33.33%; text-align: center; padding: 10px; vertical-align: top;">
+    <td style="width: 33%; text-align: center; padding: 10px; vertical-align: top;">
       <img src="images/settings-screen.png" alt="Settings Screen" style="max-width: 100%; height: auto; border: 1px solid #ddd; border-radius: 8px;">
       <br><strong>Settings Screen</strong>
     </td>
